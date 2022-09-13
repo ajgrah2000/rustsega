@@ -14,7 +14,8 @@ fn main() {
     } else{
         let filename = &args[1];
 
-        match sega::memory::cartridge::load(filename)
+        let mut cartridge = sega::memory::cartridge::Cartridge::new(filename);
+        match cartridge.load()
         {
             Ok(()) => {println!("Ok");}
             _ => {println!("Error loading cartridge.");}

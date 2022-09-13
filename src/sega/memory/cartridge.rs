@@ -1,12 +1,10 @@
 use std::fs::{File};
 use std::io::Read;
-use std::io::BufReader;
-use std::io::ErrorKind;
 
 type BankSizeType = u16;
 type NumBanksType = u8;
 
-static NUM_RAM_AGES:           u8 = 2;
+static NUM_RAMP_AGES:          u8 = 2;
 const  BANK_SIZE:    BankSizeType = 0x4000;
 const  MAX_BANKS:    NumBanksType = 64;
 static LOWERMASK:             u16 = 0x03FFF;
@@ -17,15 +15,10 @@ struct Bank
     data: [u8; BANK_SIZE as usize]
 }
 
-struct Banks
-{
-    data: [u8; BANK_SIZE as usize]
-}
-
-struct Cartridge
+pub struct Cartridge
 {
     filename: String,
-    ram: Vec<u8>,
+    ram: Vec<Bank>,
     max_banks: u8,
     num_banks: NumBanksType,
     num_ram_pages: u8,
@@ -33,26 +26,41 @@ struct Cartridge
 }
 
 fn print(cartridge: &Cartridge) {
-    for i in 0..cartridge.num_banks as usize {
-        for b in cartridge.rom[i].data {
+//    for i in 0..cartridge.num_banks as usize {
+//        for b in cartridge.rom[i].data {
 //            print!("{}", b);
-        }
-    }
+//        }
+//    }
 
     println!("");
     println!("read: {}", cartridge.filename);
     println!("Num banks: {}", cartridge.num_banks);
 }
 
-pub fn load(filename: &str) -> std::io::Result<()> {
-    let mut file = File::open(filename)?;
-    let mut cartridge = Cartridge {filename:filename.to_string(), ram:Vec::new(), max_banks:0, num_banks:0, num_ram_pages:0, rom:[Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]};
+impl Cartridge {
+    pub fn new (filename: &str) -> Self {
+        Self {filename:filename.to_string(), ram:Vec::new(), max_banks:0, num_banks:0, num_ram_pages:0, rom:[Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]}
+    }
 
-    (cartridge.rom, cartridge.num_banks) = read_banks(&mut file);
+    pub fn load(&mut self) -> std::io::Result<()> {
+        let mut file = File::open(&self.filename)?;
+    
+        (self.rom, self.num_banks) = read_banks(&mut file);
+    
+        self.ram = initialise_cartridge_ram(&MAX_BANKS);
+    
+        print(&self);
+    
+        Ok(())
+    }
+}
 
-    print(&cartridge);
-
-    Ok(())
+fn initialise_cartridge_ram(num_ram_banks: &NumBanksType) -> Vec<Bank> {
+    let mut ram = Vec::new();
+    for _i in 0..*num_ram_banks {
+        ram.push(Bank{data:[0; BANK_SIZE as usize]});
+    }
+    ram 
 }
 
 fn read_banks(source: &mut dyn Read) -> ([Bank; MAX_BANKS as usize], NumBanksType) {
@@ -62,7 +70,7 @@ fn read_banks(source: &mut dyn Read) -> ([Bank; MAX_BANKS as usize], NumBanksTyp
     for i in 0..MAX_BANKS {
         match read_bank(source)
         {
-            (Some(bank), n) => {banks[i as usize] = bank;
+            (Some(bank), _n) => {banks[i as usize] = bank;
                                 num_banks = num_banks + 1},
             _ => {}
         }
