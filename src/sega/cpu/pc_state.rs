@@ -80,7 +80,7 @@ impl Reg16 {
 }
 
 impl PcState {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             // Register overlays
             bc_reg: Reg16::new(),
@@ -106,63 +106,82 @@ impl PcState {
         }
     }
 
-    fn get_b(&self) -> u8 {self.bc_reg.high}
-    fn get_c(&self) -> u8 {self.bc_reg.low}
-    fn get_d(&self) -> u8 {self.de_reg.high}
-    fn get_e(&self) -> u8 {self.de_reg.low}
-    fn get_a(&self) -> u8 {self.af_reg.high}
-    fn get_f(&self) -> PcStatusFlagFields {PcStatusFlagFields(self.af_reg.low)}
-    fn get_h(&self) -> u8 {self.hl_reg.high}
-    fn get_l(&self) -> u8 {self.hl_reg.low}
+    pub fn get_b(&self) -> u8 {self.bc_reg.high}
+    pub fn get_c(&self) -> u8 {self.bc_reg.low}
+    pub fn get_d(&self) -> u8 {self.de_reg.high}
+    pub fn get_e(&self) -> u8 {self.de_reg.low}
+    pub fn get_a(&self) -> u8 {self.af_reg.high}
+    pub fn get_f(&self) -> PcStatusFlagFields {PcStatusFlagFields(self.af_reg.low)}
+    pub fn get_h(&self) -> u8 {self.hl_reg.high}
+    pub fn get_l(&self) -> u8 {self.hl_reg.low}
 
-    fn get_bc(&self) -> u16 {self.bc_reg.get()}
-    fn get_de(&self) -> u16 {self.de_reg.get()}
-    fn get_af(&self) -> u16 {self.af_reg.get()}
-    fn get_hl(&self) -> u16 {self.hl_reg.get()}
+    pub fn get_bc(&self) -> u16 {self.bc_reg.get()}
+    pub fn get_de(&self) -> u16 {self.de_reg.get()}
+    pub fn get_af(&self) -> u16 {self.af_reg.get()}
+    pub fn get_hl(&self) -> u16 {self.hl_reg.get()}
 
-    fn get_pc_high(&self) -> u8 {self.pc_reg.high}
-    fn get_pc_low (&self) -> u8 {self.pc_reg.low}
-    fn get_sp_high(&self) -> u8 {self.sp_reg.high}
-    fn get_sp_low (&self) -> u8 {self.sp_reg.low}
-    fn get_ix_high(&self) -> u8 {self.ix_reg.high}
-    fn get_ix_low (&self) -> u8 {self.ix_reg.low}
-    fn get_iy_high(&self) -> u8 {self.iy_reg.high}
-    fn get_iy_low (&self) -> u8 {self.iy_reg.low}
+    pub fn get_pc_high(&self) -> u8 {self.pc_reg.high}
+    pub fn get_pc_low (&self) -> u8 {self.pc_reg.low}
+    pub fn get_sp_high(&self) -> u8 {self.sp_reg.high}
+    pub fn get_sp_low (&self) -> u8 {self.sp_reg.low}
+    pub fn get_ix_high(&self) -> u8 {self.ix_reg.high}
+    pub fn get_ix_low (&self) -> u8 {self.ix_reg.low}
+    pub fn get_iy_high(&self) -> u8 {self.iy_reg.high}
+    pub fn get_iy_low (&self) -> u8 {self.iy_reg.low}
 
-    fn get_pc(&self) -> u16 {self.pc_reg.get()}
-    fn get_sp(&self) -> u16 {self.sp_reg.get()}
-    fn get_ix(&self) -> u16 {self.ix_reg.get()}
-    fn get_iy(&self) -> u16 {self.iy_reg.get()}
+    pub fn get_pc(&self) -> u16 {self.pc_reg.get()}
+    pub fn get_sp(&self) -> u16 {self.sp_reg.get()}
+    pub fn get_ix(&self) -> u16 {self.ix_reg.get()}
+    pub fn get_iy(&self) -> u16 {self.iy_reg.get()}
 
-    fn set_b(&mut self, input: &u8) -> () {self.bc_reg.high = *input;}
-    fn set_c(&mut self, input: &u8) -> () {self.bc_reg.low  = *input;}
-    fn set_d(&mut self, input: &u8) -> () {self.de_reg.high = *input;}
-    fn set_e(&mut self, input: &u8) -> () {self.de_reg.low  = *input;}
-    fn set_a(&mut self, input: &u8) -> () {self.af_reg.high = *input;}
+    pub fn get_r   (&self) -> u8 {self.r}
+    pub fn get_iff1(&self) -> u8 {self.iff1}
+    pub fn get_iff2(&self) -> u8 {self.iff2}
+    pub fn get_im  (&self) -> u8 {self.im}
+
+    pub fn set_b(&mut self, input: &u8) -> () {self.bc_reg.high = *input;}
+    pub fn set_c(&mut self, input: &u8) -> () {self.bc_reg.low  = *input;}
+    pub fn set_d(&mut self, input: &u8) -> () {self.de_reg.high = *input;}
+    pub fn set_e(&mut self, input: &u8) -> () {self.de_reg.low  = *input;}
+    pub fn set_a(&mut self, input: &u8) -> () {self.af_reg.high = *input;}
     // TODO: Improve setting of flags, this probably won't be ideal, but it
     // will ensure 'af' and 'f' are always in sync.
-    fn set_f(&mut self, input: PcStatusFlagFields) -> () {self.af_reg.low  = input.0;}
-    fn set_h(&mut self, input: &u8) -> () {self.hl_reg.high = *input;}
-    fn set_l(&mut self, input: &u8) -> () {self.hl_reg.low  = *input;}
+    pub fn set_f(&mut self, input: PcStatusFlagFields) -> () {self.af_reg.low  = input.0;}
+    pub fn set_h(&mut self, input: &u8) -> () {self.hl_reg.high = *input;}
+    pub fn set_l(&mut self, input: &u8) -> () {self.hl_reg.low  = *input;}
 
-    fn set_bc(&mut self, input: &u16) -> () {self.bc_reg.set(input);}
-    fn set_de(&mut self, input: &u16) -> () {self.de_reg.set(input);}
-    fn set_af(&mut self, input: &u16) -> () {self.af_reg.set(input);}
-    fn set_hl(&mut self, input: &u16) -> () {self.hl_reg.set(input);}
+    pub fn set_bc(&mut self, input: &u16) -> () {self.bc_reg.set(input);}
+    pub fn set_de(&mut self, input: &u16) -> () {self.de_reg.set(input);}
+    pub fn set_af(&mut self, input: &u16) -> () {self.af_reg.set(input);}
+    pub fn set_hl(&mut self, input: &u16) -> () {self.hl_reg.set(input);}
 
-    fn set_pc_high(&mut self, input: &u8) -> () {self.pc_reg.high = *input;}
-    fn set_pc_low (&mut self, input: &u8) -> () {self.pc_reg.low  = *input;}
-    fn set_sp_high(&mut self, input: &u8) -> () {self.sp_reg.high = *input;}
-    fn set_sp_low (&mut self, input: &u8) -> () {self.sp_reg.low  = *input;}
-    fn set_ix_high(&mut self, input: &u8) -> () {self.ix_reg.high = *input;}
-    fn set_ix_low (&mut self, input: &u8) -> () {self.ix_reg.low  = *input;}
-    fn set_iy_high(&mut self, input: &u8) -> () {self.iy_reg.high = *input;}
-    fn set_iy_low (&mut self, input: &u8) -> () {self.iy_reg.low  = *input;}
+    pub fn set_pc_high(&mut self, input: &u8) -> () {self.pc_reg.high = *input;}
+    pub fn set_pc_low (&mut self, input: &u8) -> () {self.pc_reg.low  = *input;}
+    pub fn set_sp_high(&mut self, input: &u8) -> () {self.sp_reg.high = *input;}
+    pub fn set_sp_low (&mut self, input: &u8) -> () {self.sp_reg.low  = *input;}
+    pub fn set_ix_high(&mut self, input: &u8) -> () {self.ix_reg.high = *input;}
+    pub fn set_ix_low (&mut self, input: &u8) -> () {self.ix_reg.low  = *input;}
+    pub fn set_iy_high(&mut self, input: &u8) -> () {self.iy_reg.high = *input;}
+    pub fn set_iy_low (&mut self, input: &u8) -> () {self.iy_reg.low  = *input;}
 
-    fn set_pc(&mut self, input: &u16) -> () {self.pc_reg.set(input);}
-    fn set_sp(&mut self, input: &u16) -> () {self.sp_reg.set(input);}
-    fn set_ix(&mut self, input: &u16) -> () {self.ix_reg.set(input);}
-    fn set_iy(&mut self, input: &u16) -> () {self.iy_reg.set(input);}
+    pub fn set_pc(&mut self, input: &u16) -> () {self.pc_reg.set(input);}
+    pub fn set_sp(&mut self, input: &u16) -> () {self.sp_reg.set(input);}
+    pub fn set_ix(&mut self, input: &u16) -> () {self.ix_reg.set(input);}
+    pub fn set_iy(&mut self, input: &u16) -> () {self.iy_reg.set(input);}
+
+    pub fn set_r   (&mut self, input: u8) -> () {self.r    = input;}
+    pub fn set_iff1(&mut self, input: u8) -> () {self.iff1 = input;}
+    pub fn set_iff2(&mut self, input: u8) -> () {self.iff2 = input;}
+    pub fn set_im  (&mut self, input: u8) -> () {self.im   = input;}
+
+    // Additional utility functions, intended to simplify some of the calls.
+    pub fn increment_reg(register: &mut Reg16, increment: i8) -> () {
+        let update_value = ((register.get() as i16) + (increment as i16)) as u16;
+        register.set(&update_value);
+    }
+
+    pub fn increment_sp(&mut self, increment: i8) -> () {Self::increment_reg(&mut self.sp_reg, increment);}
+    pub fn increment_pc(&mut self, increment: i8) -> () {Self::increment_reg(&mut self.pc_reg, increment);}
 }
 
 
