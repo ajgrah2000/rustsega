@@ -2,6 +2,7 @@ use super::pc_state;
 use super::super::memory::memory;
 use super::super::clocks;
 use super::super::interuptor;
+use super::instructions;
 
 pub struct Core {
     clock:     clocks::Clock,
@@ -47,12 +48,14 @@ impl Core {
         }
     }
 
-    fn step(&mut self) -> (){
+    pub fn step(&mut self) -> (){
         // Start with 'expanded' version of step
         self.interuptor.set_cycle(self.clock.cycles);
 
         let op_code = self.memory.read(self.pc_state.get_pc());
-        println!("op_code: {} ", op_code);
+        println!("op_code: {:x} ", op_code);
+        println!("{}", self.pc_state);
+        instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.interuptor);
     }
 }
 
@@ -64,9 +67,9 @@ fn test_core_creation() {
     let mut interuptor = interuptor::Interuptor::new();
     let mut core = Core::new(clock, memory, pc_state, interuptor);
 
-    core.step();
-    println!("{}", core.pc_state);
-    core.step();
+//    core.step();
+//    println!("{}", core.pc_state);
+//    core.step();
 }
 
 
