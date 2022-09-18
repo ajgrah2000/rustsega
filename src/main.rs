@@ -20,6 +20,10 @@ fn main() {
             Ok(()) => {println!("Ok");}
             _ => {println!("Error loading cartridge.");}
         }
+
+        let mut memory = sega::memory::memory::MemoryAbsolute::new();
+        memory.set_cartridge(cartridge);
+
         println!("Finished.");
     }
 }
