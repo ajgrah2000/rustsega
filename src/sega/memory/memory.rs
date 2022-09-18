@@ -225,14 +225,16 @@ impl MemoryAbsolute {
             // Page '0'/'1' lookup
             for address in 0..MemoryBase::PAGE0 as BankSizeType {
                 let bank_address = address & MemoryBase::LOWERMASK; // BANK_MASK
-                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET  + AbsoluteAddressType::from(bank_address + BankSizeType::from(bank) * MemoryBase::BANK_SIZE)) as usize] =  cartridge.read(0, bank_address);
-                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET  + AbsoluteAddressType::from(bank_address + BankSizeType::from(bank) * MemoryBase::BANK_SIZE)) as usize] =  cartridge.read(bank, bank_address);
+                let bank_offset = (bank_address as AbsoluteAddressType) + (bank as AbsoluteAddressType) * (MemoryBase::BANK_SIZE as AbsoluteAddressType);
+                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + bank_offset) as usize] =  cartridge.read(0, bank_address);
+                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + bank_offset) as usize] =  cartridge.read(bank, bank_address);
             }
 
             for address in MemoryBase::PAGE0..MemoryBase::PAGE1 as BankSizeType {
                 let bank_address = address & MemoryBase::LOWERMASK; // BANK_MASK
-                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET  + AbsoluteAddressType::from(bank_address + BankSizeType::from(bank) * MemoryBase::BANK_SIZE)) as usize] =  cartridge.read(bank, bank_address);
-                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET  + AbsoluteAddressType::from(bank_address + BankSizeType::from(bank) * MemoryBase::BANK_SIZE)) as usize] =  cartridge.read(bank, bank_address);
+                let bank_offset = (bank_address as AbsoluteAddressType) + (bank as AbsoluteAddressType) * (MemoryBase::BANK_SIZE as AbsoluteAddressType);
+                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + bank_offset) as usize] =  cartridge.read(bank, bank_address);
+                self.memory_map[(MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + bank_offset) as usize] =  cartridge.read(bank, bank_address);
             }
         }
      }
@@ -285,4 +287,11 @@ impl MemoryAbsolute {
         }
      }
 
+}
+
+#[test]
+fn test_simple_memory_check() {
+    let mut memory = MemoryAbsolute::new();
+
+    println!("Memory length: {}", memory.memory_map.len());
 }

@@ -67,9 +67,9 @@ fn test_core_creation() {
     let mut interuptor = interuptor::Interuptor::new();
     let mut core = Core::new(clock, memory, pc_state, interuptor);
 
-//    core.step();
-//    println!("{}", core.pc_state);
-//    core.step();
+    core.step();
+    println!("{}", core.pc_state);
+    core.step();
 }
 
 
