@@ -1,5 +1,6 @@
 use std::fs::{File};
 use std::io::Read;
+use std::mem;
 
 type BankSizeType = u16;
 type NumBanksType = u8;
@@ -21,7 +22,7 @@ pub struct Cartridge
     ram: [[u8; BANK_SIZE as usize]; NUM_RAM_PAGES as usize],
     pub num_banks: NumBanksType,
     num_ram_pages: u8,
-    rom: [Bank; MAX_BANKS as usize],
+    rom: Box<[Bank; MAX_BANKS as usize]>,
 }
 
 fn print(cartridge: &Cartridge) {
@@ -35,7 +36,7 @@ impl Cartridge {
               ram: [[0; BANK_SIZE as usize]; NUM_RAM_PAGES as usize],
               num_banks:0, 
               num_ram_pages:0, 
-              rom:[Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize],
+              rom:Box::new([Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]),
         }
     }
 
@@ -54,7 +55,7 @@ impl Cartridge {
 //    }
 
     fn load_banks(&mut self, source: &mut dyn Read) {
-        self.rom = [Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize];
+        self.rom = Box::new([Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]);
     
         for i in 0..MAX_BANKS {
             match load_bank(source)
@@ -106,4 +107,5 @@ fn test_load_rom() {
     let mut cartridge = Cartridge::new(test_rom);
     cartridge.load(); 
     assert_eq!(cartridge.read(0, 0), 139);
+    println!("{}", mem::size_of_val(&cartridge));
 }

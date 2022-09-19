@@ -1,4 +1,5 @@
 use super::cartridge;
+use std::mem;
 
 ///  Map the current 'pc' address to an 'absolute' address.  The
 /// structure of the 'absolute' address is somewhat arbitrary, but  the
@@ -61,16 +62,16 @@ pub struct MemoryAbsolute {
     // to the page boundary may contain a different bank. This array is used
     // to copy the 'mixed' banks to all possible 'page0' pages.
 
-    page0_copies: [[u8;MemoryBase::BANK_SIZE as usize];MemoryBase::MAX_BANKS as usize],
+    page0_copies: Box<[[u8;MemoryBase::BANK_SIZE as usize];MemoryBase::MAX_BANKS as usize]>,
 
     page_2: u8,
     ram_select: u8,
 
-    upper_mappings: [AbsoluteAddressType; MemoryAbsoluteConstants::NUM_UPPER_MAPPINGS as usize],
+    upper_mappings: Box<[AbsoluteAddressType; MemoryAbsoluteConstants::NUM_UPPER_MAPPINGS as usize]>,
 
     // Complete memory map
-    memory_map:     [u8; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
-                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize]
+    memory_map:     Box<[u8; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
+                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize]>
 }
 
 
@@ -142,19 +143,19 @@ impl MemoryAbsolute {
         }
 
         Self {
-            upper_mappings: [MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET,   
+            upper_mappings: Box::new([MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET,   
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET, 
-                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET],
+                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET]),
 
             // Complete memory map
-            memory_map:      [0; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
-                                     MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize],
-            page0_copies:  [[0;MemoryBase::BANK_SIZE as usize]; MemoryBase::MAX_BANKS as usize],
+            memory_map:      Box::new([0; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
+                                     MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize]),
+            page0_copies:  Box::new([[0;MemoryBase::BANK_SIZE as usize]; MemoryBase::MAX_BANKS as usize]),
             page_2:  0,
             ram:   [0;(MemoryBase::RAM_SIZE * 2) as usize],
             ram_select:  0,
@@ -294,4 +295,8 @@ fn test_simple_memory_check() {
     let mut memory = MemoryAbsolute::new();
 
     println!("Memory length: {}", memory.memory_map.len());
+    println!("Memory size: {}", mem::size_of_val(&memory));
+    println!("memory_map: {}", mem::size_of_val(&memory.memory_map));
+    println!("upper_mappings: {}", mem::size_of_val(&memory.upper_mappings));
+    println!("page0_copies: {}", mem::size_of_val(&memory.page0_copies));
 }
