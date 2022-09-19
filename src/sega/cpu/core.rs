@@ -2,13 +2,14 @@ use super::pc_state;
 use super::super::memory::memory;
 use super::super::clocks;
 use super::super::interuptor;
+use super::super::ports;
 use super::instructions;
 
 pub struct Core {
-    clock:     clocks::Clock,
+    clock:      clocks::Clock,
     memory:     memory::MemoryAbsolute,
     pc_state:   pc_state::PcState,
-//    ports:      = ports
+    ports:      ports::Ports,
     interuptor: interuptor::Interuptor,
     
 //    instruction_lookup = instruction_store.InstructionStore(self.clocks, self.pc_state, self.ports)
@@ -21,12 +22,14 @@ impl Core {
     pub fn new(clock: clocks::Clock, 
            memory: memory::MemoryAbsolute, 
            pc_state: pc_state::PcState, 
+           ports: ports::Ports,
            interuptor: interuptor::Interuptor) -> Self {
     
         Self {
             clock: clock,
             memory: memory,
             pc_state: pc_state,
+            ports: ports,
             interuptor: interuptor,
         }
     }
@@ -64,8 +67,9 @@ fn test_core_creation() {
     let mut clock = clocks::Clock::new();
     let mut memory = memory::MemoryAbsolute::new();
     let mut pc_state = pc_state::PcState::new();
+    let mut ports = ports::Ports::new();
     let mut interuptor = interuptor::Interuptor::new();
-    let mut core = Core::new(clock, memory, pc_state, interuptor);
+    let mut core = Core::new(clock, memory, pc_state, ports, interuptor);
 
     core.step();
     println!("{}", core.pc_state);

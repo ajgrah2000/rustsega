@@ -1,6 +1,5 @@
 use std::fs::{File};
 use std::io::Read;
-use std::mem;
 
 type BankSizeType = u16;
 type NumBanksType = u8;
@@ -100,12 +99,18 @@ fn load_bank(source: &mut dyn Read) -> (Option<Bank>, NumBanksType) {
     }
 }
 
-#[test]
-fn test_load_rom() {
-    // Do a test load of a 'fake rom' (just randomly generated data).
-    let test_rom = "fake.rom";
-    let mut cartridge = Cartridge::new(test_rom);
-    cartridge.load(); 
-    assert_eq!(cartridge.read(0, 0), 139);
-    println!("{}", mem::size_of_val(&cartridge));
+#[cfg(test)]
+mod tests {
+    use std::mem;
+    use crate::sega::memory::cartridge::Cartridge;
+
+    #[test]
+    fn test_load_rom() {
+        // Do a test load of a 'fake rom' (just randomly generated data).
+        let test_rom = "fake.rom";
+        let mut cartridge = Cartridge::new(test_rom);
+        cartridge.load(); 
+        assert_eq!(cartridge.read(0, 0), 139);
+        println!("{}", mem::size_of_val(&cartridge));
+    }
 }

@@ -1,5 +1,4 @@
 use super::cartridge;
-use std::mem;
 
 ///  Map the current 'pc' address to an 'absolute' address.  The
 /// structure of the 'absolute' address is somewhat arbitrary, but  the
@@ -290,13 +289,18 @@ impl MemoryAbsolute {
 
 }
 
-#[test]
-fn test_simple_memory_check() {
-    let mut memory = MemoryAbsolute::new();
-
-    println!("Memory length: {}", memory.memory_map.len());
-    println!("Memory size: {}", mem::size_of_val(&memory));
-    println!("memory_map: {}", mem::size_of_val(&memory.memory_map));
-    println!("upper_mappings: {}", mem::size_of_val(&memory.upper_mappings));
-    println!("page0_copies: {}", mem::size_of_val(&memory.page0_copies));
+#[cfg(test)]
+mod tests {
+    use std::mem;
+    use crate::sega::memory::memory::MemoryAbsolute;
+    #[test]
+    fn test_simple_memory_check() {
+        let mut memory = MemoryAbsolute::new();
+    
+        println!("Memory length: {}", memory.memory_map.len());
+        println!("Memory size: {}", mem::size_of_val(&memory));
+        println!("memory_map: {}", mem::size_of_val(&memory.memory_map));
+        println!("upper_mappings: {}", mem::size_of_val(&memory.upper_mappings));
+        println!("page0_copies: {}", mem::size_of_val(&memory.page0_copies));
+    }
 }
