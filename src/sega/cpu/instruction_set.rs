@@ -22,6 +22,10 @@ pub fn im_1(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 
     clock.increment(2);
 }
+
+pub fn signed_char_to_int(v: i8) -> i16 {
+    return v as i16;
+}
      
 // def signed_char_to_int(value):
 //     result = value
@@ -3108,3 +3112,13 @@ pub fn im_1(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 //         else:
 //             cycles += 10;
 //         return cycles
+
+#[cfg(test)]
+mod tests {
+    use crate::sega::cpu::instruction_set;
+
+    #[test]
+    fn test_instruction_set() {
+        assert_eq!(instruction_set::signed_char_to_int(-1 as i8), -1 as i16);
+    }
+}

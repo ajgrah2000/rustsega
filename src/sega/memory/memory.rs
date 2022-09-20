@@ -55,22 +55,21 @@ pub struct MemoryBase {
 
 pub struct MemoryAbsolute {
     // Ram is 'mirrored'
-    ram: [u8;(MemoryBase::RAM_SIZE  * 2) as usize],
+    ram: Vec<u8>,
 
     // 'Page0' always contains bank 0 for the first 'PAGE0' bytes, then up
     // to the page boundary may contain a different bank. This array is used
     // to copy the 'mixed' banks to all possible 'page0' pages.
 
-    page0_copies: Box<[[u8;MemoryBase::BANK_SIZE as usize];MemoryBase::MAX_BANKS as usize]>,
+    page0_copies: Vec<Vec<u8>>,
 
     page_2: u8,
     ram_select: u8,
 
-    upper_mappings: Box<[AbsoluteAddressType; MemoryAbsoluteConstants::NUM_UPPER_MAPPINGS as usize]>,
+    upper_mappings: Vec<AbsoluteAddressType>,
 
     // Complete memory map
-    memory_map:     Box<[u8; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
-                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize]>
+    memory_map:     Vec<u8>
 }
 
 
@@ -142,21 +141,21 @@ impl MemoryAbsolute {
         }
 
         Self {
-            upper_mappings: Box::new([MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET,   
+            upper_mappings: vec![MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET,   
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              new_segment(&mut index),
                              MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET, 
-                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET]),
+                             MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET],
 
             // Complete memory map
-            memory_map:      Box::new([0; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
-                                     MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize]),
-            page0_copies:  Box::new([[0;MemoryBase::BANK_SIZE as usize]; MemoryBase::MAX_BANKS as usize]),
+            memory_map:     vec![0; max(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE,
+                                     MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE) as usize],
+            page0_copies:  vec![vec![0;MemoryBase::BANK_SIZE as usize]; MemoryBase::MAX_BANKS as usize],
             page_2:  0,
-            ram:   [0;(MemoryBase::RAM_SIZE * 2) as usize],
+            ram:   vec![0;(MemoryBase::RAM_SIZE * 2) as usize],
             ram_select:  0,
         }
     }
