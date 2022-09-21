@@ -7,7 +7,6 @@ type NumBanksType = u8;
 const NUM_RAM_PAGES:          u8 = 2;
 const BANK_SIZE:    BankSizeType = 0x4000;
 const MAX_BANKS:    NumBanksType = 64;
-const LOWERMASK:             u16 = 0x03FFF;
 
 #[derive(Copy, Clone)]
 struct Bank
@@ -48,10 +47,6 @@ impl Cartridge {
     
         Ok(())
     }
-
-//    pub fn read(&self, address: &BankSizeType) -> u8 {
-//        self.rom[self.current_bank as usize].data[(*address & LOWERMASK) as usize]
-//    }
 
     fn load_banks(&mut self, source: &mut dyn Read) {
         self.rom = Box::new([Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]);

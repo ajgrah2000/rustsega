@@ -26,155 +26,148 @@ pub fn im_1(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
-     
-// def signed_char_to_int(value):
-//     result = value
-//     if (value & 0x80):
-//         result = value + 0xFF00
-//     return result
-// 
-// # self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
-// def add8c(pc_state, a, b, c):
-//     r = a + b + c;
-//     rs = (a + b + c) & 0xFF;
-//     if (rs & 0x80): # Negative
-//         pc_state.F.Fstatus.S = 1
-//     else:
-//         pc_state.F.Fstatus.S = 0
-// 
-//     if (rs == 0): # Zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-// 
-//     if (((r & 0xF00) != 0) and 
-//          (r & 0xF00) != 0xF00):
-//         pc_state.F.Fstatus.PV = 1
-//     else:
-//         pc_state.F.Fstatus.PV = 0
-// 
-//     r = (a & 0xF) + (b & 0xF) + c;
-//     if (r & 0x10): # Half carry
-//         pc_state.F.Fstatus.H = 1
-//     else:
-//         pc_state.F.Fstatus.H = 0
-// 
-//     pc_state.F.Fstatus.N = 0;
-// 
-//     r = (a & 0xFF) + (b & 0xFF) + c;
-//     if (r & 0x100): # Carry
-//         pc_state.F.Fstatus.C = 1
-//     else:
-//         pc_state.F.Fstatus.C = 0
-// 
-//     return (a + b + c) & 0xFF
-// 
-// # Subtract two 8 bit ints and the carry bit, set flags accordingly
-// def sub8c(pc_state, a, b, c):
-//     r = a - b - c;
-//     rs = a - b - c;
-//     if (rs & 0x80): # Negative
-//         pc_state.F.Fstatus.S = 1
-//     else:
-//         pc_state.F.Fstatus.S = 0
-// 
-//     if (rs == 0): # Zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-// 
-//     if (((r & 0x180) != 0) and 
-//          (r & 0x180) != 0x180): # Overflow
-//         pc_state.F.Fstatus.PV = 1
-//     else:
-//         pc_state.F.Fstatus.PV = 0
-// 
-//     r = (a & 0xF) - (b & 0xF) - c;
-//     if (r & 0x10): # Half carry
-//         pc_state.F.Fstatus.H = 1
-//     else:
-//         pc_state.F.Fstatus.H = 0
-//     pc_state.F.Fstatus.N = 1;
-// 
-//     r = (a & 0xFF) - (b & 0xFF) - c;
-//     if (r & 0x100): # Carry
-//         pc_state.F.Fstatus.C = 1
-//     else:
-//         pc_state.F.Fstatus.C = 0
-//     return (a - b - c) & 0xFF
-//     
-// # self.pc_state.Add two 16 bit ints and set flags accordingly
-// def add16c(pc_state, a, b, c):
-//     r = a + b + c;
-//     rs = r & 0xFFFF;
-//     if (rs & 0x8000): # Negative
-//         pc_state.F.Fstatus.S = 1
-//     else:
-//         pc_state.F.Fstatus.S = 0
-// 
-//     if (rs == 0): # Zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-// 
-//     # Overflow
-//     if (((r & 0x18000) != 0) and 
-//          (r & 0x18000) != 0x18000): # Overflow
-//         pc_state.F.Fstatus.PV = 1
-//     else:
-//         pc_state.F.Fstatus.PV = 0
-// 
-//     r = (a & 0xFFF) + (b & 0xFFF) + c;
-//     if (r & 0x1000): # Half carry
-//         pc_state.F.Fstatus.H = 1
-//     else:
-//         pc_state.F.Fstatus.H = 0
-// 
-//     pc_state.F.Fstatus.N = 0;
-// 
-//     r = (a & 0xFFFF) + (b & 0xFFFF) + c;
-//     if (r & 0x10000): # Carry
-//         pc_state.F.Fstatus.C = 1
-//     else:
-//         pc_state.F.Fstatus.C = 0
-//     return a + b + c;
-//     
-//     
-// def sub16c(pc_state, a, b, c):
-// 
-//     r = a - b - c;
-//     if (r & 0x8000): # Negative
-//         pc_state.F.Fstatus.S = 1
-//     else:
-//         pc_state.F.Fstatus.S = 0
-// 
-//     if(r == 0): # Zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-// 
-//     if (((r & 0x18000) != 0) and 
-//          (r & 0x18000) != 0x18000): # Overflow
-//         pc_state.F.Fstatus.PV = 1
-//     else:
-//         pc_state.F.Fstatus.PV = 0
-// 
-//     r = (a & 0xFFF) - (b & 0xFFF) - c;
-//     if(r & 0x1000): #Half carry
-//         pc_state.F.Fstatus.H = 1
-//     else:
-//         pc_state.F.Fstatus.H = 0
-// 
-//     pc_state.F.Fstatus.N = 1;
-// 
-//     r = (a & 0xFFFF) - (b & 0xFFFF) - c;
-//     if(r & 0x10000): # Carry
-//         pc_state.F.Fstatus.C = 1
-//     else:
-//         pc_state.F.Fstatus.C = 0
-// 
-//     return a - b - c;
-// 
+
+// self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
+fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
+    let mut f_status = pc_state.get_f();
+    let mut r = a.wrapping_add(b).wrapping_add(u8::from(c));
+
+    if (r & 0x80) != 0 { // Negative
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+ 
+    if (r & 0xFF) == 0 { // Zero
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+ 
+    // An Overflow can't occur if a and b have different sign bits
+    // If they're the same, an overflow occurred if the sign of the result changed.
+    // Basically, tread both arguments as signed numbers
+
+    if (((a & 0x80) ^ (b & 0x80)) == 0x00) && // arguments same sign
+       (((a & 0x80) ^ (r & 0x80)) == 0x80) {  // result different sign
+        f_status.set_pv(1);
+    } else {
+        f_status.set_pv(0);
+    }
+
+    f_status.set_h(0);
+    if (((a & 0xF) + (b & 0xF) + u8::from(c)) & 0x10) == 0x10 { // Half carry
+        f_status.set_h(1);
+    } else {
+        f_status.set_h(0);
+    }
+ 
+    if c {
+        if a > 0xFF - b {
+            f_status.set_c(1);
+        } else {
+            f_status.set_c(0);
+        }
+    } else {
+        if a >= 0xFF - b {
+            f_status.set_c(1);
+        } else {
+            f_status.set_c(0);
+        }
+    }
+    
+    pc_state.set_f(f_status);
+ 
+    return r;
+}
+
+fn add8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
+    let mut f_status = pc_state.get_f();
+    f_status.set_n(0); // Clear N to indicate add
+    pc_state.set_f(f_status);
+    u8_carry(pc_state, a, b, c) 
+}
+
+// Subtract two 8 bit ints and the carry bit, set flags accordingly
+fn sub8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
+    let mut f_status = pc_state.get_f();
+    f_status.set_n(1); // Set N to indicate subtract
+    pc_state.set_f(f_status);
+
+    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
+    u8_carry(pc_state, a, !b, !c)
+}
+
+fn u16_carry(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
+    // Perform a u16-bit add with carry, setting the flags (except N, which is
+    // left to add/sub)
+    let mut f_status = pc_state.get_f();
+    let mut r = a.wrapping_add(b).wrapping_add(u16::from(c));
+
+    if (r & 0x8000) != 0 { // Negative
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+ 
+    if (r & 0xFFFF) == 0 { // Zero
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+ 
+    // An Overflow can't occur if a and b have different sign bits
+    // If they're the same, an overflow occurred if the sign of the result changed.
+    // Basically, tread both arguments as signed numbers
+
+    if (((a & 0x8000) ^ (b & 0x8000)) == 0x0000) && // arguments same sign
+       (((a & 0x8000) ^ (r & 0x8000)) == 0x8000) {  // result different sign
+        f_status.set_pv(1);
+    } else {
+        f_status.set_pv(0);
+    }
+
+    f_status.set_h(0);
+    if (((a & 0xFFF) + (b & 0xFFF) + u16::from(c)) & 0x1000) == 0x1000 { // Half carry
+        f_status.set_h(1);
+    } else {
+        f_status.set_h(0);
+    }
+ 
+    if c {
+        if a > 0xFFFF - b {
+            f_status.set_c(1);
+        } else {
+            f_status.set_c(0);
+        }
+    } else {
+        if a >= 0xFFFF - b {
+            f_status.set_c(1);
+        } else {
+            f_status.set_c(0);
+        }
+    }
+    
+    pc_state.set_f(f_status);
+ 
+    return r;
+}
+
+fn add16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
+    let mut f_status = pc_state.get_f();
+    f_status.set_n(0);
+    pc_state.set_f(f_status);
+    u16_carry(pc_state, a, b, c)
+}
+
+fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
+    let mut f_status = pc_state.get_f();
+    f_status.set_n(1);
+    pc_state.set_f(f_status);
+    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
+    u16_carry(pc_state, a, !b, !c)
+}
+
 // # Calculate the result of the DAA functio
 // def calculateDAAAdd(pc_state):
 //     upper = (pc_state.A >> 4) & 0xF;
@@ -3116,9 +3109,48 @@ pub fn signed_char_to_int(v: i8) -> i16 {
 #[cfg(test)]
 mod tests {
     use crate::sega::cpu::instruction_set;
+    use crate::sega::cpu::pc_state;
 
     #[test]
-    fn test_instruction_set() {
+    fn test_add_sub_functions() {
+        let mut pc_state = pc_state::PcState::new();
         assert_eq!(instruction_set::signed_char_to_int(-1 as i8), -1 as i16);
+
+        assert_eq!(instruction_set::add8c(&mut pc_state, 0, 0, false), 0);
+        assert_eq!(pc_state.get_f().get_z(), 1);
+
+        assert_eq!(instruction_set::add8c(&mut pc_state, 0, 0, true), 1);
+        assert_eq!(pc_state.get_f().get_z(), 0);
+
+        assert_eq!(instruction_set::add8c(&mut pc_state, 0x7, 0x9, true), 0x11);
+        assert_eq!(pc_state.get_f().get_z(), 0);
+        assert_eq!(pc_state.get_f().get_h(), 1);
+        assert_eq!(pc_state.get_f().get_n(), 0);
+
+        assert_eq!(instruction_set::add8c(&mut pc_state, 0xFF, 0xFF, true), 0xFF);
+        assert_eq!(pc_state.get_f().get_z(), 0);
+        assert_eq!(pc_state.get_f().get_c(), 1);
+        assert_eq!(pc_state.get_f().get_pv(), 0);
+
+        assert_eq!(instruction_set::sub8c(&mut pc_state, 0xFF, 0xFF, true), 0xFF);
+        assert_eq!(instruction_set::sub8c(&mut pc_state, 0x7F, 0xFF, true), 0x7F);
+        assert_eq!(pc_state.get_f().get_pv(), 0);
+        assert_eq!(pc_state.get_f().get_c(), 0);
+        assert_eq!(pc_state.get_f().get_n(), 1);
+
+        assert_eq!(instruction_set::sub8c(&mut pc_state, 0xFF, 0x2, true), 0xFC);
+        assert_eq!(pc_state.get_f().get_pv(), 0);
+        assert_eq!(pc_state.get_f().get_c(), 1);
+
+        assert_eq!(instruction_set::add16c(&mut pc_state, 0xFFFF, 0xFFFF, true), 0xFFFF);
+        assert_eq!(instruction_set::add16c(&mut pc_state, 0, 0, false), 0);
+        assert_eq!(pc_state.get_f().get_z(), 1);
+        assert_eq!(pc_state.get_f().get_n(), 0);
+
+        assert_eq!(instruction_set::add16c(&mut pc_state, 0x3FFF, 0x7001, true), 0xB001);
+        assert_eq!(pc_state.get_f().get_h(), 1);
+
+        assert_eq!(instruction_set::sub16c(&mut pc_state, 0x0000, 0x000F, true), 0xFFF0);
+        assert_eq!(pc_state.get_f().get_n(), 1);
     }
 }
