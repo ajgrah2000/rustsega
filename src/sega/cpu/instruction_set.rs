@@ -1,5 +1,6 @@
 use super::pc_state;
 use super::super::clocks;
+use super::flagtables;
 
 //0x00
 pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
@@ -168,74 +169,94 @@ fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
     u16_carry(pc_state, a, !b, !c)
 }
 
-// # Calculate the result of the DAA functio
-// def calculateDAAAdd(pc_state):
-//     upper = (pc_state.A >> 4) & 0xF;
-//     lower = pc_state.A & 0xF;
-//     
-//     if (pc_state.F.Fstatus.C == 0):
-//         if ((upper <= 9) and (pc_state.F.Fstatus.H == 0) and (lower <= 9)):
-//             pass
-//         elif ((upper <= 8) and (pc_state.F.Fstatus.H == 0) and ((lower >= 0xA) and (lower <= 0xF))):
-//             pc_state.A += 0x06;
-//         elif ((upper <= 9) and (pc_state.F.Fstatus.H == 1) and (lower <= 0x3)):
-//             pc_state.A += 0x06;
-//         elif (((upper >= 0xA) and (upper <= 0xF)) and (pc_state.F.Fstatus.H == 0) and (lower <= 0x9)):
-//             pc_state.A += 0x60;
-//             pc_state.F.Fstatus.C = 1;
-//         elif (((upper >= 0x9) and (upper <= 0xF)) and (pc_state.F.Fstatus.H == 0) and ((lower >= 0xA) and (lower <= 0xF))):
-//             pc_state.A += 0x66;
-//             pc_state.F.Fstatus.C = 1;
-//         elif (((upper >= 0xA) and (upper <= 0xF)) and (pc_state.F.Fstatus.H == 1) and (lower <= 0x3)):
-//             pc_state.A += 0x66;
-//             pc_state.F.Fstatus.C = 1;
-//     else:
-//         if ((upper <= 0x2) and (pc_state.F.Fstatus.H == 0) and (lower <= 0x9)):
-//             pc_state.A += 0x60;
-//         elif ((upper <= 0x2) and (pc_state.F.Fstatus.H == 0) and ((lower >= 0xA) and (lower <= 0xF))):
-//             pc_state.A += 0x66;
-//         elif ((upper <= 0x3) and (pc_state.F.Fstatus.H == 1) and (lower <= 0x3)):
-//             pc_state.A += 0x66;
-// 
-//     pc_state.F.Fstatus.PV = flagtables.FlagTables.calculateParity(pc_state.A);
-//     if (pc_state.A & 0x80): # Is negative
-//         pc_state.F.Fstatus.S  = 1
-//     else:
-//         pc_state.F.Fstatus.S  = 0
-// 
-//     if (pc_state.A==0): # Is zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-// 
-// # Fcpu_state->IXME, table in z80 guide is wrong, need to check values by hand
-// def calculateDAASub(pc_state):
-//     upper = (pc_state.A >> 4) & 0xF;
-//     lower = pc_state.A & 0xF;
-// 
-//     if (pc_state.F.Fstatus.C == 0):
-//         if ((upper <= 0x9) and (pc_state.F.Fstatus.H == 0) and (lower <= 0x9)):
-//             pass
-//         elif ((upper <= 0x8) and (pc_state.F.Fstatus.H == 1) and ((lower >= 0x6) and (lower <= 0xF))):
-//             pc_state.A += 0xFA;
-//     else:
-//         if (((upper >= 0x7) and (upper <= 0xF)) and (pc_state.F.Fstatus.H == 0) and (lower <= 0x9)):
-//             pc_state.A += 0xA0;
-//         elif (((upper >= 0x6) and (upper <= 0xF)) and (pc_state.F.Fstatus.H == 1) and ((lower >= 0x6) and (lower <= 0xF))):
-//             pc_state.F.Fstatus.H = 0;
-//             pc_state.A += 0x9A;
-//     pc_state.F.Fstatus.PV = flagtables.FlagTables.calculateParity(pc_state.A);
-//     if (pc_state.A & 0x80): #Is negative
-//         pc_state.F.Fstatus.S = 1
-//     else:
-//         pc_state.F.Fstatus.S = 0
-//     if (pc_state.A==0): # Is zero
-//         pc_state.F.Fstatus.Z = 1
-//     else:
-//         pc_state.F.Fstatus.Z = 0
-//     
-// 
-// 
+// Calculate the result of the DAA functio
+fn calculateDAAAdd(pc_state: &mut pc_state::PcState) -> () {
+    let upper = (pc_state.get_a() >> 4) & 0xF;
+    let lower =  pc_state.get_a() & 0xF;
+    
+    let mut f_status = pc_state.get_f();
+
+    if f_status.get_c() == 0 {
+        if (upper <= 9) && (f_status.get_h() == 0) && (lower <= 9) {
+            // Do nothing
+        } else if (upper <= 8) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
+            pc_state.set_a(&(pc_state.get_a() + 0x06));
+        } else if (upper <= 9) && (f_status.get_h() == 1) && (lower <= 0x3) {
+            pc_state.set_a(&(pc_state.get_a() + 0x06));
+        } else if ((upper >= 0xA) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9) {
+            pc_state.set_a(&(pc_state.get_a() + 0x60));
+            f_status.set_c(1);
+        } else if ((upper >= 0x9) && (upper <= 0xF)) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
+            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            f_status.set_c(1);
+        } else if ((upper >= 0xA) && (upper <= 0xF)) && (f_status.get_h() == 1) && (lower <= 0x3) {
+            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            f_status.set_c(1);
+        }
+    } else {
+        if (upper <= 0x2) && (f_status.get_h() == 0) && (lower <= 0x9) {
+            pc_state.set_a(&(pc_state.get_a() + 0x60));
+        } else if (upper <= 0x2) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
+            pc_state.set_a(&(pc_state.get_a() + 0x66));
+        } else if (upper <= 0x3) && (f_status.get_h() == 1) && (lower <= 0x3) {
+            pc_state.set_a(&(pc_state.get_a() + 0x66));
+        }
+    }
+
+    f_status.set_pv(u8::from(flagtables::calculate_parity(pc_state.get_a())));
+    if (pc_state.get_a() & 0x80) != 0 { // Is negative
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+
+    if pc_state.get_a() == 0 { // Is zero
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+
+    pc_state.set_f(f_status);
+}
+
+// Fcpu_state->IXME, table in z80 guide is wrong, need to check values by hand
+fn calculateDAASub(pc_state: &mut pc_state::PcState) {
+    let upper = (pc_state.get_a() >> 4) & 0xF;
+    let lower =  pc_state.get_a() & 0xF;
+    
+    let mut f_status = pc_state.get_f();
+
+    if f_status.get_c() == 0 {
+        if (upper <= 9) && (f_status.get_h() == 0) && (lower <= 9) {
+            // Do nothing
+        } else if (upper <= 0x8) && (f_status.get_h() == 1) && ((lower >= 0x6) && (lower <= 0xF)) {
+            pc_state.set_a(&(pc_state.get_a() + 0xFA));
+        }
+    } else {
+        if (((upper >= 0x7) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9)) {
+            pc_state.set_a(&(pc_state.get_a() + 0xA0));
+        } else if ((upper >= 0x6) && (upper <= 0xF)) && (f_status.get_h() == 1) && ((lower >= 0x6) && (lower <= 0xF)) {
+            f_status.set_h(0);
+            pc_state.set_a(&(pc_state.get_a() + 0x9A));
+        }
+    }
+
+    f_status.set_pv(u8::from(flagtables::calculate_parity(pc_state.get_a())));
+    if (pc_state.get_a() & 0x80) != 0 { // Is negative
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+
+    if pc_state.get_a() == 0 { // Is zero
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+
+    pc_state.set_f(f_status);
+}
+
 // class Instruction(object):
 //     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
 //     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
