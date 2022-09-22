@@ -90,12 +90,12 @@ impl Instruction {
 // 
 //            0x1c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_e);} // INC E
 // 
-//            0x20 => { instruction_set::jrnze(clock, memory, pc_state);} // JR NZ, e
+            0x20 => { instruction_set::jrnz_e(clock, memory, pc_state);} // JR NZ, e
 // 
 //            0x23 => { instruction_set::inc_16(clock, memory, pc_state, &mut pc_state.hl_reg, 6);}
 // 
 //            0x24 => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_h);} // INC H
-//            0x28 => { instruction_set::jrze(clock, memory, pc_state);} // JR Z, e
+            0x28 => { instruction_set::jrz_e(clock, memory, pc_state);} // JR Z, e
 //            0x29 => { instruction_set::add16(clock, memory, pc_state, &mut pc_state.hl_reg, &mut pc_state.hl_reg,11);}
 //            0x2b => { instruction_set::dec_16(clock, memory, pc_state, &mut pc_state.hl_reg, 6);}
 // 
@@ -168,9 +168,9 @@ impl Instruction {
                 }
 // 
 //            0xd3 => { instruction_set::out_n_A(clock, memory, pc_state, self.ports);} // OUT (n), cpu_state->A
-//            0xd2 => { instruction_set::jpnc(clock, memory, pc_state);} // JP NC
+            0xd2 => { instruction_set::jpnc_nn(clock, memory, pc_state);} // JP NC, nn
 //            0xd9 => { instruction_set::exx(clock, memory, pc_state);} // EXX
-//            0xda => { instruction_set::jpcnn(clock, memory, pc_state);} // JP C, nn
+            0xda => { instruction_set::jpc_nn(clock, memory, pc_state);} // JP C, nn
 // 
 //            0xe6 => { instruction_set::and_n(clock, memory, pc_state);} // AND n
             0xfe => { instruction_set::cp_n(clock, memory, pc_state);} // CP n
@@ -213,15 +213,15 @@ impl Instruction {
 //
 //            0x08 => { instruction_set::ex(clock, memory, pc_state);}
 //            0x17 => { instruction_set::rla(clock, memory, pc_state);}
-//            0x18 => { instruction_set::jr_e(clock, memory, pc_state);}
+            0x18 => { instruction_set::jr_e(clock, memory, pc_state);}
 //            0x1f => { instruction_set::rra(clock, memory, pc_state);}
             0x22 => { instruction_set::ld_nn_hl(clock, memory, pc_state);}
 //            0x27 => { instruction_set::daa(clock, memory, pc_state);}
 //            0x2f => { instruction_set::cpl(clock, memory, pc_state);}
-//            0x30 => { instruction_set::jrnc_e(clock, memory, pc_state);}
+            0x30 => { instruction_set::jrnc_e(clock, memory, pc_state);}
             0x32 => { instruction_set::ld_nn_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg);}
 //            0x37 => { instruction_set::scf(clock, memory, pc_state);}
-//            0x38 => { instruction_set::jrc_e(clock, memory, pc_state);}
+            0x38 => { instruction_set::jrc_e(clock, memory, pc_state);}
 //            0x3f => { instruction_set::ccf(clock, memory, pc_state);}
 //            0x76 => { instruction_set::halt(clock, memory, pc_state);}
 //            0x86 => { instruction_set::add_hl(clock, memory, pc_state);}
@@ -253,7 +253,7 @@ impl Instruction {
 //            0xc0 => { instruction_set::ret_nz(clock, memory, pc_state);}
 //            0xc1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.bc_reg);}
 //            0xc2 => { instruction_set::jpnz_nn(clock, memory, pc_state);}
-//            0xc3 => { instruction_set::jp_nn(clock, memory, pc_state);}
+            0xc3 => { instruction_set::jp_nn(clock, memory, pc_state);}
 //            0xc4 => { instruction_set::call_nz_nn(clock, memory, pc_state);}
 //            0xc5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.bc_reg);}
 //            0xc6 => { instruction_set::add_n(clock, memory, pc_state);}

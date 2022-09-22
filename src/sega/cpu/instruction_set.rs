@@ -279,11 +279,9 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
     pc_state.set_f(f_status);
 }
 
-pub fn jp_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
-              pc_state: &mut pc_state::PcState) -> () {
-    pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
-    clock.increment(10);
-}
+/*************************************************************************************/
+/* Load Instructions                                                                 */
+/*************************************************************************************/
 
 //  LD dd, nn, Load a 16-bit register with the value 'nn'
 pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
@@ -384,13 +382,9 @@ pub fn ld_nn_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
     clock.increment(16);
 }
 
-//  JP (HL)
-// Load PC with HL, to jump to that location.
-pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut pc_state::Reg16) -> () {
-    pc_reg.set(hl_reg.get()); 
-
-    clock.increment(4);
-}
+/*************************************************************************************/
+/* Compare Instructions                                                              */
+/*************************************************************************************/
 
 // CP n
 // Compare accumulator with 'n' to set status flags (but don't change accumulator)
@@ -420,6 +414,116 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 
     pc_state.increment_pc(1);
     clock.increment(7);
+}
+
+/*************************************************************************************/
+/* JUMP Instructions                                                                 */
+/*************************************************************************************/
+
+pub fn jp_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_state: &mut pc_state::PcState) -> () {
+    pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+    clock.increment(10);
+}
+
+//  JP (HL)
+// Load PC with HL, to jump to that location.
+pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut pc_state::Reg16) -> () {
+    pc_reg.set(hl_reg.get()); 
+    clock.increment(4);
+}
+
+
+// JR NZ, e
+pub fn jrnz_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    clock.increment(7);
+
+    if pc_state.get_f().get_z() == 0 {
+        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+        clock.increment(5);
+    }
+    pc_state.increment_pc(2);
+}
+
+// JR Z, e
+pub fn jrz_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    clock.increment(7);
+
+    if pc_state.get_f().get_z() == 1 {
+        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+        clock.increment(5);
+    }
+    pc_state.increment_pc(2);
+}
+
+// JR NC, e
+pub fn jrnc_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    clock.increment(7);
+
+    if pc_state.get_f().get_c() == 0 {
+        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+        clock.increment(5);
+    }
+    pc_state.increment_pc(2);
+}
+
+// JR C, e
+pub fn jrc_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    clock.increment(7);
+
+    if pc_state.get_f().get_c() == 1 {
+        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+        clock.increment(5);
+    }
+    pc_state.increment_pc(2);
+}
+
+// Relative jump
+// JR e
+pub fn jr_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+    clock.increment(12);
+}
+
+// Absolute Jump
+// JP NC
+pub fn jpnc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+
+    if pc_state.get_f().get_c() == 0 {
+        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+        clock.increment(5);
+    } else {
+        pc_state.increment_pc(3);
+    }
+
+    clock.increment(10);
+}
+
+// Absolute Jump
+// JP C
+pub fn jpc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+
+    if pc_state.get_f().get_c() == 1 {
+        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+        clock.increment(5);
+    } else {
+        pc_state.increment_pc(3);
+    }
+
+    clock.increment(10);
+}
+
+// Absolute Jump on condition
+// JP cc, nn
+pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, condition:bool) -> () {
+    if condition {
+        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+        clock.increment(5);
+    } else {
+        pc_state.increment_pc(3);
+    }
+
+    clock.increment(10);
 }
 
 // class Instruction(object):
@@ -606,123 +710,6 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 //     
 //         return 4;
 // 
-// class JRZe(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     # JR Z, e
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.Z == 1):
-//             self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC+1))
-//             cycles = 12
-//         else:
-//             cycles = 7
-// 
-//         self.pc_state.PC += 2;
-//     
-//         return cycles;
-// 
-//     # JR Z, e
-//     def get_cached_execute(self):
-//         jump_pc = self.pc_state.PC + signed_char_to_int(self.memory.read(self.pc_state.PC+1)) + 2
-//         no_jump_pc = self.pc_state.PC + 2;
-//         ps = self.pc_state
-// 
-//         def _get_cached_execute(self):
-//             if (ps.F.Fstatus.Z == 1):
-//                 ps.PC = jump_pc
-//                 cycles = 12
-//             else:
-//                 ps.PC = no_jump_pc
-//                 cycles = 7
-// 
-//             return cycles;
-// 
-//         return _get_cached_execute
-// 
-// class JPNC(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     # JP NC, e
-//     def execute(self):
-//          if (self.pc_state.F.Fstatus.C == 0):
-//              self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//          else:
-//              self.pc_state.PC += 3;
-//     
-//          return 10;
-// 
-//     def get_cached_execute(self):
-//         jump_pc = self.memory.read16(self.pc_state.PC+1);
-//         no_jump_pc = self.pc_state.PC + 3
-// 
-//         def _get_cached_execute(self):
-//             if (self.pc_state.F.Fstatus.C == 0):
-//                 self.pc_state.PC = jump_pc
-//             else:
-//                 self.pc_state.PC = no_jump_pc
-//     
-//             return 10;
-// 
-//         return _get_cached_execute
-//     
-// 
-// class JPCnn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     # JP C, nn
-//     def execute(self):
-//          if (self.pc_state.F.Fstatus.C == 1):
-//              self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//          else:
-//              self.pc_state.PC += 3;
-//     
-//          return 10;
-// 
-// class JRNZe(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self._last_pc = 0
-//         self._next_pc = 0
-// 
-//     # JR NZ, e
-//     def execute(self):
-//         cycles = 7;
-//     
-//         if (self.pc_state.F.Fstatus.Z == 0):
-//             if (self._last_pc == self.pc_state.PC):
-//                 self.pc_state.PC = self._next_pc
-//             else:
-//                 self._last_pc = self.pc_state.PC
-//                 self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC+1))
-//                 self._next_pc = self.pc_state.PC
-//             cycles+=5;
-//     
-//         self.pc_state.PC += 2;
-//     
-//         return cycles;
-// 
-//     def get_cached_execute(self):
-//         jump_pc = self.pc_state.PC + signed_char_to_int(self.memory.read(self.pc_state.PC+1)) + 2
-//         no_jump_pc = self.pc_state.PC + 2
-//     
-//         def _get_cached_execute(self):
-//             if (self.pc_state.F.Fstatus.Z == 0):
-//                 self.pc_state.PC = jump_pc
-//                 cycles = 12;
-//             else:
-//                 self.pc_state.PC = no_jump_pc
-//                 cycles = 7;
-//         
-//             return cycles;
-// 
-//         return _get_cached_execute
 // 
 // class INC_r(Instruction_r):
 //     def __init__(self, memory, pc_state, r):
@@ -2104,19 +2091,6 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 //         self.pc_state.PC += 1
 //         return 4;
 // 
-// # Relative jump
-// # JR e
-// class JR_e(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC + 1))
-//         self.pc_state.PC += 2;
-// 
-//         return  12;
-// 
 // # RRA
 // class RRA(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2173,23 +2147,6 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 // 
 //         return 4;
 // 
-// # JR NC, e
-// class JRNC_e(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         if (self.pc_state.F.Fstatus.C == 0):
-//             self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC+1))
-//             cycles +=5;
-// 
-//         self.pc_state.PC += 2;
-//         cycles += 7;
-// 
-//         return cycles
-// 
 // # SCF
 // class SCF(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2202,22 +2159,6 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 //          self.pc_state.F.Fstatus.C = 1;
 //          self.pc_state.PC += 1
 //          return  4;
-// 
-// # JR C, e
-// class JRC_e(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         if (self.pc_state.F.Fstatus.C == 1):
-//             self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC+1))
-//             cycles +=5;
-// 
-//         self.pc_state.PC += 2;
-//         cycles += 7;
-//         return cycles
 // 
 // # CCF
 // class CCF(Instruction):
@@ -2386,17 +2327,6 @@ pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_
 //             return  10;
 // 
 //         return _get_cached_execute
-// 
-// # JP nn
-// class JP_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-// 
-//         return 10;
 // 
 // # CALL NZ, nn
 // class CALL_NZ_nn(Instruction):

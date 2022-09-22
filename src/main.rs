@@ -44,7 +44,7 @@ fn main() {
 
         let debug = true;
 
-        for _i in 0..10 {
+        for _i in 0..100 {
             core.step(debug);
         }
 

@@ -58,7 +58,8 @@ impl Core {
         let op_code = self.memory.read(self.pc_state.get_pc());
 
         if debug {
-//            println!("clock: {}, op_code: {:x}, pc: {}", self.clock.cycles, op_code, self.pc_state.get_pc());
+            println!("{} {}", self.clock.cycles, self.pc_state.get_pc());
+            print!("{} {:x} {:x} ({:x}) ", self.clock.cycles, op_code, self.pc_state.get_pc(), op_code);
             println!("{}", self.pc_state);
         }
         instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interuptor);
