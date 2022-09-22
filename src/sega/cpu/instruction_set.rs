@@ -485,23 +485,83 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
     clock.increment(10);
 }
 
-// class Instruction(object):
-//     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
-//     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
-// 
-// class ExtendedInstruction(Instruction):
-//     def __init__(self, memory, pc_state, get_function):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.instruction_get_function = get_function
-// 
-//     def execute(self):
-//         # Ignore unsupported instructions (will result in a dereference of 'None')
-//         return self.instruction_get_function(self.memory.read(self.pc_state.PC + 1)).execute()
-// 
-//     def get_extended_instruction(self):
-//         return self.instruction_get_function(self.memory.read(self.pc_state.PC + 1))
-// 
+// DEC r
+// Decrement register and set status flags.
+// Slowest dec function ever, why didn't Zilog come up with simpler instruction.
+pub fn dec_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let new_value =  src.wrapping_sub(1);
+    dst_fn(pc_state, new_value);
+
+    let mut f_value = pc_state.get_f();
+    flagtables::calculate_dec_flags(&mut f_value, new_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// DEC ss
+pub fn dec_16<F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clocks::Clock, mut reg16: F, pc_state: &mut pc_state::PcState, original: u16) -> () {
+    reg16(pc_state, original.wrapping_sub(1));
+    pc_state.increment_pc(1);
+    clock.increment(6);
+}
+
+// DEC (HL)
+// Decrement (HL) and set status flags.
+pub fn dec_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+
+    let new_value =  memory.read(pc_state.get_hl()).wrapping_sub(1);
+    memory.write(pc_state.get_hl(), new_value);
+
+    let mut f_value = pc_state.get_f();
+    flagtables::calculate_dec_flags(&mut f_value, new_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(11);
+}
+
+// INC r
+// Increment register and set status flags.
+pub fn inc_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let new_value =  src.wrapping_add(1);
+    dst_fn(pc_state, new_value);
+
+    let mut f_value = pc_state.get_f();
+    flagtables::calculate_inc_flags(&mut f_value, new_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// INC ss
+pub fn inc_16<F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clocks::Clock, mut reg16: F, pc_state: &mut pc_state::PcState, original: u16) -> () {
+    reg16(pc_state, original.wrapping_add(1));
+    pc_state.increment_pc(1);
+    clock.increment(6);
+}
+
+// INC (HL)
+// Increment (HL) and set status flags.
+pub fn inc_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+
+    let new_value =  memory.read(pc_state.get_hl()).wrapping_add(1);
+    memory.write(pc_state.get_hl(), new_value);
+
+    let mut f_value = pc_state.get_f();
+    flagtables::calculate_inc_flags(&mut f_value, new_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(11);
+}
+
+////////////////////////////////////////////////////
+// END Rust
+////////////////////////////////////////////////////
+
 // class OUT_n_A(Instruction):
 //     def __init__(self, memory, pc_state, ports):
 //         self.memory = memory
@@ -515,7 +575,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //      self.pc_state.PC+=2;
 // 
 //      return 11;
-// 
 // 
 // class RRCA(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -664,101 +723,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.PC += 1
 //     
 //         return 4;
-// 
-// 
-// class INC_r(Instruction_r):
-//     def __init__(self, memory, pc_state, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-// 
-//     def execute(self):
-//         self.r += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.r.get() & 0xFF);
-//         self.pc_state.PC += 1
-//     
-//         return 4;
-// 
-// class INC_16(Instruction):
-//     def __init__(self, memory, pc_state, r, cycles, pcInc = 1):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-//         self.cycles = cycles
-//         self.pcInc = pcInc
-// 
-//     def execute(self):
-//       self.r += 1
-//       self.pc_state.PC += self.pcInc;
-//   
-//       return self.cycles;
-// 
-// class DEC_16(Instruction):
-//     def __init__(self, memory, pc_state, r, cycles, pcInc = 1):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-//         self.cycles = cycles
-//         self.pcInc = pcInc
-// 
-//     def execute(self):
-//         self.r -= 1;
-//         self.pc_state.PC += self.pcInc;
-//     
-//         return self.cycles;
-//     
-// 
-// class DEC_r(Instruction_r):
-//     def __init__(self, memory, pc_state, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-// 
-//     def execute(self):
-//         self.r -= 1;
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.r.get());
-//         self.pc_state.PC += 1
-//     
-//         return 4;
-//     
-// 
-// class INC_BC(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.BC += 1
-//         self.pc_state.PC += 1
-//     
-//         return 6;
-// 
-// class INC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     # INC (self.pc_state.HL)
-//     def execute(self):
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) + 1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.memory.read(self.pc_state.HL));
-//         self.pc_state.PC  += 1
-//         return 11;
-// 
-// class DEC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) - 1)
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.memory.read(self.pc_state.HL));
-//         self.pc_state.PC  += 1
-//         return 11;
 // 
 // class DJNZ(Instruction):
 //     def __init__(self, memory, pc_state):
