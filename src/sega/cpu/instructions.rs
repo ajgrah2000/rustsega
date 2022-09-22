@@ -17,7 +17,7 @@ fn select_8_bit_read_register (reg_select: u8) -> impl Fn(&pc_state::PcState) ->
         4 => {state.get_h()}
         5 => {state.get_l()}
         7 => {state.get_a()}
-        _ => {panic!("Code path that was thought to be unreachable was reached!");}
+        _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
     };
     src
 }
@@ -34,23 +34,10 @@ fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state:
             4 => {state.set_h(x)}
             5 => {state.set_l(x)}
             7 => {state.set_a(x)}
-            _ => {panic!("Code path that was thought to be unreachable was reached!");}
+            _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
         }; 
     dst
 }
-
-//                    // Using closure here so as to not borrow pc_state more than once to feed to function.
-//                    // This code could live either side of the instruction set.
-//                    let dst = |state: &mut pc_state::PcState, x| match (op_code >> 3) & 0x7 {
-//                            0 => {state.set_b(x)}
-//                            1 => {state.set_c(x)}
-//                            2 => {state.set_d(x)}
-//                            3 => {state.set_e(x)}
-//                            4 => {state.set_h(x)}
-//                            5 => {state.set_l(x)}
-//                            7 => {state.set_a(x)}
-//                            _ => {panic!("Code path that was thought to be unreachable was reached!");}
-//                        }; 
 
 impl Instruction {
     pub fn execute(op_code: u8, clock: &mut clocks::Clock, 
@@ -166,11 +153,26 @@ impl Instruction {
                     let get_reg_value_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
                     instruction_set::cp_r(clock, memory, get_reg_value_fn(pc_state), pc_state); // CP r
                 }
+
+            // JP cc, nn instructions
+            // opcode: 0b11ccc010 
+            n if (n & 0b11000111 == 0b11000010) => {
+                    let condition = match (n >> 3) & 0b111 {
+                        0b000 => {pc_state.get_f().get_z() == 0}  // Non-Zero (NZ)     Z
+                        0b001 => {pc_state.get_f().get_z() == 1}  // Zero (Z)          Z
+                        0b010 => {pc_state.get_f().get_c() == 0}  // No Carry (NC)     C
+                        0b011 => {pc_state.get_f().get_c() == 1}  // Carry (C)         C
+                        0b100 => {pc_state.get_f().get_pv() == 0} // Parity Odd (PO)   P/V
+                        0b101 => {pc_state.get_f().get_pv() == 1} // Parity Even (PE)  P/V
+                        0b110 => {pc_state.get_f().get_s() == 0}  // Sign Positive (P) S
+                        0b111 => {pc_state.get_f().get_s() == 1}  // Sign Negative (M) S
+                        _ => {panic!("Code path that was thought to be unreachable was reached! {}", n);}
+                    };
+                    instruction_set::jump_cc_nn(clock, memory, pc_state, condition);
+                }
 // 
 //            0xd3 => { instruction_set::out_n_A(clock, memory, pc_state, self.ports);} // OUT (n), cpu_state->A
-            0xd2 => { instruction_set::jpnc_nn(clock, memory, pc_state);} // JP NC, nn
 //            0xd9 => { instruction_set::exx(clock, memory, pc_state);} // EXX
-            0xda => { instruction_set::jpc_nn(clock, memory, pc_state);} // JP C, nn
 // 
 //            0xe6 => { instruction_set::and_n(clock, memory, pc_state);} // AND n
             0xfe => { instruction_set::cp_n(clock, memory, pc_state);} // CP n
@@ -252,14 +254,12 @@ impl Instruction {
             0xbe => { instruction_set::cp_hl(clock, memory, pc_state);}
 //            0xc0 => { instruction_set::ret_nz(clock, memory, pc_state);}
 //            0xc1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.bc_reg);}
-//            0xc2 => { instruction_set::jpnz_nn(clock, memory, pc_state);}
             0xc3 => { instruction_set::jp_nn(clock, memory, pc_state);}
 //            0xc4 => { instruction_set::call_nz_nn(clock, memory, pc_state);}
 //            0xc5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.bc_reg);}
 //            0xc6 => { instruction_set::add_n(clock, memory, pc_state);}
 //            0xc7 => { instruction_set::rst(clock, memory, pc_state, 0x00);} // RST_00
 //            0xc8 => { instruction_set::rst_z(clock, memory, pc_state);}
-//            0xca => { instruction_set::jpz_nn(clock, memory, pc_state);}
 //            0xcc => { instruction_set::call_z_nn(clock, memory, pc_state);}
 //            0xcd => { instruction_set::call_nn(clock, memory, pc_state);}
 //            0xce => { instruction_set::adc_nn(clock, memory, pc_state);}
@@ -277,21 +277,18 @@ impl Instruction {
 //            0xdf => { instruction_set::rst(clock, memory, pc_state, 0x18);} // RST_18
 //            0xe0 => { instruction_set::ret_po(clock, memory, pc_state);}
 //            0xe1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.hl_reg);}
-//            0xe2 => { instruction_set::jp_po_nn(clock, memory, pc_state);}
 //            0xe3 => { instruction_set::ex_sp_hl(clock, memory, pc_state);}
 //            0xe4 => { instruction_set::call_po_nn(clock, memory, pc_state);}
 //            0xe5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.hl_reg);}
 //            0xe7 => { instruction_set::rst(clock, memory, pc_state, 0x20);} // RST_20
 //            0xe8 => { instruction_set::ret_pe(clock, memory, pc_state);}
             0xe9 => { instruction_set::jp_hl(clock, &pc_state.hl_reg, &mut pc_state.pc_reg);}
-//            0xea => { instruction_set::jp_pe_nn(clock, memory, pc_state);}
 //            0xeb => { instruction_set::ex_de_hl(clock, memory, pc_state);}
 //            0xec => { instruction_set::call_pe_nn(clock, memory, pc_state);}
 //            0xee => { instruction_set::xor_n(clock, memory, pc_state);}
 //            0xef => { instruction_set::rst(clock, memory, pc_state, 0x28);} // RST_28
 //            0xf0 => { instruction_set::ret_p(clock, memory, pc_state);}
 //            0xf1 => { instruction_set::pop_af(clock, memory, pc_state);}
-//            0xf2 => { instruction_set::jp_p_nn(clock, memory, pc_state);}
             0xf3 => { instruction_set::di(clock, pc_state);}
 //            0xf4 => { instruction_set::call_p_nn(clock, memory, pc_state);}
 //            0xf5 => { instruction_set::push_af(clock, memory, pc_state);}
@@ -299,7 +296,6 @@ impl Instruction {
 //            0xf7 => { instruction_set::rst(clock, memory, pc_state, 0x30);} // RST_30
 //            0xf8 => { instruction_set::ret_m(clock, memory, pc_state);}
             0xf9 => { instruction_set::ld_sp_hl(clock, &pc_state.hl_reg, &mut pc_state.pc_reg, &mut pc_state.sp_reg);}
-//            0xfa => { instruction_set::jp_m_nn(clock, memory, pc_state);}
 //            0xfc => { instruction_set::call_m_nn(clock, memory, pc_state);}
 //            0xff => { instruction_set::rst(clock, memory, pc_state, 0x38);} // RST_38
         
@@ -396,13 +392,14 @@ mod tests {
                 n if (n & 0x78 == 0x70) && (n != 0x76) => {
                             match n & 0x7 
                             {
-                              0 =>     {Ops::Op0x70}      // 0x70: LD (HL), B
-                              1 =>     {Ops::Op0x71}      // 0x71: LD (HL), C
-                              2 =>     {Ops::Op0x72}      // 0x72: LD (HL), D
-                              3 =>     {Ops::Op0x73}      // 0x73: LD (HL), E
-                              4 =>     {Ops::Op0x74}      // 0x74: LD (HL), H
-                              5 =>     {Ops::Op0x75}      // 0x75: LD (HL), L
-                              7 | _ => {Ops::Op0x77}  // 0x77: LD (HL), A  /* _ is unreachable. */
+                              0 => {Ops::Op0x70} // 0x70: LD (HL), B
+                              1 => {Ops::Op0x71} // 0x71: LD (HL), C
+                              2 => {Ops::Op0x72} // 0x72: LD (HL), D
+                              3 => {Ops::Op0x73} // 0x73: LD (HL), E
+                              4 => {Ops::Op0x74} // 0x74: LD (HL), H
+                              5 => {Ops::Op0x75} // 0x75: LD (HL), L
+                              7 => {Ops::Op0x77} // 0x77: LD (HL), A
+                              _ => {panic!("Code path that was thought to be unreachable was reached! {}", n);}
                             }
 
                 }

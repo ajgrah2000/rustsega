@@ -433,84 +433,43 @@ pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut p
     clock.increment(4);
 }
 
-
-// JR NZ, e
-pub fn jrnz_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+// Jump relative condition.  (instruction grouping isn't as convinient as for 'JP cc, nn')
+// JR cc, e 
+pub fn jr_cc_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, condition: bool) -> () {
     clock.increment(7);
 
-    if pc_state.get_f().get_z() == 0 {
+    if condition {
         pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
         clock.increment(5);
     }
     pc_state.increment_pc(2);
+}
+
+// JR NZ, e
+pub fn jrnz_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    jr_cc_e(clock, memory, pc_state, pc_state.get_f().get_z() == 0);
 }
 
 // JR Z, e
 pub fn jrz_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-    clock.increment(7);
-
-    if pc_state.get_f().get_z() == 1 {
-        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
-        clock.increment(5);
-    }
-    pc_state.increment_pc(2);
+    jr_cc_e(clock, memory, pc_state, pc_state.get_f().get_z() == 1);
 }
 
 // JR NC, e
 pub fn jrnc_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-    clock.increment(7);
-
-    if pc_state.get_f().get_c() == 0 {
-        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
-        clock.increment(5);
-    }
-    pc_state.increment_pc(2);
+    jr_cc_e(clock, memory, pc_state, pc_state.get_f().get_c() == 0);
 }
 
 // JR C, e
 pub fn jrc_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-    clock.increment(7);
-
-    if pc_state.get_f().get_c() == 1 {
-        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
-        clock.increment(5);
-    }
-    pc_state.increment_pc(2);
+    jr_cc_e(clock, memory, pc_state, pc_state.get_f().get_c() == 1);
 }
 
 // Relative jump
 // JR e
 pub fn jr_e(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-    pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
-    clock.increment(12);
-}
-
-// Absolute Jump
-// JP NC
-pub fn jpnc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-
-    if pc_state.get_f().get_c() == 0 {
-        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
-        clock.increment(5);
-    } else {
-        pc_state.increment_pc(3);
-    }
-
-    clock.increment(10);
-}
-
-// Absolute Jump
-// JP C
-pub fn jpc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
-
-    if pc_state.get_f().get_c() == 1 {
-        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
-        clock.increment(5);
-    } else {
-        pc_state.increment_pc(3);
-    }
-
-    clock.increment(10);
+    // Timing for this is the same as for conditional jump relative.
+    jr_cc_e(clock, memory, pc_state, true);
 }
 
 // Absolute Jump on condition
@@ -543,20 +502,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def get_extended_instruction(self):
 //         return self.instruction_get_function(self.memory.read(self.pc_state.PC + 1))
 // 
-// class Instruction_r(Instruction):
-//     # TODO
-//     pass
-// 
-// class Noop(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         """NOP"""
-//         self.pc_state.PC = self.pc_state.PC + 1
-//         return 4;
-// 
 // class OUT_n_A(Instruction):
 //     def __init__(self, memory, pc_state, ports):
 //         self.memory = memory
@@ -578,6 +523,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.C = self.pc_state.A & 0x1;
 //         self.pc_state.F.Fstatus.H = 0;
 //         self.pc_state.F.Fstatus.N = 0;
@@ -597,6 +543,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A & self.src.get();
 //         self.pc_state.PC += 1
 //     
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 //     
 //         return 4;
@@ -608,6 +555,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 //         return 4;
 // 
@@ -620,6 +568,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     
 //         self.pc_state.A = self.pc_state.A & self.memory.read(self.pc_state.PC +1);
 //         self.pc_state.PC += 2;
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 //     
 //         return 7;
@@ -634,6 +583,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A | self.src.get();
 //         self.pc_state.PC += 1
 //     
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //     
 //         return 4;
@@ -645,6 +595,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //         return 4;
 // 
@@ -657,6 +608,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A | self.pc_state.E
 //         self.pc_state.PC += 1
 //     
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //     
 //         return 4;
@@ -671,6 +623,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A ^ self.src.get();
 //         self.pc_state.PC += 1
 //     
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //     
 //         return 4;
@@ -679,11 +632,13 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def __init__(self, memory, pc_state):
 //         self.memory = memory
 //         self.pc_state = pc_state
+//              ************* FLAGS *****************
 //         self.status = flagtables.FlagTables.getStatusOr(0);
 // 
 //     def execute(self):
 //         self.pc_state.A = 0
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = self.status
 //     
 //         return 4;
@@ -719,6 +674,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.r += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.r.get() & 0xFF);
 //         self.pc_state.PC += 1
 //     
@@ -761,6 +717,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.r -= 1;
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.r.get());
 //         self.pc_state.PC += 1
 //     
@@ -786,6 +743,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     # INC (self.pc_state.HL)
 //     def execute(self):
 //         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) + 1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.memory.read(self.pc_state.HL));
 //         self.pc_state.PC  += 1
 //         return 11;
@@ -797,6 +755,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) - 1)
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.memory.read(self.pc_state.HL));
 //         self.pc_state.PC  += 1
 //         return 11;
@@ -851,6 +810,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //         r = (a & 0xFFF) + (b & 0xFFF);
 //         if (r & 0x1000): # Half carry
+//              ************* FLAGS *****************
 //           self.pc_state.F.Fstatus.H = 1 # Half carry
 //         else:
 //           self.pc_state.F.Fstatus.H = 0 # Half carry
@@ -875,6 +835,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.src = src
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //             self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.src.get());
 //             self.pc_state.A = self.pc_state.A + self.src.get();
 //             self.pc_state.PC += 1
@@ -887,6 +848,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.src = src
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //             self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.src.get());
 //             self.pc_state.A = self.pc_state.A - self.src.get();
 //             self.pc_state.PC += 1
@@ -898,6 +860,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //             self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.pc_state.A);
 //             self.pc_state.A = 0
 //             self.pc_state.PC += 1
@@ -912,6 +875,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = self.memory.read(self.pc_state.PC+1)
 // 
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.Z = (self.src.get() >> ((tmp8 >> 3) & 7)) ^ 0x1;
 //         self.pc_state.F.Fstatus.PV = flagtables.FlagTables.calculateParity(self.src.get());
 //         self.pc_state.F.Fstatus.H = 1;
@@ -928,6 +892,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         tmp8 = self.memory.read(self.pc_state.PC+1)
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.Z = (self.memory.read(self.pc_state.HL) >> 
 //                             ((tmp8 >> 3) & 7)) ^ 0x1;
 //         self.pc_state.F.Fstatus.H = 1;
@@ -995,6 +960,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.A = (self.pc_state.A << 1) | ((self.pc_state.A >> 7) & 0x1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.C = self.pc_state.A & 0x1;
 //         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.F.Fstatus.H = 0;
@@ -1010,6 +976,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.dst.set((int(self.dst) << 1) | ((int(self.dst) >> 7) & 0x1));
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
 //         self.pc_state.F.Fstatus.C = int(self.dst) & 0x1; # bit-7 of src = bit-0
 //         self.pc_state.PC+=2;
@@ -1024,6 +991,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = self.memory.read(self.pc_state.HL);
 //         self.memory.write(self.pc_state.HL, (tmp8 << 1) | ((tmp8 >> 7) & 0x1));
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = (tmp8 >> 7) & 0x1; # bit-7 of src
 //         self.pc_state.PC+=2;
@@ -1038,6 +1006,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.dst.set((int(self.dst) >> 1) | ((int(self.dst) & 0x1) << 7));
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.dst);
 //         self.pc_state.F.Fstatus.C = (int(self.dst) >> 7) & 0x1; # bit-0 of src
 //         self.pc_state.PC+=2;
@@ -1052,6 +1021,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = self.memory.read(self.pc_state.HL);
 //         self.memory.write(self.pc_state.HL,(tmp8 >> 1) | ((tmp8 & 0x1) << 7));
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1; # bit-0 of src
 //         self.pc_state.PC+=2;
@@ -1066,6 +1036,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         tmp8 = int(self.dst);
+//              ************* FLAGS *****************
 //         self.dst.set((int(self.dst) << 1) | (self.pc_state.F.Fstatus.C));
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
 //         self.pc_state.F.Fstatus.C = (tmp8 >> 7) & 0x1;
@@ -1081,6 +1052,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         tmp8 = int(self.dst);
+//              ************* FLAGS *****************
 //         self.dst.set((int(self.dst) >> 1) | (self.pc_state.F.Fstatus.C << 7));
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
@@ -1097,6 +1069,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = (int(self.dst) >> 7) & 0x1;
 //         self.dst.set(int(self.dst) << 1)
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst))
 //         self.pc_state.F.Fstatus.C = tmp8;
 // 
@@ -1112,6 +1085,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = (self.memory.read(self.pc_state.HL) >> 7) & 0x1;
 //         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) << 1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = tmp8;
 // 
@@ -1129,6 +1103,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         tmp8 = int(self.dst);
 //         self.dst.set((int(self.dst) & 0x80) | ((int(self.dst) >> 1) & 0x7F));
 // 
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.dst);
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
 // 
@@ -1145,6 +1120,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         tmp8 = self.memory.read(self.pc_state.HL);
 //         self.memory.write(self.pc_state.HL, (tmp8 & 0x80) | ((tmp8 >> 1) & 0x7F));
 // 
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
 // 
@@ -1161,6 +1137,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = (int(self.dst) >> 7) & 0x1;
 //         self.dst.set(int(self.dst) << 1 | 0x1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
 //         self.pc_state.F.Fstatus.C = tmp8;
 // 
@@ -1176,6 +1153,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = (self.memory.read(self.pc_state.HL) >> 7) & 0x1;
 //         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) << 1 | 0x1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = tmp8;
 // 
@@ -1193,6 +1171,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         tmp8 = int(self.dst);
 //         self.dst.set((int(self.dst) >> 1) & 0x7F);
 // 
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
 // 
@@ -1209,6 +1188,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         tmp8 = self.memory.read(self.pc_state.HL);
 //         self.memory.write(self.pc_state.HL, (tmp8 >> 1) & 0x7F);
 // 
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
 //         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
 // 
@@ -1310,6 +1290,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp16 = self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))
 //         self.memory.write(tmp16, self.memory.read(tmp16) + 1)
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.memory.read(tmp16))
 //         self.pc_state.PC+=3
 //         return 23
@@ -1324,6 +1305,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp16 = self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))
 //         self.memory.write(tmp16, self.memory.read(tmp16) - 1)
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.memory.read(tmp16))
 //         self.pc_state.PC+=3
 //         return 23
@@ -1379,6 +1361,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = self.memory.read(self.I_reg.get() + 
 //                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,tmp8)
 //         self.pc_state.A = self.pc_state.A + tmp8
 //         self.pc_state.PC += 3
@@ -1392,6 +1375,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.I_reg = I_reg
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))), self.pc_state.F.Fstatus.C)
 //         self.pc_state.PC+=3
 //         return 19
@@ -1406,6 +1390,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         tmp8 = self.memory.read(self.I_reg.get() + 
 //                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,tmp8)
 //         self.pc_state.A = self.pc_state.A - tmp8
 //         self.pc_state.PC += 3
@@ -1422,6 +1407,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A & self.memory.read(self.I_reg.get() +
 //                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
 //         self.pc_state.PC+=3
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A)
 //     
 //         return 19
@@ -1437,6 +1423,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.I_reg.get() +
 //                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
 //         self.pc_state.PC+=3
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A)
 //     
 //         return  19
@@ -1452,6 +1439,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         tmp8 = self.memory.read(self.I_reg.get() + 
 //                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
 //         self.pc_state.A = self.pc_state.A | tmp8
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A)
 //         self.pc_state.PC += 3
 //         return  19
@@ -1484,6 +1472,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //         if ((t8 & 0xC7) == 0x46): # self.pc_state.BIT b, (self.I_reg.get() + d)
 //             tmp8 = (tmp8 >> ((t8 & 0x38) >> 3)) & 0x1
+//              ************* FLAGS *****************
 //             f = self.pc_state.F.Fstatus
 //             f.Z = tmp8 ^ 0x1
 //             f.PV = flagtables.FlagTables.calculateParity(tmp8)
@@ -1643,6 +1632,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.reg = reg
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.HL = sub16c(self.pc_state, self.pc_state.HL, int(self.reg), self.pc_state.F.Fstatus.C);
 //     
 //         self.pc_state.PC += 2;
@@ -1668,6 +1658,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(0,self.pc_state.A);
 //         self.pc_state.A = -self.pc_state.A;
 //         self.pc_state.PC += 2;
@@ -1733,6 +1724,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.I;
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.F.Fstatus.H = 0;
 //         self.pc_state.F.Fstatus.PV = self.pc_state.IFF2;
@@ -1767,6 +1759,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         # HMM??? Random???
 //         self.pc_state.R =  (self.pc_state.R & 0x80) | ((self.pc_state.R + 1) & 0x7F);
 //         self.pc_state.A = self.pc_state.R;
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.F.Fstatus.H = 0;
 //         self.pc_state.F.Fstatus.PV = self.pc_state.IFF2;
@@ -1793,6 +1786,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //                ((self.memory.read(self.pc_state.HL) >> 4) & 0xF) | 
 //                ((tmp8 << 4) & 0xF0));
 //     
+//              ************* FLAGS *****************
 //         tmp8 = self.pc_state.F.Fstatus.C;
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //         self.pc_state.F.Fstatus.C = tmp8;
@@ -1808,6 +1802,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.reg = reg
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.HL = add16c(self.pc_state, self.pc_state.HL, int(self.reg), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 15;
@@ -1862,6 +1857,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.HL += 1
 //         self.pc_state.BC -= 1
 //         if (self.pc_state.BC == 0):
+//              ************* FLAGS *****************
 //             self.pc_state.F.Fstatus.PV = 1
 //         else:
 //             self.pc_state.F.Fstatus.PV = 0
@@ -1878,6 +1874,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
 //         self.pc_state.HL += 1
 //         self.pc_state.BC -= 1
@@ -1899,6 +1896,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.B -= 1
 //         self.memory.write(self.pc_state.HL, self.ports.portRead(self.pc_state.C));
 //         self.pc_state.HL += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.N = 1;
 //         if (self.pc_state.B == 0):
 //             self.pc_state.F.Fstatus.Z = 1;
@@ -1920,6 +1918,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
 //         self.pc_state.HL += 1
 //         if (self.pc_state.B == 0):
+//              ************* FLAGS *****************
 //             self.pc_state.F.Fstatus.Z = 1
 //         else:
 //             self.pc_state.F.Fstatus.Z = 0
@@ -1939,6 +1938,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
 //         self.pc_state.HL -= 1
 //         if (self.pc_state.B == 0):
+//              ************* FLAGS *****************
 //             self.pc_state.F.Fstatus.Z = 1
 //         else:
 //             self.pc_state.F.Fstatus.Z = 0
@@ -1967,6 +1967,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             self.pc_state.HL += 1
 //             cycles += 21;
 //     
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.H = 0;
 //         self.pc_state.F.Fstatus.PV = 0;
 //         self.pc_state.F.Fstatus.N = 1; # hmmm, not sure
@@ -1986,6 +1987,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.BC -= 1
+//              ************* FLAGS *****************
 //         tmp8 = self.pc_state.F.Fstatus.C;
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
 //         self.pc_state.HL += 1
@@ -2022,6 +2024,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
 //             self.pc_state.HL += 1
 //             cycles += 21;
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.S = 0; # Unknown
 //         self.pc_state.F.Fstatus.H = 0; # Unknown
 //         self.pc_state.F.Fstatus.PV = 0; # Unknown
@@ -2048,6 +2051,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         if (self.pc_state.BC == 0):
 //             self.pc_state.PC += 2;
 //             cycles += 16;
+//              ************* FLAGS *****************
 //             self.pc_state.F.Fstatus.N = 0;
 //             self.pc_state.F.Fstatus.H = 0;
 //             self.pc_state.F.Fstatus.PV = 0;
@@ -2067,6 +2071,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         tmpa = self.pc_state.A;
+//              ************* FLAGS *****************
 //         tmpf = self.pc_state.F.value;
 //         self.pc_state.A = self.pc_state.A_;
 //         self.pc_state.F.value = self.pc_state.F_;
@@ -2084,6 +2089,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         tmp8 = self.pc_state.A;
+//              ************* FLAGS *****************
 //         self.pc_state.A = (self.pc_state.A << 1) | (self.pc_state.F.Fstatus.C);
 //         self.pc_state.F.Fstatus.C = (tmp8 & 0x80) >> 7;
 //         self.pc_state.F.Fstatus.H = 0;
@@ -2126,6 +2132,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.N == 0): # self.pc_state.Addition instruction
 //             calculateDAAAdd(self.pc_state);
 //         else: # Subtraction instruction
@@ -2140,6 +2147,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.H = 1;
 //         self.pc_state.F.Fstatus.N = 1;
 //         self.pc_state.A ^= 0xFF;
@@ -2154,6 +2162,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //          self.pc_state.F.Fstatus.H = 0;
 //          self.pc_state.F.Fstatus.N = 0;
 //          self.pc_state.F.Fstatus.C = 1;
@@ -2167,6 +2176,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.Fstatus.H = self.pc_state.F.Fstatus.C;
 //         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.F.Fstatus.C = 1-self.pc_state.F.Fstatus.C; #Invert carry flag
@@ -2180,6 +2190,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.memory.read(self.pc_state.HL));
 //         self.pc_state.A = self.pc_state.A + self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
@@ -2193,6 +2204,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.reg = reg
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.reg.get(), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC += 1
 //         return 4;
@@ -2204,6 +2216,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.HL), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC += 1
 //         return 7;
@@ -2215,6 +2228,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
 //         self.pc_state.A = self.pc_state.A - self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
@@ -2228,6 +2242,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.reg = reg
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.reg.get(), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC += 1
 //         return 4;
@@ -2252,6 +2267,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.A & self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 // 
 //         return 7;
@@ -2265,6 +2281,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 // 
 //         return  7;
@@ -2278,6 +2295,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.A | self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 // 
 //         return  7;
@@ -2290,6 +2308,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.Z == 0):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2301,33 +2320,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             cycles +=5;
 //         return cycles
 // 
-// # JP NZ, nn
-// class JPNZ_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.Z == 0):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return  10;
-// 
-//     def get_cached_execute(self):
-//         jump_pc = self.memory.read16(self.pc_state.PC+1);
-//         no_jump_pc = self.pc_state.PC + 3;
-// 
-//         def _get_cached_execute(self):
-//             if (self.pc_state.F.Fstatus.Z == 0):
-//                 self.pc_state.PC = jump_pc
-//             else:
-//                 self.pc_state.PC = no_jump_pc
-//             return  10;
-// 
-//         return _get_cached_execute
-// 
 // # CALL NZ, nn
 // class CALL_NZ_nn(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2337,6 +2329,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.Z == 0):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2371,6 +2364,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.memory.read(self.pc_state.PC + 1));
 //         self.pc_state.A = self.pc_state.A + self.memory.read(self.pc_state.PC + 1);
 //         self.pc_state.PC+=2;
@@ -2402,6 +2396,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.Z == 1):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2413,20 +2408,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             cycles +=5;
 //         return cycles
 // 
-// # JP Z, nn
-// class JPZ_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.Z == 1):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return  10;
-// 
 // # CALL Z, nn
 // class CALL_Z_nn(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2436,6 +2417,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.Z == 1):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2471,6 +2453,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 4;
@@ -2483,6 +2466,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.C == 0):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2518,6 +2502,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.C == 0):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2537,6 +2522,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.PC + 1));
 //         self.pc_state.A = self.pc_state.A - self.memory.read(self.pc_state.PC + 1);
 //         self.pc_state.PC += 2;
@@ -2550,6 +2536,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.C == 1):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2570,6 +2557,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.C == 1):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2588,6 +2576,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state = pc_state
 // 
 //     def execute(self):
+//              ************* FLAGS *****************
 //         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 7;
@@ -2600,6 +2589,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.PV == 0):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2611,19 +2601,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             cycles +=5;
 //         return cycles
 // 
-// # JP PO, nn   Parity Odd 
-// class JP_PO_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.PV == 0):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return 10;
 // 
 // # EX (self.pc_state.SP), self.pc_state.HL
 // class EX_SP_HL(Instruction):
@@ -2650,6 +2627,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.PV == 0):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2669,6 +2647,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.PV == 1):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2679,20 +2658,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             self.pc_state.PC += 1
 //             cycles +=5;
 //         return cycles
-// 
-// # JP PE, nn   Parity Even 
-// class JP_PE_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.PV == 1):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return 10;
 // 
 // # EX self.pc_state.DE, self.pc_state.HL
 // class EX_DE_HL(Instruction):
@@ -2716,6 +2681,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.PV == 1):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2735,6 +2701,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.pc_state.PC + 1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //         self.pc_state.PC+=2;
 //         return 7;
@@ -2747,6 +2714,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.S == 0):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2774,20 +2742,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //         return 10;
 // 
-// # JP P, nn    if Positive
-// class JP_P_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.S == 0):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return 10;
-// 
 // # Disable interupts
 // # DI
 // class DI(Instruction):
@@ -2811,6 +2765,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.S == 0):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
@@ -2832,6 +2787,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //         self.pc_state.SP -= 1
 //         self.memory.write(self.pc_state.SP, self.pc_state.A);
 //         self.pc_state.SP -= 1
+//              ************* FLAGS *****************
 //         self.memory.write(self.pc_state.SP, self.pc_state.F.value);
 //         self.pc_state.PC += 1
 // 
@@ -2844,6 +2800,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             ps.SP -= 1
 //             w(ps.SP, ps.A);
 //             ps.SP -= 1
+//              ************* FLAGS *****************
 //             w(ps.SP, ps.F.value);
 //             ps.PC += 1
 // 
@@ -2858,6 +2815,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         self.pc_state.A = self.pc_state.A | self.memory.read(self.pc_state.PC + 1);
+//              ************* FLAGS *****************
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //         self.pc_state.PC += 2;
 //         return 7;
@@ -2870,6 +2828,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // 
 //     def execute(self):
 //         cycles = 0
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.S == 1):
 //             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
 //             self.pc_state.SP += 1
@@ -2880,20 +2839,6 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //             self.pc_state.PC += 1
 //             cycles +=5;
 //         return cycles
-// 
-// # JP M, nn    if Negative
-// class JP_M_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         if (self.pc_state.F.Fstatus.S == 1):
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC+1);
-//         else:
-//             self.pc_state.PC += 3;
-// 
-//         return 10;
 // 
 // # Enable interupts
 // # EI
@@ -2930,6 +2875,7 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 //     def execute(self):
 //         cycles = 0
 //         self.pc_state.PC += 3;
+//              ************* FLAGS *****************
 //         if (self.pc_state.F.Fstatus.S == 1):
 //             self.pc_state.SP -= 1
 //             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
