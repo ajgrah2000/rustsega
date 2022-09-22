@@ -8,6 +8,50 @@ use super::instruction_set;
 pub struct Instruction {
 }
 
+fn select_8_bit_read_register (reg_select: u8) -> impl Fn(&pc_state::PcState) -> u8 {
+    let src = move |state: &pc_state::PcState| match reg_select & 0x7 {
+        0 => {state.get_b()}
+        1 => {state.get_c()}
+        2 => {state.get_d()}
+        3 => {state.get_e()}
+        4 => {state.get_h()}
+        5 => {state.get_l()}
+        7 => {state.get_a()}
+        _ => {panic!("Code path that was thought to be unreachable was reached!");}
+    };
+    src
+}
+
+fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u8) -> () {
+    // Return a closure here so as to not borrow pc_state more than once to feed to function.
+    // Allows register specific 'set' calls to be selected based on op-code.
+    // instruction implementation then calls: fn(pc_state, new_value) to set the register value.
+    let dst = move |state: &mut pc_state::PcState, x| match (reg_select) & 0x7 {
+            0 => {state.set_b(x)}
+            1 => {state.set_c(x)}
+            2 => {state.set_d(x)}
+            3 => {state.set_e(x)}
+            4 => {state.set_h(x)}
+            5 => {state.set_l(x)}
+            7 => {state.set_a(x)}
+            _ => {panic!("Code path that was thought to be unreachable was reached!");}
+        }; 
+    dst
+}
+
+//                    // Using closure here so as to not borrow pc_state more than once to feed to function.
+//                    // This code could live either side of the instruction set.
+//                    let dst = |state: &mut pc_state::PcState, x| match (op_code >> 3) & 0x7 {
+//                            0 => {state.set_b(x)}
+//                            1 => {state.set_c(x)}
+//                            2 => {state.set_d(x)}
+//                            3 => {state.set_e(x)}
+//                            4 => {state.set_h(x)}
+//                            5 => {state.set_l(x)}
+//                            7 => {state.set_a(x)}
+//                            _ => {panic!("Code path that was thought to be unreachable was reached!");}
+//                        }; 
+
 impl Instruction {
     pub fn execute(op_code: u8, clock: &mut clocks::Clock, 
            memory: &mut memory::MemoryAbsolute, 
@@ -80,18 +124,8 @@ impl Instruction {
 
             // ld_mem_r instructions (
             n if (n & 0x78 == 0x70) && (n != 0x76) => {
-                    instruction_set::ld_mem_r(clock, memory, 
-                            match op_code & 0x7 
-                            {
-                              0 => {pc_state.get_b()} // 0x70: LD (HL), B
-                              1 => {pc_state.get_c()} // 0x71: LD (HL), C
-                              2 => {pc_state.get_d()} // 0x72: LD (HL), D
-                              3 => {pc_state.get_e()} // 0x73: LD (HL), E
-                              4 => {pc_state.get_h()} // 0x74: LD (HL), H
-                              5 => {pc_state.get_l()} // 0x75: LD (HL), L
-                              7 => {pc_state.get_a()} // 0x77: LD (HL), A
-                              _ => {panic!("Code path that was thought to be unreachable was reached!");}
-                            }, 
+                    let get_reg_value_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
+                    instruction_set::ld_mem_r(clock, memory, get_reg_value_fn(pc_state),
                             &mut pc_state.pc_reg, &mut pc_state.hl_reg); // LD (HL), B
                 }
 // 
@@ -174,42 +208,17 @@ impl Instruction {
 //            0x26 => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_h);} // LD_r H
 //            0x2e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_l);} // LD_r L
 //            0x3e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_a);} // LD_r A
-//
-// // TODO: Figure out how to do a loop for this creation:
-// //        for (i1, r1) in [(0, self._reg_wrapper_b), (1, self._reg_wrapper_c), (2, self._reg_wrapper_d), (3, self._reg_wrapper_e), (4, self._reg_wrapper_h), (5, self._reg_wrapper_l), (7, self._reg_wrapper_a)]:
-// //          for (i2, r2) in [(0, self._reg_wrapper_b), (1, self._reg_wrapper_c), (2, self._reg_wrapper_d), (3, self._reg_wrapper_e), (4, self._reg_wrapper_h), (5, self._reg_wrapper_l), (7, self._reg_wrapper_a)]:
-// //            self.instruction_lookup[0x40 + i1 + (i2 * 8)] = instructions.ld_r_r(clock, memory, pc_state, r2, r1) 
 
             // ld_r_r instructions ( 0b01dddsss) 
             // 111 -> A, 000 -> B, 001 -> C, 
             // 010 -> D, 011 -> E, 100 -> H, 
             // 101 -> L
             n if ((n & 0x40) == 0x40) && ((n & 0x07) != 0x6) && ((n & 0x38) != 0x3) => {
-                    let src = match op_code & 0x7 {
-                              0 => {pc_state.get_b()}
-                              1 => {pc_state.get_c()}
-                              2 => {pc_state.get_d()}
-                              3 => {pc_state.get_e()}
-                              4 => {pc_state.get_h()}
-                              5 => {pc_state.get_l()}
-                              7 => {pc_state.get_a()}
-                              _ => {panic!("Code path that was thought to be unreachable was reached!");}
-                            }; 
+                    let get_reg_value_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
+                    let get_reg_set_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
+                    let dst = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
 
-                    // Using closure here so as to not borrow pc_state more than once to feed to function.
-                    // This code could live either side of the instruction set.
-                    let dst = |state: &mut pc_state::PcState, x| match (op_code >> 3) & 0x7 {
-                            0 => {state.set_b(x)}
-                            1 => {state.set_c(x)}
-                            2 => {state.set_d(x)}
-                            3 => {state.set_e(x)}
-                            4 => {state.set_h(x)}
-                            5 => {state.set_l(x)}
-                            7 => {state.set_a(x)}
-                            _ => {panic!("Code path that was thought to be unreachable was reached!");}
-                        }; 
-
-                    instruction_set::ld_r_r(clock, src, pc_state, dst);
+                    instruction_set::ld_r_r(clock, get_reg_value_fn(pc_state), pc_state, dst);
                 }
 //
 //            0xc9 => { instruction_set::ret(clock, memory, pc_state);} // RET
