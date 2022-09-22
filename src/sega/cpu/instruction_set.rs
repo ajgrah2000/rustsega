@@ -21,7 +21,7 @@ pub fn in_a_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 }
 
 //0xF3, disable interrupts
-pub fn DI(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     pc_state.set_iff1(0);
     pc_state.set_iff2(0);
     pc_state.increment_pc(1);
@@ -43,7 +43,7 @@ pub fn signed_char_to_int(v: i8) -> i16 {
 // self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
 fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
     let mut f_status = pc_state.get_f();
-    let mut r = a.wrapping_add(b).wrapping_add(u8::from(c));
+    let r = a.wrapping_add(b).wrapping_add(u8::from(c));
 
     if (r & 0x80) != 0 { // Negative
         f_status.set_s(1);
@@ -115,7 +115,7 @@ fn u16_carry(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
     // Perform a u16-bit add with carry, setting the flags (except N, which is
     // left to add/sub)
     let mut f_status = pc_state.get_f();
-    let mut r = a.wrapping_add(b).wrapping_add(u16::from(c));
+    let r = a.wrapping_add(b).wrapping_add(u16::from(c));
 
     if (r & 0x8000) != 0 { // Negative
         f_status.set_s(1);
@@ -182,7 +182,7 @@ fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
 }
 
 // Calculate the result of the DAA functio
-fn calculateDAAAdd(pc_state: &mut pc_state::PcState) -> () {
+fn calculate_daa_add(pc_state: &mut pc_state::PcState) -> () {
     let upper = (pc_state.get_a() >> 4) & 0xF;
     let lower =  pc_state.get_a() & 0xF;
     
@@ -232,7 +232,7 @@ fn calculateDAAAdd(pc_state: &mut pc_state::PcState) -> () {
 }
 
 // Fcpu_state->IXME, table in z80 guide is wrong, need to check values by hand
-fn calculateDAASub(pc_state: &mut pc_state::PcState) {
+fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
     let upper = (pc_state.get_a() >> 4) & 0xF;
     let lower =  pc_state.get_a() & 0xF;
     
@@ -245,7 +245,7 @@ fn calculateDAASub(pc_state: &mut pc_state::PcState) {
             pc_state.set_a(&(pc_state.get_a() + 0xFA));
         }
     } else {
-        if (((upper >= 0x7) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9)) {
+        if ((upper >= 0x7) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9) {
             pc_state.set_a(&(pc_state.get_a() + 0xA0));
         } else if ((upper >= 0x6) && (upper <= 0xF)) && (f_status.get_h() == 1) && ((lower >= 0x6) && (lower <= 0xF)) {
             f_status.set_h(0);
@@ -269,6 +269,21 @@ fn calculateDAASub(pc_state: &mut pc_state::PcState) {
     pc_state.set_f(f_status);
 }
 
+pub fn jp_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_state: &mut pc_state::PcState) -> () {
+    pc_state.set_pc(&memory.read16(pc_state.get_pc() + 1));
+    clock.increment(10);
+}
+
+//  LD dd, nn, Load a 16-bit register with the value 'nn'
+pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+    r16_reg.set(&memory.read16(pc_reg.get() +1)); 
+
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(10);
+}
+
 // class Instruction(object):
 //     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
 //     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
@@ -283,26 +298,6 @@ fn calculateDAASub(pc_state: &mut pc_state::PcState) {
 //     def _exec(self, data):
 //         return self.instruction_exec(data)
 // 
-// 
-// class JumpInstruction(Instruction):
-//      
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         super(JumpInstruction, self).__init__(pc_state, None)
-// 
-//     def execute(self):
-//         self.pc_state.PC = self.memory.read16(self.pc_state.PC + 1)
-//         return 10
-// 
-// #class MemoryReadInstruction(Instruction):
-// #     
-// #    def __init__(self, memory, clocks, pc_state, instruction_exec, self.memory):
-// #        super(MemoryReadInstruction, self).__init__(clocks, pc_state, instruction_exec)
-// #        self.self.memory = self.memory
-// #        self.instruction_exec = instruction_exec
-// #
-// #    def execute(self):
-// #        return self.instruction_exec(self.self.memory)
 // 
 // class ExtendedInstruction(Instruction):
 //     def __init__(self, memory, pc_state, get_function):
@@ -1147,35 +1142,6 @@ fn calculateDAASub(pc_state: &mut pc_state::PcState) {
 //     def __init__(self, memory, pc_state):
 //         self.memory = memory
 //         self.pc_state = pc_state
-// 
-//     
-// class Load16BC(Instruction):
-// 
-//     def __init__(self, memory, pc_state, r16):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r16 = r16
-// 
-//     def execute(self):
-//       # Load 16-bit cpu_state->BC register
-//       # LD cpu_state->BC, 0x
-//     
-//       self.r16.set(self.memory.read16(self.pc_state.PC+1))
-//       self.pc_state.PC += 3;
-// 
-//       return 10;
-// 
-// # Load a 16-bit register with the value 'nn'
-// class LD_16_nn(Instruction):
-//     def __init__(self, memory, pc_state, r16):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r16 = r16
-// 
-//     def execute(self):
-//       self.r16.set(self.memory.read16(self.pc_state.PC+1)); 
-//       self.pc_state.PC += 3;
-//       return 10;
 // 
 // class LD_r_r(Instruction):
 //     def __init__(self, memory, pc_state, dst, src):

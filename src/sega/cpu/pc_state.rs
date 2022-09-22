@@ -40,21 +40,21 @@ pub struct Reg16 {
 pub struct PcState {
 
         // Register overlays
-        bc_reg: Reg16,
-        de_reg: Reg16,
-        af_reg: Reg16,
-        hl_reg: Reg16,
+        pub bc_reg: Reg16,
+        pub de_reg: Reg16,
+        pub af_reg: Reg16,
+        pub hl_reg: Reg16,
 
-        pc_reg: Reg16,
-        sp_reg: Reg16,
-        ix_reg: Reg16,
-        iy_reg: Reg16,
+        pub pc_reg: Reg16,
+        pub sp_reg: Reg16,
+        pub ix_reg: Reg16,
+        pub iy_reg: Reg16,
 
         // Shadow registers
-        bc__reg: Reg16,
-        de__reg: Reg16,
-        hl__reg: Reg16,
-        af__reg: Reg16,
+        shadow_bc_reg: Reg16,
+        shadow_de_reg: Reg16,
+        shadow_hl_reg: Reg16,
+        shadow_af_reg: Reg16,
 
         r: u8, // TODO: Check, not sure if this is a 'real' register, used for random?
         iff1: u8,
@@ -78,12 +78,12 @@ impl Reg16 {
         }
     }
     // Registers are stored 'big endian' as far as letter order, such that (b=1 as u8, c=0 as u8) -> (0x0100 as u16)
-    fn set(&mut self, input: &u16) -> () {
+    pub fn set(&mut self, input: &u16) -> () {
         self.low  = (input & 0xFF) as u8;
         self.high = ((input >> 8) & 0xFF) as u8;
     }
     
-    fn get(&self) -> u16 {
+    pub fn get(&self) -> u16 {
         let result = self.low as u16 + ((self.high as u16) << 8);
         result
     }
@@ -104,10 +104,10 @@ impl PcState {
             iy_reg: Reg16::new(),
 
             // Shadow registers
-            bc__reg: Reg16::new(),
-            de__reg: Reg16::new(),
-            hl__reg: Reg16::new(),
-            af__reg: Reg16::new(),
+            shadow_bc_reg: Reg16::new(),
+            shadow_de_reg: Reg16::new(),
+            shadow_hl_reg: Reg16::new(),
+            shadow_af_reg: Reg16::new(),
 
             r: 0, // TODO: Check, not sure if this is a 'real' register, used for random?
             iff1: 0,
