@@ -125,6 +125,8 @@ impl PcState {
     pub fn get_h(&self) -> u8 {self.hl_reg.high}
     pub fn get_l(&self) -> u8 {self.hl_reg.low}
 
+    pub fn get_a_ref(&mut self) -> &mut u8 {&mut self.af_reg.high}
+
     pub fn get_bc(&self) -> u16 {self.bc_reg.get()}
     pub fn get_de(&self) -> u16 {self.de_reg.get()}
     pub fn get_af(&self) -> u16 {self.af_reg.get()}
@@ -207,7 +209,7 @@ fn test_pc_status_flag_fields() {
 #[test]
 fn test_pc_state_16_changes() {
     let mut pc_state = PcState::new();
-    let mut value_8:u8 = 7;
+    let value_8:u8 = 7;
     let mut value_16:u16 = 0x312;
 
     pc_state.set_b(&value_8);

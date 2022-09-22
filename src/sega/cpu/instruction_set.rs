@@ -284,6 +284,15 @@ pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
     clock.increment(10);
 }
 
+// LD (16 REG), r
+// Load the 8-bit register, r, 16-bit address
+pub fn ld_mem_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+                r: u8, pc_reg: &mut pc_state::Reg16, address_reg: &pc_state::Reg16) -> () {
+    memory.write(address_reg.get(), r);
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(7);
+}
+
 // class Instruction(object):
 //     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
 //     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
@@ -1183,23 +1192,6 @@ pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //         self.memory.write(self.pc_state.IY + signed_char_to_int(self.memory.read(self.pc_state.PC+2)), self.src.get()); 
 //         self.pc_state.PC += 3;
 //         return 19
-// 
-// # LD (16 REG), r
-// # The register r into the 16-bit address
-// class LD_mem_r(Instruction_r):
-//     # r - 8-bit
-//     def __init__(self, memory, pc_state, addr, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.addr = addr
-//         self.r = r
-// 
-//     # Load the register into self.memory.
-//     def execute(self):
-//         self.memory.write(self.addr, self.r);
-//         self.pc_state.PC += 1;
-// 
-//         return 7;
 // 
 // # LD r, (16 REG)
 // # Load the value from the 16-bit address into the register

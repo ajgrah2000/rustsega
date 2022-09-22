@@ -294,7 +294,7 @@ mod tests {
     use crate::sega::memory::memory::MemoryAbsolute;
     #[test]
     fn test_simple_memory_check() {
-        let mut memory = MemoryAbsolute::new();
+        let memory = MemoryAbsolute::new();
     
         println!("Memory length: {}", memory.memory_map.len());
         println!("Memory size: {}", mem::size_of_val(&memory));

@@ -67,11 +67,11 @@ impl Core {
 
 #[test]
 fn test_core_creation() {
-    let mut clock = clocks::Clock::new();
-    let mut memory = memory::MemoryAbsolute::new();
-    let mut pc_state = pc_state::PcState::new();
-    let mut ports = ports::Ports::new();
-    let mut interuptor = interuptor::Interuptor::new();
+    let clock = clocks::Clock::new();
+    let memory = memory::MemoryAbsolute::new();
+    let pc_state = pc_state::PcState::new();
+    let ports = ports::Ports::new();
+    let interuptor = interuptor::Interuptor::new();
     let mut core = Core::new(clock, memory, pc_state, ports, interuptor);
 
     core.step(true);

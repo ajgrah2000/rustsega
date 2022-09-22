@@ -25,25 +25,25 @@ impl Instruction {
 
             0x00 => { instruction_set::noop(clock, pc_state);}
             0x01 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD dd, nn : for BC
-//            0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.bc_reg, self._reg_wrapper_a);} // LD (BC), A
-//            0x03 => { instruction_set::INC_BC(clock, memory, pc_state);} // INC cpu_state->BC
-//            0x04 => { instruction_set::INC_r(clock, memory, pc_state, self._reg_wrapper_b);} // INC cpu_state->B
+            0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD (BC), A
+//            0x03 => { instruction_set::inc_bc(clock, memory, pc_state);} // INC cpu_state->BC
+//            0x04 => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_b);} // INC cpu_state->B
 //            0x06 => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_b);}
-//            0x07 => { instruction_set::RLCA(clock, memory, pc_state);}  //RLCA
-//            0x09 => { instruction_set::ADD16(clock, memory, pc_state, &mut pc_state.hl_reg, &mut pc_state.bc_reg,11);}
+//            0x07 => { instruction_set::rlca(clock, memory, pc_state);}  //RLCA
+//            0x09 => { instruction_set::add16(clock, memory, pc_state, &mut pc_state.hl_reg, &mut pc_state.bc_reg,11);}
 //            0x0a => { instruction_set::ld_r_mem(clock, memory, pc_state, self._reg_wrapper_a, &mut pc_state.bc_reg);} // LD A, (BC)
 //            0x0b => { instruction_set::dec_16(clock, memory, pc_state, &mut pc_state.bc_reg, 6);}
 //            0x0c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_c);} // INC C
 //            0x0e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_c);} // LD C, n
-//            0x0f => { instruction_set::RRCA(clock, memory, pc_state);}
-//            0x10 => { instruction_set::DJNZ(clock, memory, pc_state);} // DJNZ n
+//            0x0f => { instruction_set::rrca(clock, memory, pc_state);}
+//            0x10 => { instruction_set::djnz(clock, memory, pc_state);} // DJNZ n
             0x11 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD DE, nn
-//            0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.de_reg, self._reg_wrapper_a);} // LD (DE), A
+            0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD (DE), A
             0x21 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, nn
 //            0x2a => { instruction_set::ld_r16_mem(clock, memory, pc_state, &mut pc_state.hl_reg);} // LD HL, (nn)
             0x31 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg);} // LD DE, nn
-//            0x13 => { instruction_set::INC_16(clock, memory, pc_state, &mut pc_state.de_reg, 6);}
-//            0x14 => { instruction_set::INC_r(clock, memory, pc_state, self._reg_wrapper_d);} // INC D
+//            0x13 => { instruction_set::inc_16(clock, memory, pc_state, &mut pc_state.de_reg, 6);}
+//            0x14 => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_d);} // INC D
 //            0x16 => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_d);} // LD D, n
 //            0x19 => { instruction_set::add16(clock, memory, pc_state, &mut pc_state.hl_reg, &mut pc_state.de_reg,11);}
 //            0x1a => { instruction_set::ld_r_mem(clock, memory, pc_state, self._reg_wrapper_a, &mut pc_state.de_reg);} // LD A, (DE)
@@ -52,9 +52,9 @@ impl Instruction {
 //            0x1c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_e);} // INC E
 //            0x1e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_e);} // LD E, n
 // 
-//            0x20 => { instruction_set::JRNZe(clock, memory, pc_state);} // JR NZ, e
+//            0x20 => { instruction_set::jrnze(clock, memory, pc_state);} // JR NZ, e
 // 
-//            0x23 => { instruction_set::INC_16(clock, memory, pc_state, &mut pc_state.hl_reg, 6);}
+//            0x23 => { instruction_set::inc_16(clock, memory, pc_state, &mut pc_state.hl_reg, 6);}
 // 
 //            0x24 => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_h);} // INC H
 //            0x26 => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_h);} // LD H, n
@@ -77,13 +77,13 @@ impl Instruction {
 //            0x3c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_a);} // INC A
 //            0x3e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_a);} // LD A, n
 // 
-//            0x70 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_b);} // LD (HL), B
-//            0x71 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_c);} // LD (HL), C
-//            0x72 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_d);} // LD (HL), D
-//            0x73 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_e);} // LD (HL), E
-//            0x74 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_h);} // LD (HL), H
-//            0x75 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_l);} // LD (HL), L
-//            0x77 => { instruction_set::ld_mem_r(clock, memory, pc_state, &mut pc_state.hl_reg, self._reg_wrapper_a);} // LD (HL), A
+            0x70 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_b(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), B
+            0x71 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_c(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), C
+            0x72 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_d(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), D
+            0x73 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_e(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), E
+            0x74 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_h(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), H
+            0x75 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_l(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), L
+            0x77 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), A
 // 
 //            0x80 => { instruction_set::add_r(clock, memory, pc_state, self._reg_wrapper_b);} // ADD r, cpu_state->B
 //            0x81 => { instruction_set::add_r(clock, memory, pc_state, self._reg_wrapper_c);} // ADD r, cpu_state->C

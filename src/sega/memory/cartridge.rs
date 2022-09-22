@@ -104,7 +104,11 @@ mod tests {
         // Do a test load of a 'fake rom' (just randomly generated data).
         let test_rom = "fake.rom";
         let mut cartridge = Cartridge::new(test_rom);
-        cartridge.load(); 
+        match cartridge.load()
+        {
+            Ok(()) => {println!("Ok");}
+            _ => {println!("Error loading cartridge.");}
+        }
         assert_eq!(cartridge.read(0, 0), 139);
         println!("{}", mem::size_of_val(&cartridge));
     }
