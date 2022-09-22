@@ -285,6 +285,7 @@ pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 }
 
 // LD (16 REG), r
+// eg: LD (HL), r
 // Load the 8-bit register, r, 16-bit address
 pub fn ld_mem_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
                 r: u8, pc_reg: &mut pc_state::Reg16, address_reg: &pc_state::Reg16) -> () {
@@ -294,26 +295,96 @@ pub fn ld_mem_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 }
 
 // LD r,r
-pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, src: u8, pc_state: &mut pc_state::PcState, mut dst: F) -> () {
-    dst(pc_state, src);
+pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, src: u8, pc_state: &mut pc_state::PcState, mut dst_fn: F) -> () {
+    dst_fn(pc_state, src);
     pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// LD r, (16 REG)
+// eg LD r, (HL)
+pub fn ld_r_mem<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, mut dst_fn: F, addr_reg_value: u16) -> () {
+    dst_fn(pc_state, memory.read(addr_reg_value));
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+// LD r,n
+pub fn ld_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, mut dst_fn: F) -> () {
+    dst_fn(pc_state, memory.read(pc_state.get_pc() + 1));
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+// LD r, (nn)
+// Load the value from the 16-bit address into the 16-bit register
+pub fn ld_r16_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+    r16_reg.set(memory.read16(memory.read16(pc_reg.get()+1)));
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(20);
+}
+
+// LD (16 REG), n
+// eg LD (HL), n
+// Load the value 'n' into the 16-bit address
+pub fn ld_mem_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+    // Load the 8 bit value 'n' into memory.
+    memory.write(r16_reg.get(), memory.read(pc_reg.get() + 1));
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(10);
+}
+
+// LD r, (nn)
+// eg LD A, (nn)  (is actually the only version)
+// Op Code: 3A
+// Load the value from the 16-bit address into the 8-bit register
+pub fn ld_r8_mem<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, mut dst_fn: F) -> () {
+    dst_fn(pc_state, memory.read(memory.read16(pc_state.get_pc() +1 )));
+    pc_state.increment_pc(3);
+    clock.increment(13);
+}
+
+//  
+//  LD SP, HL Load a 16-bit register with the value from another 16-bit register
+pub fn ld_sp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, 
+                pc_reg: &mut pc_state::Reg16, sp_reg: &mut pc_state::Reg16) -> () {
+    sp_reg.set(hl_reg.get()); 
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(6);
+}
+
+// LD (nn), r
+// eg LD (nn), A   - Which is the only version of this function.
+pub fn ld_nn_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8,
+              pc_reg: &mut pc_state::Reg16) -> () {
+    memory.write(memory.read16(pc_reg.get()+1), r);
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(13);
+}
+
+// LD (nn), HL
+pub fn ld_nn_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    memory.write(memory.read16(pc_state.get_pc()+2), pc_state.get_l());
+    memory.write(memory.read16(pc_state.get_pc()+2)+1, pc_state.get_h());
+
+    pc_state.increment_pc(4);
+    clock.increment(16);
+}
+
+//  JP (HL)
+// Load PC with HL, to jump to that location.
+pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut pc_state::Reg16) -> () {
+    pc_reg.set(hl_reg.get()); 
+
     clock.increment(4);
 }
 
 // class Instruction(object):
 //     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
 //     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
-// 
-//     def __init__(self, pc_state, instruction_exec):
-//         self.pc_state = pc_state
-//         self.instruction_exec = instruction_exec
-// 
-//     def execute(self):
-//         pass
-// 
-//     def _exec(self, data):
-//         return self.instruction_exec(data)
-// 
 // 
 // class ExtendedInstruction(Instruction):
 //     def __init__(self, memory, pc_state, get_function):
@@ -1159,35 +1230,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //         self.memory = memory
 //         self.pc_state = pc_state
 // 
-// class LD_r_r(Instruction):
-//     def __init__(self, memory, pc_state, dst, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-//         self.src = src
-// 
-//     # Load any register to any other register.
-//     def execute(self):
-//       self.dst.set(self.src.get());
-//       self.pc_state.PC += 1;
-// 
-//       return 4;
-// 
-// # LD (16 REG), n
-// # Load the value 'n' into the 16-bit address
-// class LD_mem_n(Instruction):
-//     def __init__(self, memory, pc_state, addr):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.addr = addr
-// 
-//     # Load the 8 bit value 'n' into self.memory.
-//     def execute(self):
-//       self.memory.write(self.addr, self.memory.read(self.pc_state.PC +1));
-//       self.pc_state.PC += 2;
-// 
-//       return 10;
-// 
 // # LD (self.pc_state.IY+d), r
 // class LD_IY_d_r(Instruction):
 //     def __init__(self, memory, pc_state, src):
@@ -1200,37 +1242,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //         self.pc_state.PC += 3;
 //         return 19
 // 
-// # LD r, (16 REG)
-// # Load the value from the 16-bit address into the register
-// class LD_r_mem (Instruction):
-//     # r - 8-bit
-//     def __init__(self, memory, pc_state, r, addr):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.addr = addr
-//         self.r = r
-// 
-//     # Load the value at the address into a register.
-//     def execute(self):
-//         self.r.set(self.memory.read(int(self.addr)));
-//         self.pc_state.PC += 1;
-//         return 7;
-// 
-// # LD r, (nn)
-// # Load the value from the 16-bit address into the 16-bit register
-// class LD_r16_mem(Instruction):
-//     # r - 16-bit
-//     def __init__(self, memory, pc_state, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-// 
-//     # Load the value at the address into a register.
-//     def execute(self):
-//         self.r.set(self.memory.read16(self.memory.read16(self.pc_state.PC+1)));
-//         self.pc_state.PC += 3;
-// 
-//         return 20;
 // 
 // # LD r, (nn)
 // # Load the value from the 16-bit address into the 8-bit register
@@ -1259,19 +1270,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //             return 13;
 // 
 //         return _get_cached_execute
-// 
-// class LD_r(Instruction_r):
-//     # r - 8-bit
-//     def __init__(self, memory, pc_state, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-// 
-//     def execute(self):
-//         # This can be optimised.
-//         self.r.set(self.memory.read(self.pc_state.PC + 1));
-//         self.pc_state.PC += 2;
-//         return 7;
 // 
 // # LD self.I_reg, nn
 // class LD_I_nn(Instruction):
@@ -1792,19 +1790,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //         return  9;
 //     
 // # Fself.pc_state.IXME, can't find existance of this instruction
-// # LD (nn), self.pc_state.HL
-// class LD_nn_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2), self.pc_state.L);
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2)+1, self.pc_state.H);
-//         self.pc_state.PC += 4;
-//     
-//         return  16;
-//     
 // # RRD, wacky instruction
 // class RRD(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2101,17 +2086,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //         self.pc_state.PC += 1
 //         return 4;
 // 
-// # LD (self.pc_state.DE), self.pc_state.A
-// class LD_DE_A(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.pc_state.DE, self.pc_state.A);
-//         self.pc_state.PC += 1
-//         return  7;
-// 
 // # RLA
 // class RLA(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2213,19 +2187,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 // 
 //         return cycles
 // 
-// 
-// # LD (nn), self.pc_state.A
-// class LD_nn_A(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+1), self.pc_state.A);
-//         self.pc_state.PC +=3;
-// 
-//         return  13;
-// 
 // # SCF
 // class SCF(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -2267,16 +2228,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //         self.pc_state.F.Fstatus.C = 1-self.pc_state.F.Fstatus.C; #Invert carry flag
 //         self.pc_state.PC += 1
 //         return  4;
-// 
-// # LD (self.pc_state.HL), (self.pc_state.HL)
-// class LD_HL_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC += 1
-//         return  7;
 // 
 // # self.pc_state.ADD (self.pc_state.HL) 
 // class ADD_HL(Instruction):
@@ -2808,17 +2759,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //             cycles +=5;
 //         return cycles
 // 
-// # Don't know how many self.clocks.cycles
-// # LD self.pc_state.PC, self.pc_state.HL
-// class LD_PC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC = self.pc_state.HL;
-//         return 6;
-// 
 // # JP PE, nn   Parity Even 
 // class JP_PE_nn(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -3019,17 +2959,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clo
 //             self.pc_state.PC += 1
 //             cycles +=5;
 //         return cycles
-// 
-// # LD self.pc_state.SP, self.pc_state.HL
-// class LD_SP_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.SP = self.pc_state.HL;
-//         self.pc_state.PC += 1
-//         return 6;
 // 
 // # JP M, nn    if Negative
 // class JP_M_nn(Instruction):
