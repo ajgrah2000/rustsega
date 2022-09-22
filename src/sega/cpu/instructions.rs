@@ -112,9 +112,9 @@ impl Instruction {
 //            0x3b => { instruction_set::dec_16(clock, memory, pc_state, &mut pc_state.sp_reg, 6);}
 //            0x3c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_a);} // INC A
 
-            // ld_mem_r instructions (
+            // ld_mem_r instructions
             // opcode: 0b01110rrr 
-            n if (n & 0b11110000 == 0b01110000) && (n != 0x76) => {
+            n if (n & 0b11111000 == 0b01110000) && (n != 0x76) => {
                     let get_reg_value_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
                     instruction_set::ld_mem_r(clock, memory, get_reg_value_fn(pc_state),
                             &mut pc_state.pc_reg, &mut pc_state.hl_reg); // LD (HL), r
@@ -160,13 +160,12 @@ impl Instruction {
 //            0xb5 => { instruction_set::or_r(clock, memory, pc_state, self._reg_wrapper_l);} // OR r, cpu_state->A
 //            0xb7 => { instruction_set::or_a(clock, memory, pc_state);} // OR r, cpu_state->A
 // 
-//            0xb8 => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_b);} // CP r, cpu_state->A
-//            0xb9 => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_c);} // CP r, cpu_state->A
-//            0xba => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_d);} // CP r, cpu_state->A
-//            0xbb => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_e);} // CP r, cpu_state->A
-//            0xbc => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_h);} // CP r, cpu_state->A
-//            0xbd => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_l);} // CP r, cpu_state->A
-//            0xbf => { instruction_set::cp_r(clock, memory, pc_state, self._reg_wrapper_a);} // CP r, cpu_state->A
+            // cp_r instructions
+            // opcode: 0b10111rrr 
+            n if (n & 0b11111000 == 0b10111000) && (n != 0b11111110) => {
+                    let get_reg_value_fn = select_8_bit_read_register(op_code & 0x7); // gets the appropriate register getter fromt the supplied op-code
+                    instruction_set::cp_r(clock, memory, get_reg_value_fn(pc_state), pc_state); // CP r
+                }
 // 
 //            0xd3 => { instruction_set::out_n_A(clock, memory, pc_state, self.ports);} // OUT (n), cpu_state->A
 //            0xd2 => { instruction_set::jpnc(clock, memory, pc_state);} // JP NC
@@ -174,7 +173,7 @@ impl Instruction {
 //            0xda => { instruction_set::jpcnn(clock, memory, pc_state);} // JP C, nn
 // 
 //            0xe6 => { instruction_set::and_n(clock, memory, pc_state);} // AND n
-//            0xfe => { instruction_set::cp_n(clock, memory, pc_state);} // CP n
+            0xfe => { instruction_set::cp_n(clock, memory, pc_state);} // CP n
 //
 //            0x05 => { instruction_set::dec_r(clock, memory, pc_state, self._reg_wrapper_b);} // DEC B
 //            0x0d => { instruction_set::dec_r(clock, memory, pc_state, self._reg_wrapper_c);} // DEC C
@@ -250,7 +249,7 @@ impl Instruction {
 //            0xa6 => { instruction_set::and_hl(clock, memory, pc_state);}
 //            0xae => { instruction_set::xor_hl(clock, memory, pc_state);}
 //            0xb6 => { instruction_set::or_hl(clock, memory, pc_state);}
-//            0xbe => { instruction_set::cp_hl(clock, memory, pc_state);}
+            0xbe => { instruction_set::cp_hl(clock, memory, pc_state);}
 //            0xc0 => { instruction_set::ret_nz(clock, memory, pc_state);}
 //            0xc1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.bc_reg);}
 //            0xc2 => { instruction_set::jpnz_nn(clock, memory, pc_state);}

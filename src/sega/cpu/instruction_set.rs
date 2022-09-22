@@ -94,11 +94,21 @@ fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
     return r;
 }
 
+fn add8(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> u8 {
+    // Just call the add c function.
+    add8c(pc_state, a, b, false)
+}
+
 fn add8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
     let mut f_status = pc_state.get_f();
     f_status.set_n(0); // Clear N to indicate add
     pc_state.set_f(f_status);
     u8_carry(pc_state, a, b, c) 
+}
+
+fn cp_flags(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> () {
+    // CP flags calculated set the same as for subtaction, but the result is ignored.
+    sub8c(pc_state, a, b, false);
 }
 
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
@@ -382,6 +392,36 @@ pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut p
     clock.increment(4);
 }
 
+// CP n
+// Compare accumulator with 'n' to set status flags (but don't change accumulator)
+pub fn cp_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    // This function sets the 'pc_state.f'
+    cp_flags(pc_state, pc_state.get_a(),  memory.read(pc_state.get_pc() +1));
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+// CP r
+// Compare accumulator with register r to set status flags (but don't change accumulator)
+pub fn cp_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_state: &mut pc_state::PcState) -> () {
+    // This function sets the 'pc_state.f'
+    cp_flags(pc_state, pc_state.get_a(),  r);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// CP (hl)
+// Compare accumulator with the value from (HL) to set status flags (but don't change accumulator)
+pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    // This function sets the 'pc_state.f'
+    cp_flags(pc_state, pc_state.get_a(), memory.read(pc_state.get_hl()));
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
 // class Instruction(object):
 //     FLAG_MASK_INC8 = 0x01; # Bits to leave unchanged
 //     FLAG_MASK_DEC8 = 0x01; # Bits to leave unchanged
@@ -562,43 +602,6 @@ pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut p
 //         self.pc_state.HL = self.pc_state.HL_;
 //         self.pc_state.HL_ = tmp16;
 //     
-//         self.pc_state.PC += 1
-//     
-//         return 4;
-// 
-// class CP_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self._last_pc = 0
-// 
-//     def execute(self):
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A, self.memory.read(self.pc_state.PC +1))
-// 
-//         self.pc_state.PC += 2;
-//     
-//         return 7;
-// 
-//     def get_cached_execute(self):
-//         r =  self.memory.read(self.pc_state.PC +1)
-//         pc = self.pc_state.PC + 2;
-// 
-//         def _get_cached_execute(self):
-//             self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A, r)
-//             self.pc_state.PC = pc;
-//         
-//             return 7;
-// 
-//         return _get_cached_execute
-// 
-// class CP_r(Instruction_r):
-//     def __init__(self, memory, pc_state, r):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.r = r
-// 
-//     def execute(self):
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.r);
 //         self.pc_state.PC += 1
 //     
 //         return 4;
@@ -2337,18 +2340,6 @@ pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut p
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 // 
 //         return  7;
-// 
-// # CP (self.pc_state.HL) 
-// class CP_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
-//         self.pc_state.PC += 1
-// 
-//         return 7;
 // 
 // # RET NZ
 // class RET_NZ(Instruction):
