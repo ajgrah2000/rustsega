@@ -77,13 +77,23 @@ impl Instruction {
 //            0x3c => { instruction_set::inc_r(clock, memory, pc_state, self._reg_wrapper_a);} // INC A
 //            0x3e => { instruction_set::ld_r(clock, memory, pc_state, self._reg_wrapper_a);} // LD A, n
 // 
-            0x70 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_b(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), B
-            0x71 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_c(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), C
-            0x72 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_d(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), D
-            0x73 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_e(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), E
-            0x74 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_h(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), H
-            0x75 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_l(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), L
-            0x77 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), A
+
+            // ld_mem_r instructions (
+            n if (n & 0x78 == 0x70) && (n != 0x76) => {
+                    instruction_set::ld_mem_r(clock, memory, 
+                            match op_code & 0x7 
+                            {
+                              0 => {pc_state.get_b()} // 0x70: LD (HL), B
+                              1 => {pc_state.get_c()} // 0x71: LD (HL), C
+                              2 => {pc_state.get_d()} // 0x72: LD (HL), D
+                              3 => {pc_state.get_e()} // 0x73: LD (HL), E
+                              4 => {pc_state.get_h()} // 0x74: LD (HL), H
+                              5 => {pc_state.get_l()} // 0x75: LD (HL), L
+                              7 => {pc_state.get_a()} // 0x77: LD (HL), A
+                              _ => {panic!("Code path that was thought to be unreachable was reached!");}
+                            }, 
+                            &mut pc_state.pc_reg, &mut pc_state.hl_reg); // LD (HL), B
+                }
 // 
 //            0x80 => { instruction_set::add_r(clock, memory, pc_state, self._reg_wrapper_b);} // ADD r, cpu_state->B
 //            0x81 => { instruction_set::add_r(clock, memory, pc_state, self._reg_wrapper_c);} // ADD r, cpu_state->C
@@ -169,6 +179,38 @@ impl Instruction {
 // //        for (i1, r1) in [(0, self._reg_wrapper_b), (1, self._reg_wrapper_c), (2, self._reg_wrapper_d), (3, self._reg_wrapper_e), (4, self._reg_wrapper_h), (5, self._reg_wrapper_l), (7, self._reg_wrapper_a)]:
 // //          for (i2, r2) in [(0, self._reg_wrapper_b), (1, self._reg_wrapper_c), (2, self._reg_wrapper_d), (3, self._reg_wrapper_e), (4, self._reg_wrapper_h), (5, self._reg_wrapper_l), (7, self._reg_wrapper_a)]:
 // //            self.instruction_lookup[0x40 + i1 + (i2 * 8)] = instructions.ld_r_r(clock, memory, pc_state, r2, r1) 
+
+            // ld_r_r instructions ( 0b01dddsss) 
+            // 111 -> A, 000 -> B, 001 -> C, 
+            // 010 -> D, 011 -> E, 100 -> H, 
+            // 101 -> L
+            n if ((n & 0x40) == 0x40) && ((n & 0x07) != 0x6) && ((n & 0x38) != 0x3) => {
+                    let src = match op_code & 0x7 {
+                              0 => {pc_state.get_b()}
+                              1 => {pc_state.get_c()}
+                              2 => {pc_state.get_d()}
+                              3 => {pc_state.get_e()}
+                              4 => {pc_state.get_h()}
+                              5 => {pc_state.get_l()}
+                              7 => {pc_state.get_a()}
+                              _ => {panic!("Code path that was thought to be unreachable was reached!");}
+                            }; 
+
+                    // Using closure here so as to not borrow pc_state more than once to feed to function.
+                    // This code could live either side of the instruction set.
+                    let dst = |state: &mut pc_state::PcState, x| match (op_code >> 3) & 0x7 {
+                            0 => {state.set_b(x)}
+                            1 => {state.set_c(x)}
+                            2 => {state.set_d(x)}
+                            3 => {state.set_e(x)}
+                            4 => {state.set_h(x)}
+                            5 => {state.set_l(x)}
+                            7 => {state.set_a(x)}
+                            _ => {panic!("Code path that was thought to be unreachable was reached!");}
+                        }; 
+
+                    instruction_set::ld_r_r(clock, src, pc_state, dst);
+                }
 //
 //            0xc9 => { instruction_set::ret(clock, memory, pc_state);} // RET
 //
@@ -326,4 +368,76 @@ impl Instruction {
             _ => {println!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
         }
     } 
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::sega::cpu::instructions;
+    use crate::sega::cpu::pc_state;
+    use crate::sega::memory::memory;
+    use crate::sega::clocks;
+    use crate::sega::interuptor;
+    use crate::sega::ports;
+
+    #[test]
+    fn test_instruction_match_style_check() {
+
+        #[derive(PartialEq)]
+        #[derive(Debug)]
+        enum Ops {
+                Op0x70 = 1,
+                Op0x71,
+                Op0x72,
+                Op0x73,
+                Op0x74,
+                Op0x75,
+                Op0x76,
+                Op0x77,
+                Unknown,
+        }
+        fn check_match(value: u8) -> Ops {
+            match value {
+                n if (n & 0x78 == 0x70) && (n != 0x76) => {
+                            match n & 0x7 
+                            {
+                              0 =>     {Ops::Op0x70}      // 0x70: LD (HL), B
+                              1 =>     {Ops::Op0x71}      // 0x71: LD (HL), C
+                              2 =>     {Ops::Op0x72}      // 0x72: LD (HL), D
+                              3 =>     {Ops::Op0x73}      // 0x73: LD (HL), E
+                              4 =>     {Ops::Op0x74}      // 0x74: LD (HL), H
+                              5 =>     {Ops::Op0x75}      // 0x75: LD (HL), L
+                              7 | _ => {Ops::Op0x77}  // 0x77: LD (HL), A  /* _ is unreachable. */
+                            }
+
+                }
+                0x76 => {Ops::Op0x76}
+                _ => {Ops::Unknown}
+            }
+        }
+        assert_eq!(check_match(0x72), Ops::Op0x72);
+        assert_eq!(check_match(0x76), Ops::Op0x76);
+        assert_eq!(check_match(0x77), Ops::Op0x77);
+    }
+
+    #[test]
+    fn test_ld_r_r_functions() {
+        let mut clock = clocks::Clock::new();
+        let mut memory = memory::MemoryAbsolute::new();
+        let mut pc_state = pc_state::PcState::new();
+        let mut ports = ports::Ports::new();
+        let mut interuptor = interuptor::Interuptor::new();
+
+        // ld_r_r instructions ( 0b01dddsss) 
+        // 111 -> A, 000 -> B, 001 -> C, 
+        // 010 -> D, 011 -> E, 100 -> H, 
+        // 101 -> L
+        
+        assert_eq!(clock.cycles, 0);
+        assert_eq!(pc_state.get_b(), 0);
+
+        pc_state.set_c(0x42);
+        instructions::Instruction::execute(0b01000001, &mut clock, &mut memory, &mut pc_state, &mut ports, &mut interuptor); // LD r,'r  C -> B
+        assert_eq!(pc_state.get_b(), 0x42);
+        assert_eq!(clock.cycles, 4);
+    }
 }

@@ -40,7 +40,7 @@ impl Core {
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_high());
                 self.pc_state.increment_sp(-1);
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_low());
-                self.pc_state.set_pc(&Core::IRQIM1ADDR);
+                self.pc_state.set_pc(Core::IRQIM1ADDR);
 
                 // Disable maskable interupts
                 self.pc_state.set_iff1(0);

@@ -15,7 +15,7 @@ pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 pub fn in_a_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
               pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () {
 
-    pc_state.set_a(&ports.port_read(memory.read(pc_state.get_pc() + 1)));
+    pc_state.set_a(ports.port_read(memory.read(pc_state.get_pc() + 1)));
     pc_state.increment_pc(2);
     clock.increment(11);
 }
@@ -192,26 +192,26 @@ fn calculate_daa_add(pc_state: &mut pc_state::PcState) -> () {
         if (upper <= 9) && (f_status.get_h() == 0) && (lower <= 9) {
             // Do nothing
         } else if (upper <= 8) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
-            pc_state.set_a(&(pc_state.get_a() + 0x06));
+            pc_state.set_a(pc_state.get_a() + 0x06);
         } else if (upper <= 9) && (f_status.get_h() == 1) && (lower <= 0x3) {
-            pc_state.set_a(&(pc_state.get_a() + 0x06));
+            pc_state.set_a(pc_state.get_a() + 0x06);
         } else if ((upper >= 0xA) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9) {
-            pc_state.set_a(&(pc_state.get_a() + 0x60));
+            pc_state.set_a(pc_state.get_a() + 0x60);
             f_status.set_c(1);
         } else if ((upper >= 0x9) && (upper <= 0xF)) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
-            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            pc_state.set_a(pc_state.get_a() + 0x66);
             f_status.set_c(1);
         } else if ((upper >= 0xA) && (upper <= 0xF)) && (f_status.get_h() == 1) && (lower <= 0x3) {
-            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            pc_state.set_a(pc_state.get_a() + 0x66);
             f_status.set_c(1);
         }
     } else {
         if (upper <= 0x2) && (f_status.get_h() == 0) && (lower <= 0x9) {
-            pc_state.set_a(&(pc_state.get_a() + 0x60));
+            pc_state.set_a(pc_state.get_a() + 0x60);
         } else if (upper <= 0x2) && (f_status.get_h() == 0) && ((lower >= 0xA) && (lower <= 0xF)) {
-            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            pc_state.set_a(pc_state.get_a() + 0x66);
         } else if (upper <= 0x3) && (f_status.get_h() == 1) && (lower <= 0x3) {
-            pc_state.set_a(&(pc_state.get_a() + 0x66));
+            pc_state.set_a(pc_state.get_a() + 0x66);
         }
     }
 
@@ -242,14 +242,14 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
         if (upper <= 9) && (f_status.get_h() == 0) && (lower <= 9) {
             // Do nothing
         } else if (upper <= 0x8) && (f_status.get_h() == 1) && ((lower >= 0x6) && (lower <= 0xF)) {
-            pc_state.set_a(&(pc_state.get_a() + 0xFA));
+            pc_state.set_a(pc_state.get_a() + 0xFA);
         }
     } else {
         if ((upper >= 0x7) && (upper <= 0xF)) && (f_status.get_h() == 0) && (lower <= 0x9) {
-            pc_state.set_a(&(pc_state.get_a() + 0xA0));
+            pc_state.set_a(pc_state.get_a() + 0xA0);
         } else if ((upper >= 0x6) && (upper <= 0xF)) && (f_status.get_h() == 1) && ((lower >= 0x6) && (lower <= 0xF)) {
             f_status.set_h(0);
-            pc_state.set_a(&(pc_state.get_a() + 0x9A));
+            pc_state.set_a(pc_state.get_a() + 0x9A);
         }
     }
 
@@ -271,14 +271,14 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
 
 pub fn jp_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
               pc_state: &mut pc_state::PcState) -> () {
-    pc_state.set_pc(&memory.read16(pc_state.get_pc() + 1));
+    pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
     clock.increment(10);
 }
 
 //  LD dd, nn, Load a 16-bit register with the value 'nn'
 pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
               pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
-    r16_reg.set(&memory.read16(pc_reg.get() +1)); 
+    r16_reg.set(memory.read16(pc_reg.get() +1)); 
 
     pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(10);
@@ -291,6 +291,13 @@ pub fn ld_mem_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
     memory.write(address_reg.get(), r);
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(7);
+}
+
+// LD r,r
+pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, src: u8, pc_state: &mut pc_state::PcState, mut dst: F) -> () {
+    dst(pc_state, src);
+    pc_state.increment_pc(1);
+    clock.increment(4);
 }
 
 // class Instruction(object):
