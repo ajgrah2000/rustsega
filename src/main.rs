@@ -29,14 +29,12 @@ fn main() {
 
         memory.set_cartridge(cartridge);
         let mut core = sega::cpu::core::Core::new(clock, memory, pc_state, ports, interuptor);
+
         let debug = true;
 
-        core.step(debug);
-        core.step(debug);
-        core.step(debug);
-        core.step(debug);
-        core.step(debug);
-        core.step(debug);
+        for _i in 0..10 {
+            core.step(debug);
+        }
 
         println!("Finished.");
     }

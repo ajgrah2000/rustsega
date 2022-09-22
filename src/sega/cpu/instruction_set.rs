@@ -1,4 +1,6 @@
 use super::pc_state;
+use super::super::memory::memory;
+use super::super::ports;
 use super::super::clocks;
 use super::flagtables;
 
@@ -6,6 +8,16 @@ use super::flagtables;
 pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     pc_state.increment_pc(1);
     clock.increment(4);
+}
+
+//0xDB 
+// IN self.pc_state.A, (N)
+pub fn in_a_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
+              pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () {
+
+    pc_state.set_a(&ports.port_read(memory.read(pc_state.get_pc() + 1)));
+    pc_state.increment_pc(2);
+    clock.increment(11);
 }
 
 //0xF3, disable interrupts
@@ -2711,18 +2723,6 @@ fn calculateDAASub(pc_state: &mut pc_state::PcState) {
 //             self.pc_state.PC += 1
 //             cycles+=5;
 //         return cycles
-// 
-// # IN self.pc_state.A, (N)
-// class IN_A_n(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.pc_state.A = self.ports.portRead(self.memory.read(self.pc_state.PC + 1));
-//         self.pc_state.PC += 2;
-//         return  11;
 // 
 // # Call C, nn
 // class CALL_C_nn(Instruction):

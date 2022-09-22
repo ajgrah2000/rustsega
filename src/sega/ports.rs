@@ -47,11 +47,11 @@ impl Ports {
         self.devices[port_address as usize] = port;
     }
 
-    fn port_read(&mut self, port_address: u8) -> u8 {
+    pub fn port_read(&mut self, port_address: u8) -> u8 {
         self.devices[port_address as usize].read()
     }
 
-    fn port_write(&mut self, port_address: u8, value:u8) -> () {
+    pub fn port_write(&mut self, port_address: u8, value:u8) -> () {
         self.devices[port_address as usize].write(value)
     }
 
