@@ -482,9 +482,10 @@ impl Instruction {
             }
 
             0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.ix_reg);}
-
+            0x21 => { extended_instruction_set::ld_i_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
 
             _ => {panic!("Extended(0xDD) Opcode not implemented: {:x}", op_code); }
+
 //            0x09 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_bc,15,2);}
 //            0x19 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_de,15,2);}
 //            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
@@ -492,7 +493,6 @@ impl Instruction {
 //            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
 //            0x39 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_sp,15,2);}
 //
-//            0x21 => { extended_instruction_set::LD_I_nn(clock, memory, pc_state, self._reg_wrapper_ix);}
 //            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
 //            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
 
@@ -538,8 +538,10 @@ impl Instruction {
             }
 
             0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.iy_reg);}
+            0x21 => { extended_instruction_set::ld_i_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
 
              _ => {println!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
+
 //            0x09 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_bc,15,2);}}
 //            0x19 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_de,15,2);}}
 //            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
@@ -547,7 +549,6 @@ impl Instruction {
 //            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
 //            0x39 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_sp,15,2);}}
 //
-//            0x21 => { extended_instruction_set::LD_I_nn(clock, memory, pc_state, self._reg_wrapper_iy);}
 //            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
 //            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
 //
