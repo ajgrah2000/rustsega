@@ -63,9 +63,10 @@ pub struct PcState {
         shadow_hl_reg: Reg16,
         shadow_af_reg: FlagReg16,
 
-        r: u8, // TODO: Check, not sure if this is a 'real' register, used for random?
-        iff1: u8,
-        iff2: u8,
+        r: u8, // Memory refresh register, lower 7 bits increment after each instruction fetch. 8-th bit only set by LD R,A
+        i: u8, // Interrupt register
+        iff1: bool,
+        iff2: bool,
         im: u8,
 }
 
@@ -166,9 +167,10 @@ impl PcState {
             shadow_hl_reg: Reg16::new(),
             shadow_af_reg: FlagReg16::new(),
 
-            r: 0, // TODO: Check, not sure if this is a 'real' register, used for random?
-            iff1: 0,
-            iff2: 0,
+            r: 0,
+            i: 0,
+            iff1: false,
+            iff2: false,
             im: 0,
         }
     }
@@ -213,8 +215,9 @@ impl PcState {
     pub fn get_af_ref(&mut self) -> &mut FlagReg16 {&mut self.af_reg}
 
     pub fn get_r   (&self) -> u8 {self.r}
-    pub fn get_iff1(&self) -> u8 {self.iff1}
-    pub fn get_iff2(&self) -> u8 {self.iff2}
+    pub fn get_i   (&self) -> u8 {self.i}
+    pub fn get_iff1(&self) -> bool {self.iff1}
+    pub fn get_iff2(&self) -> bool {self.iff2}
     pub fn get_im  (&self) -> u8 {self.im}
 
     pub fn set_b(&mut self, input: u8) -> () {self.bc_reg.high = input;}
@@ -248,8 +251,9 @@ impl PcState {
     pub fn set_iy(&mut self, input: u16) -> () {self.iy_reg.set(input);}
 
     pub fn set_r   (&mut self, input: u8) -> () {self.r    = input;}
-    pub fn set_iff1(&mut self, input: u8) -> () {self.iff1 = input;}
-    pub fn set_iff2(&mut self, input: u8) -> () {self.iff2 = input;}
+    pub fn set_i   (&mut self, input: u8) -> () {self.i    = input;}
+    pub fn set_iff1(&mut self, input: bool) -> () {self.iff1 = input;}
+    pub fn set_iff2(&mut self, input: bool) -> () {self.iff2 = input;}
     pub fn set_im  (&mut self, input: u8) -> () {self.im   = input;}
 
     // Additional utility functions, intended to simplify some of the calls.

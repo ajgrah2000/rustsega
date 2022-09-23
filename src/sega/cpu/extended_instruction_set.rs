@@ -18,8 +18,9 @@ use super::status_flags;
 /* Extended Load Instructions                                                        */
 /*************************************************************************************/
 
-// LD (IX+d), r, LD (IY+d), 
-//
+// LD (IX+d), r; LD (IY+d), 
+// op code:  0xDD, 0b01110rrr, 0bdddddddd
+// op code:  0xFD, 0b01110rrr, 0bdddddddd
 // pub fn ld_iy_d_r
 // pub fn ld_ix_d_r
 pub fn ld_i_d_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &dyn pc_state::Reg16RW) -> () {
@@ -28,10 +29,9 @@ pub fn ld_i_d_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
     clock.increment(19);
 }
 
-
 // LD I, nn
 // LD IX, nn; LD IY, nn
-pub fn ld_i_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
     i16_reg.set(memory.read16(pc_reg.get() + 2));
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(20);
@@ -40,11 +40,94 @@ pub fn ld_i_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r
 // LD I, (nn)
 // LD IX, (nn); LD IY, (nn)
 // was ld_i__nn
-pub fn ld_i_mem_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_mem_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
     i16_reg.set(memory.read16(memory.read16(pc_reg.get()+2)));
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(20);
 }
+
+// LD (nn), HL (Extended)
+// same as ld_nn_hl, but part of the extended group?
+// pub fn ld_nn_hl_extended
+// pub fn ld_nn_hl
+// pub fn ld_nn_I
+pub fn ld_mem_nn_reg16(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, reg16: &pc_state::Reg16) -> () {
+    memory.write(memory.read16(pc_reg.get()+2),   reg16.low);
+    memory.write(memory.read16(pc_reg.get()+2)+1, reg16.high);
+
+    pc_state::PcState::increment_reg(pc_reg, 4);
+    clock.increment(20);
+}
+
+// LD dd, (nn)
+// 0b00dd0001 -> BC 00, DE 01, HL 10, SP 11
+// 0bnnnnnnnn
+// 0bnnnnnnnn
+pub fn ld_dd_mem_nn<F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, mut reg16: F, pc_state: &mut pc_state::PcState) -> () {
+    reg16(pc_state, memory.read16(memory.read16(pc_state.get_pc()+2)));
+
+    pc_state.increment_pc(4);
+    clock.increment(20);
+}
+
+// LD (IX+d), n; LD (IY+d), n
+pub fn ld_i_d_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+    let tmp16 = i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16);
+    memory.write(tmp16, memory.read(pc_reg.get()+3));
+    pc_state::PcState::increment_reg(pc_reg, 4);
+    clock.increment(19);
+}
+
+// LD r, (IY+d); LD r, (IY+d);
+// 0xDD, 0b01rrr110
+// 0xFD, 0b01rrr110
+pub fn ld_r_i_d<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, i16_value: u16, mut dst_fn: F) -> () {
+    dst_fn(pc_state, memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)));
+    pc_state.increment_pc(3);
+    clock.increment(16);
+}
+
+// LD A, R
+pub fn ld_a_r(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+    // Treat 'r' as relatively random (just connect to cycles) in the lower 7 bits.  Keep the highest bit.
+    pc_state.set_r(((clock.cycles >> 2) & 0x7F) as u8 | (pc_state.get_r() & 0x80));
+    pc_state.set_a(pc_state.get_r());
+    let mut f_status = pc_state.get_f();
+    status_flags::accumulator_flags(&mut f_status, pc_state.get_a(), pc_state.get_iff2());
+    pc_state.set_f(f_status);
+
+    pc_state.increment_pc(2);
+    clock.increment(9);
+}
+
+// LD A, I
+pub fn ld_a_i(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+    pc_state.set_a(pc_state.get_i());
+    let mut f_status = pc_state.get_f();
+    status_flags::accumulator_flags(&mut f_status, pc_state.get_a(), pc_state.get_iff2());
+    pc_state.set_f(f_status);
+
+    pc_state.increment_pc(2);
+    clock.increment(9);
+}
+
+// LD R, A
+pub fn ld_r_a(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+    pc_state.set_r(pc_state.get_a());
+    pc_state.increment_pc(2);
+    clock.increment(9);
+}
+
+// LD I, A
+pub fn ld_i_a(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+    pc_state.set_i(pc_state.get_a());
+    pc_state.increment_pc(2);
+    clock.increment(9);
+}
+
+///////////////////////////////////////////////////////////////////////
+//  BIT instructions
+///////////////////////////////////////////////////////////////////////
 
 // BIT b, r
 pub fn bit_b_r(clock: &mut clocks::Clock, bit_pos: u8,  r: u8, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16) -> () {
@@ -60,6 +143,35 @@ pub fn bit_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
     let mut f_status = af_reg.get_flags();
     status_flags::set_bit_test_flags(memory.read(addr_reg.get()), bit_pos, &mut f_status);
     af_reg.set_flags(&f_status);
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(12);
+}
+
+pub fn set_b_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, bit_pos:u8, pc_state: &mut pc_state::PcState, mut dst_fn: F, original_value: u8) -> () {
+    dst_fn(pc_state, original_value | (0x1 << bit_pos));
+    pc_state.increment_pc(2);
+    clock.increment(8);
+}
+
+// SET b, (HL) 
+pub fn set_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, addr_reg: & dyn pc_state::Reg16RW) -> () {
+    memory.write(addr_reg.get(), memory.read(addr_reg.get()) | (0x1 << bit_pos));
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(12);
+}
+
+// RES b, r
+pub fn res_b_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, bit_pos:u8, pc_state: &mut pc_state::PcState, mut dst_fn: F, original_value: u8) -> () {
+    dst_fn(pc_state, original_value & !(0x1 << bit_pos));
+    pc_state.increment_pc(2);
+    clock.increment(8);
+}
+
+// RES b, (HL) 
+pub fn res_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, addr_reg: & dyn pc_state::Reg16RW) -> () {
+    memory.write(addr_reg.get(), memory.read(addr_reg.get()) & !(0x1 << bit_pos));
+
     pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(12);
 }
@@ -96,12 +208,17 @@ pub fn bit_res_set_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryA
     clock.increment(23);
 }
 
-pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16, i16_reg: & dyn pc_state::Reg16RW) -> () {
-//    let mut f_status = af_reg.get_flags();
-//    status_flags::set_bit_test_flags(memory.read(addr_reg.get()), bit_pos, &mut f_status);
-//    pc_state::PcState::increment_reg(pc_reg, 2);
-//    clock.increment(12);
+///////////////////////////////////////////////////////////////////////
+//  Jump instructions
+///////////////////////////////////////////////////////////////////////
+
+//  JP (IX), JP (IY)
+// Load PC with IX, IY, to jump to that location.
+pub fn jp_i(clock: &mut clocks::Clock, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &dyn pc_state::Reg16RW) -> () {
+    pc_reg.set(i16_reg.get()); 
+    clock.increment(8);
 }
+
 
 
 // # Addition instructions
@@ -177,57 +294,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //             self.pc_state.A = 0
 //             self.pc_state.PC += 1
 //             return 4;
-// 
-// # RES b, r
-// class RES_b_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.PC+1)
-//         self.dst.set(int(self.dst) & ~(0x1 << ((tmp8 >> 3) & 7)));
-//         self.pc_state.PC += 2;
-//         return 8;
-// 
-// # RES b, HL
-// class RES_b_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.PC+1)
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) & ~(0x1 << ((tmp8 >> 3) & 7)));
-//         self.pc_state.PC += 2;
-//         return 12;
-// 
-// # SET b, r
-// class SET_b_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.PC+1)
-//         self.dst.set(int(self.dst) | (0x1 << ((tmp8 >> 3) & 7)));
-//         self.pc_state.PC += 2;
-//         return 8;
-// 
-// # SET b, HL
-// class SET_b_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.PC+1)
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) | (0x1 << ((tmp8 >> 3) & 7)));
-//         self.pc_state.PC += 2;
-//         return 12;
-// 
 // 
 // class RLCA(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -471,79 +537,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //         self.pc_state.PC += 2;
 //         return 15;
 // 
-// class InstructionExec(object):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-// # LD (nn), self.I_reg
-// class LD_nn_I(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2), self.I_reg.get_low())
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2)+1, self.I_reg.get_high())
-//         self.pc_state.PC += 4
-//     
-//         return 20
-//     
-// # LD self.I_reg, (nn)
-// class LD_I__nn_(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.I_reg.set(self.memory.read16(self.memory.read16(self.pc_state.PC+2)))
-//         self.pc_state.PC += 4
-//     
-//         return 20
-//     
-// # LD (self.I_reg + d), n
-// class LD_I_d_n(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp16 = self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))
-//         self.memory.write(tmp16, self.memory.read(self.pc_state.PC+3))
-//         self.pc_state.PC += 4
-//         return  19
-//     
-// # LD r, (self.I_reg+e)
-// class LD_r_I_e(Instruction):
-//     def __init__(self, memory, pc_state, I_reg, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-//         self.dst = dst
-// 
-//     def execute(self):
-//         self.dst.set(self.memory.read(self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))))
-//                                         
-//         self.pc_state.PC = self.pc_state.PC + 3
-//         return  19
-//     
-// # LD (self.I_reg+d), r
-// class LD_I_d_r(Instruction):
-//     def __init__(self, memory, pc_state, I_reg, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-//         self.src = src
-// 
-//     def execute(self):
-//                           
-//         self.memory.write(self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2)), self.src.get()) 
-//         self.pc_state.PC += 3
-//         return  19
-//     
 // # self.pc_state.ADD self.pc_state.A,(self.I_reg+d)
 // class ADDA_I_d(Instruction):
 //     def __init__(self, memory, pc_state, I_reg):
@@ -699,18 +692,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //     
 //         return 15
 //     
-// # Don't know how many self.clocks.cycles
-// # LD self.pc_state.PC, self.I_reg
-// class LD_PC_I(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.pc_state.PC = self.I_reg.get()
-//         return 6
-// 
 // # IN r, (C)
 // class IN_r_C(Instruction):
 //     def __init__(self, memory, pc_state, ports, reg):
@@ -751,18 +732,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //         self.pc_state.PC += 2;
 //         return  15;
 //     
-// # LD (nn), self.pc_state.BC
-// class LD_nn_BC(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2), self.pc_state.C);
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2)+1, self.pc_state.B);
-//         self.pc_state.PC += 4;
-//     
-//         return  20;
 //     
 // # NEG
 // class NEG(Instruction):
@@ -776,29 +745,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //         self.pc_state.A = -self.pc_state.A;
 //         self.pc_state.PC += 2;
 //         return 8;
-//     
-// # LD I, self.pc_state.A
-// class LD_I_A(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.I = self.pc_state.A;
-//         self.pc_state.PC += 2;
-//         return  9;
-//     
-// # Load 16-bit self.pc_state.BC register
-// # LD self.pc_state.BC, (nn)
-// class LD_BC_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.BC = self.memory.read16(self.memory.read16(self.pc_state.PC+2)); 
-//         self.pc_state.PC += 4;
-//         return  20;
 //     
 // # Fself.pc_state.IXME, should check, since there is only one
 // # interupting device, this is the same as normal ret
@@ -816,75 +762,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //     
 //         return  14;
 //                 
-// # LD (nn), self.pc_state.DE
-// class LD_nn_DE(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2), self.pc_state.E);
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2)+1, self.pc_state.D);
-//         self.pc_state.PC += 4;
-//     
-//         return  20;
-//     
-// # LD self.pc_state.A, I
-// class LD_A_I(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.I;
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.PV = self.pc_state.IFF2;
-//         self.pc_state.F.Fstatus.S = (self.pc_state.A & 0x80) >> 7;
-//         if (self.pc_state.A == 0):
-//             self.pc_state.F.Fstatus.Z = 1
-//         else:
-//             self.pc_state.F.Fstatus.Z = 0
-//     
-//         self.pc_state.PC += 2;
-//         return  9;
-//     
-// # LD self.pc_state.DE, (nn)    
-// class LD_DE_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.DE = self.memory.read16(self.memory.read16(self.pc_state.PC+2));
-//         self.pc_state.PC += 4;
-//         return  20;
-//     
-// # Fself.pc_state.IXME, not sure about this
-// # LD self.pc_state.A, R
-// class LD_A_R(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         # HMM??? Random???
-//         self.pc_state.R =  (self.pc_state.R & 0x80) | ((self.pc_state.R + 1) & 0x7F);
-//         self.pc_state.A = self.pc_state.R;
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.PV = self.pc_state.IFF2;
-//         self.pc_state.F.Fstatus.S = (self.pc_state.A & 0x80) >> 7;
-//         if (self.pc_state.A == 0):
-//             self.pc_state.F.Fstatus.Z = 1
-//         else:
-//             self.pc_state.F.Fstatus.Z = 0
-//     
-//         self.pc_state.PC += 2;
-//         return  9;
-//     
 // # Fself.pc_state.IXME, can't find existance of this instruction
 // # RRD, wacky instruction
 // class RRD(Instruction):
@@ -919,44 +796,6 @@ pub fn bit_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 //         self.pc_state.HL = add16c(self.pc_state, self.pc_state.HL, int(self.reg), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 15;
-//     
-// # Fself.pc_state.IXME, not sure about the existance of this instruction
-// # LD self.pc_state.HL, (nn)
-// class LD_HL_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.HL = self.memory.read16(self.memory.read16(self.pc_state.PC+2));
-//         self.pc_state.PC += 4;
-//     
-//         return  20;
-//     
-// # LD (nn), self.pc_state.SP
-// class LD_nn_SP(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2), self.pc_state.SPLow);
-//         self.memory.write(self.memory.read16(self.pc_state.PC+2)+1, self.pc_state.SPHigh);
-//         self.pc_state.PC += 4;
-//     
-//         return  6;
-//     
-// # Load 16-bit self.pc_state.BC register
-// # LD self.pc_state.SP, (nn)
-// class LD_SP_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.SP = self.memory.read16(self.memory.read16(self.pc_state.PC+2)); 
-//         self.pc_state.PC += 4;
-//         return  20;
 //     
 // # LDI
 // class LDI(Instruction):

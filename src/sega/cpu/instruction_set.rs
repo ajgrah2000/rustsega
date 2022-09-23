@@ -22,8 +22,8 @@ pub fn in_a_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 
 //0xF3, disable interrupts
 pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
-    pc_state.set_iff1(0);
-    pc_state.set_iff2(0);
+    pc_state.set_iff1(false);
+    pc_state.set_iff2(false);
     pc_state.increment_pc(1);
     clock.increment(4);
 }
@@ -500,19 +500,6 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
     clock.increment(20);
 }
 
-// LD (nn), HL (Extended)
-// same as ld_nn_hl, but part of the extended group?
-// pub fn ld_nn_hl_extended
-// pub fn ld_nn_hl
-// pub fn ld_nn_I
-pub fn ld_mem_nn_reg16(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, reg16: &pc_state::Reg16) -> () {
-    memory.write(memory.read16(pc_state.get_pc()+2), reg16.low);
-    memory.write(memory.read16(pc_state.get_pc()+2)+1, reg16.high);
-
-    pc_state.increment_pc(4);
-    clock.increment(20);
-}
-
 
 ////////////////////////////////////////////////////
 // END Rust
@@ -763,19 +750,6 @@ pub fn ld_mem_nn_reg16(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbs
 //         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.PC += 1
 //         return 4;
-// 
-// # LD (nn), self.pc_state.HL
-// class LD__nn_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.memory.read16(self.pc_state.PC+1), self.pc_state.L);
-//         self.memory.write(self.memory.read16(self.pc_state.PC+1)+1, self.pc_state.H);
-//         self.pc_state.PC += 3;
-// 
-//         return  16;
 // 
 // # Really need to put this into a table
 // class DAA(Instruction):

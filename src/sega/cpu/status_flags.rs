@@ -161,7 +161,20 @@ pub fn calculate_inc_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     }
 }
 
-// self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
+pub fn accumulator_flags(status: &mut pc_state::PcStatusFlagFields, accumulator: u8, iff2: bool) {
+    // Used by LD A, I; LD A, R
+      status.set_n(0);
+      status.set_h(0);
+      status.set_pv(iff2 as u8);
+      status.set_s((accumulator & 0x80) >> 7);
+      if accumulator == 0 {
+          status.set_z(1);
+      } else {
+          status.set_z(0);
+      }
+}
+
+// Add two 8 bit ints plus the carry bit, and set flags accordingly
 pub fn set_bit_test_flags(r: u8, bit_pos: u8, f_status: &mut pc_state::PcStatusFlagFields) -> () {
     f_status.set_z((r >> (bit_pos & 7)) ^ 0x1);
     f_status.set_pv(calculate_parity(r) as u8); // Documented as 'unknown', not sure if/where this is needed.

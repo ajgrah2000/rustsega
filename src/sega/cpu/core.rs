@@ -34,7 +34,7 @@ impl Core {
         }
     }
     fn interupt(&mut self) -> () {
-        if self.pc_state.get_iff1() == 1 {
+        if self.pc_state.get_iff1() {
             if self.pc_state.get_im() == 1 {
                 self.pc_state.increment_sp(-1);
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_high());
@@ -43,7 +43,7 @@ impl Core {
                 self.pc_state.set_pc(Core::IRQIM1ADDR);
 
                 // Disable maskable interupts
-                self.pc_state.set_iff1(0);
+                self.pc_state.set_iff1(false);
             } else {
                 // TODO: Fix error messages/handling.
                 println!("interupt mode not supported");

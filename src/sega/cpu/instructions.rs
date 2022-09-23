@@ -350,95 +350,105 @@ impl Instruction {
                     let bit_pos = (n >> 3) & 0x7;
                     extended_instruction_set::bit_b_mem(clock, memory, bit_pos, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);
                 }
-//        for extra in [0x0, 0x8, 0x10, 0x18, 0x20, 0x28, 0x30, 0x38]:
-//            self.instruction_cb_lookup[0x80 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_b); # RES r, cpu_state->B
-//            self.instruction_cb_lookup[0x81 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_c); # RES r, cpu_state->C
-//            self.instruction_cb_lookup[0x82 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_d); # RES r, cpu_state->D
-//            self.instruction_cb_lookup[0x83 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_e); # RES r, cpu_state->E
-//            self.instruction_cb_lookup[0x84 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_h); # RES r, cpu_state->H
-//            self.instruction_cb_lookup[0x85 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_l); # RES r, cpu_state->L
-//            self.instruction_cb_lookup[0x87 + extra] = instructions.RES_b_r(memory, pc_state, self._reg_wrapper_a); # RES r, cpu_state->A
-//            self.instruction_cb_lookup[0x86 + extra] = instructions.RES_b_HL(memory, pc_state); # RES b, cpu_state->HL
-//
-//            self.instruction_cb_lookup[0xC0 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_b); # SET r, cpu_state->B
-//            self.instruction_cb_lookup[0xC1 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_c); # SET r, cpu_state->C
-//            self.instruction_cb_lookup[0xC2 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_d); # SET r, cpu_state->D
-//            self.instruction_cb_lookup[0xC3 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_e); # SET r, cpu_state->E
-//            self.instruction_cb_lookup[0xC4 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_h); # SET r, cpu_state->H
-//            self.instruction_cb_lookup[0xC5 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_l); # SET r, cpu_state->L
-//            self.instruction_cb_lookup[0xC7 + extra] = instructions.SET_b_r(memory, pc_state, self._reg_wrapper_a); # SET r, cpu_state->A
-//            self.instruction_cb_lookup[0xC6 + extra] = instructions.SET_b_HL(memory, pc_state); # SET b, cpu_state->HL
+
+            // SET b, r
+            // 0xCB, 0b11bbbrrr
+            n if (n & 0b11000000 == 0b11000000) && (n & 0b111 != 0b110) => {
+                    let bit_pos = (n >> 3) & 0x7;
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::set_b_r(clock, bit_pos, pc_state, dst_fn, current_r);
+                }
+            n if (n & 0b11000110 == 0b11000110) => {
+                    let bit_pos = (n >> 3) & 0x7;
+                    extended_instruction_set::set_b_mem(clock, memory, bit_pos, &mut pc_state.pc_reg, &pc_state.hl_reg);
+                }
+
+            // SET b, r
+            // 0xCB, 0b10bbbrrr
+            n if (n & 0b11000000 == 0b10000000) && (n & 0b111 != 0b110) => {
+                    let bit_pos = (n >> 3) & 0x7;
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::res_b_r(clock, bit_pos, pc_state, dst_fn, current_r);
+                }
+            n if (n & 0b11000110 == 0b10000110) => {
+                    let bit_pos = (n >> 3) & 0x7;
+                    extended_instruction_set::res_b_mem(clock, memory, bit_pos, &mut pc_state.pc_reg, &pc_state.hl_reg);
+                }
 //
 //        # Non-masked op codes
-//        self.instruction_cb_lookup[0x00] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_b); # RLC r, cpu_state->B
-//        self.instruction_cb_lookup[0x01] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_c); # RLC r, cpu_state->C
-//        self.instruction_cb_lookup[0x02] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_d); # RLC r, cpu_state->D
-//        self.instruction_cb_lookup[0x03] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_e); # RLC r, cpu_state->E
-//        self.instruction_cb_lookup[0x04] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_h); # RLC r, cpu_state->H
-//        self.instruction_cb_lookup[0x05] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_l); # RLC r, cpu_state->L
-//        self.instruction_cb_lookup[0x07] = instructions.RLC_r(memory, pc_state, self._reg_wrapper_a); # RLC r, cpu_state->A
-//        self.instruction_cb_lookup[0x06] = instructions.RLC_HL(memory, pc_state); # RLC b, cpu_state->HL
+//        self.instruction_cb_lookup[0x00] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_b); # RLC r, cpu_state->B
+//        self.instruction_cb_lookup[0x01] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_c); # RLC r, cpu_state->C
+//        self.instruction_cb_lookup[0x02] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_d); # RLC r, cpu_state->D
+//        self.instruction_cb_lookup[0x03] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_e); # RLC r, cpu_state->E
+//        self.instruction_cb_lookup[0x04] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_h); # RLC r, cpu_state->H
+//        self.instruction_cb_lookup[0x05] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_l); # RLC r, cpu_state->L
+//        self.instruction_cb_lookup[0x07] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_a); # RLC r, cpu_state->A
+//        self.instruction_cb_lookup[0x06] = instructions.RLC_HL(clock, memory, pc_state); # RLC b, cpu_state->HL
 //
-//        self.instruction_cb_lookup[0x08] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_b); # RRC r, cpu_state->B
-//        self.instruction_cb_lookup[0x09] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_c); # RRC r, cpu_state->C
-//        self.instruction_cb_lookup[0x0A] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_d); # RRC r, cpu_state->D
-//        self.instruction_cb_lookup[0x0B] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_e); # RRC r, cpu_state->E
-//        self.instruction_cb_lookup[0x0C] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_h); # RRC r, cpu_state->H
-//        self.instruction_cb_lookup[0x0D] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_l); # RRC r, cpu_state->L
-//        self.instruction_cb_lookup[0x0F] = instructions.RRC_r(memory, pc_state, self._reg_wrapper_a); # RRC r, cpu_state->A
-//        self.instruction_cb_lookup[0x0E] = instructions.RRC_HL(memory, pc_state); # RRC b, cpu_state->HL
+//        self.instruction_cb_lookup[0x08] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_b); # RRC r, cpu_state->B
+//        self.instruction_cb_lookup[0x09] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_c); # RRC r, cpu_state->C
+//        self.instruction_cb_lookup[0x0A] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_d); # RRC r, cpu_state->D
+//        self.instruction_cb_lookup[0x0B] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_e); # RRC r, cpu_state->E
+//        self.instruction_cb_lookup[0x0C] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_h); # RRC r, cpu_state->H
+//        self.instruction_cb_lookup[0x0D] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_l); # RRC r, cpu_state->L
+//        self.instruction_cb_lookup[0x0F] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_a); # RRC r, cpu_state->A
+//        self.instruction_cb_lookup[0x0E] = instructions.RRC_HL(clock, memory, pc_state); # RRC b, cpu_state->HL
 //
-//        self.instruction_cb_lookup[0x10] = instructions.RL_r(memory, pc_state, self._reg_wrapper_b); # RL r, cpu_state->B
-//        self.instruction_cb_lookup[0x11] = instructions.RL_r(memory, pc_state, self._reg_wrapper_c); # RL r, cpu_state->C
-//        self.instruction_cb_lookup[0x12] = instructions.RL_r(memory, pc_state, self._reg_wrapper_d); # RL r, cpu_state->D
-//        self.instruction_cb_lookup[0x13] = instructions.RL_r(memory, pc_state, self._reg_wrapper_e); # RL r, cpu_state->E
-//        self.instruction_cb_lookup[0x14] = instructions.RL_r(memory, pc_state, self._reg_wrapper_h); # RL r, cpu_state->H
-//        self.instruction_cb_lookup[0x15] = instructions.RL_r(memory, pc_state, self._reg_wrapper_l); # RL r, cpu_state->L
-//        self.instruction_cb_lookup[0x17] = instructions.RL_r(memory, pc_state, self._reg_wrapper_a); # RL r, cpu_state->A
+//        self.instruction_cb_lookup[0x10] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_b); # RL r, cpu_state->B
+//        self.instruction_cb_lookup[0x11] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_c); # RL r, cpu_state->C
+//        self.instruction_cb_lookup[0x12] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_d); # RL r, cpu_state->D
+//        self.instruction_cb_lookup[0x13] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_e); # RL r, cpu_state->E
+//        self.instruction_cb_lookup[0x14] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_h); # RL r, cpu_state->H
+//        self.instruction_cb_lookup[0x15] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_l); # RL r, cpu_state->L
+//        self.instruction_cb_lookup[0x17] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_a); # RL r, cpu_state->A
 //
-//        self.instruction_cb_lookup[0x18] = instructions.RR_r(memory, pc_state, self._reg_wrapper_b); # RR r, cpu_state->B
-//        self.instruction_cb_lookup[0x19] = instructions.RR_r(memory, pc_state, self._reg_wrapper_c); # RR r, cpu_state->C
-//        self.instruction_cb_lookup[0x1A] = instructions.RR_r(memory, pc_state, self._reg_wrapper_d); # RR r, cpu_state->D
-//        self.instruction_cb_lookup[0x1B] = instructions.RR_r(memory, pc_state, self._reg_wrapper_e); # RR r, cpu_state->E
-//        self.instruction_cb_lookup[0x1C] = instructions.RR_r(memory, pc_state, self._reg_wrapper_h); # RR r, cpu_state->H
-//        self.instruction_cb_lookup[0x1D] = instructions.RR_r(memory, pc_state, self._reg_wrapper_l); # RR r, cpu_state->L
-//        self.instruction_cb_lookup[0x1F] = instructions.RR_r(memory, pc_state, self._reg_wrapper_a); # RR r, cpu_state->A
+//        self.instruction_cb_lookup[0x18] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_b); # RR r, cpu_state->B
+//        self.instruction_cb_lookup[0x19] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_c); # RR r, cpu_state->C
+//        self.instruction_cb_lookup[0x1A] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_d); # RR r, cpu_state->D
+//        self.instruction_cb_lookup[0x1B] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_e); # RR r, cpu_state->E
+//        self.instruction_cb_lookup[0x1C] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_h); # RR r, cpu_state->H
+//        self.instruction_cb_lookup[0x1D] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_l); # RR r, cpu_state->L
+//        self.instruction_cb_lookup[0x1F] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_a); # RR r, cpu_state->A
 //
-//        self.instruction_cb_lookup[0x20] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_b); # SLA r, cpu_state->B
-//        self.instruction_cb_lookup[0x21] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_c); # SLA r, cpu_state->C
-//        self.instruction_cb_lookup[0x22] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_d); # SLA r, cpu_state->D
-//        self.instruction_cb_lookup[0x23] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_e); # SLA r, cpu_state->E
-//        self.instruction_cb_lookup[0x24] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_h); # SLA r, cpu_state->H
-//        self.instruction_cb_lookup[0x25] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_l); # SLA r, cpu_state->L
-//        self.instruction_cb_lookup[0x27] = instructions.SLA_r(memory, pc_state, self._reg_wrapper_a); # SLA r, cpu_state->A
-//        self.instruction_cb_lookup[0x26] = instructions.SLA_HL(memory, pc_state); # SLA b, cpu_state->HL
+//        self.instruction_cb_lookup[0x20] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_b); # SLA r, cpu_state->B
+//        self.instruction_cb_lookup[0x21] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_c); # SLA r, cpu_state->C
+//        self.instruction_cb_lookup[0x22] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_d); # SLA r, cpu_state->D
+//        self.instruction_cb_lookup[0x23] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_e); # SLA r, cpu_state->E
+//        self.instruction_cb_lookup[0x24] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_h); # SLA r, cpu_state->H
+//        self.instruction_cb_lookup[0x25] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_l); # SLA r, cpu_state->L
+//        self.instruction_cb_lookup[0x27] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_a); # SLA r, cpu_state->A
+//        self.instruction_cb_lookup[0x26] = instructions.SLA_HL(clock, memory, pc_state); # SLA b, cpu_state->HL
 //
-//        self.instruction_cb_lookup[0x28] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_b); # SRA r, cpu_state->B
-//        self.instruction_cb_lookup[0x29] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_c); # SRA r, cpu_state->C
-//        self.instruction_cb_lookup[0x2A] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_d); # SRA r, cpu_state->D
-//        self.instruction_cb_lookup[0x2B] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_e); # SRA r, cpu_state->E
-//        self.instruction_cb_lookup[0x2C] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_h); # SRA r, cpu_state->H
-//        self.instruction_cb_lookup[0x2D] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_l); # SRA r, cpu_state->L
-//        self.instruction_cb_lookup[0x2F] = instructions.SRA_r(memory, pc_state, self._reg_wrapper_a); # SRA r, cpu_state->A
-//        self.instruction_cb_lookup[0x2E] = instructions.SRA_HL(memory, pc_state); # SRA b, cpu_state->HL
+//        self.instruction_cb_lookup[0x28] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_b); # SRA r, cpu_state->B
+//        self.instruction_cb_lookup[0x29] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_c); # SRA r, cpu_state->C
+//        self.instruction_cb_lookup[0x2A] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_d); # SRA r, cpu_state->D
+//        self.instruction_cb_lookup[0x2B] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_e); # SRA r, cpu_state->E
+//        self.instruction_cb_lookup[0x2C] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_h); # SRA r, cpu_state->H
+//        self.instruction_cb_lookup[0x2D] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_l); # SRA r, cpu_state->L
+//        self.instruction_cb_lookup[0x2F] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_a); # SRA r, cpu_state->A
+//        self.instruction_cb_lookup[0x2E] = instructions.SRA_HL(clock, memory, pc_state); # SRA b, cpu_state->HL
 //
-//        self.instruction_cb_lookup[0x30] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_b); # SLL r, cpu_state->B
-//        self.instruction_cb_lookup[0x31] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_c); # SLL r, cpu_state->C
-//        self.instruction_cb_lookup[0x32] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_d); # SLL r, cpu_state->D
-//        self.instruction_cb_lookup[0x33] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_e); # SLL r, cpu_state->E
-//        self.instruction_cb_lookup[0x34] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_h); # SLL r, cpu_state->H
-//        self.instruction_cb_lookup[0x35] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_l); # SLL r, cpu_state->L
-//        self.instruction_cb_lookup[0x37] = instructions.SLL_r(memory, pc_state, self._reg_wrapper_a); # SLL r, cpu_state->A
-//        self.instruction_cb_lookup[0x36] = instructions.SLL_HL(memory, pc_state); # SLL b, cpu_state->HL
+//        self.instruction_cb_lookup[0x30] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_b); # SLL r, cpu_state->B
+//        self.instruction_cb_lookup[0x31] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_c); # SLL r, cpu_state->C
+//        self.instruction_cb_lookup[0x32] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_d); # SLL r, cpu_state->D
+//        self.instruction_cb_lookup[0x33] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_e); # SLL r, cpu_state->E
+//        self.instruction_cb_lookup[0x34] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_h); # SLL r, cpu_state->H
+//        self.instruction_cb_lookup[0x35] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_l); # SLL r, cpu_state->L
+//        self.instruction_cb_lookup[0x37] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_a); # SLL r, cpu_state->A
+//        self.instruction_cb_lookup[0x36] = instructions.SLL_HL(clock, memory, pc_state); # SLL b, cpu_state->HL
 //
-//        self.instruction_cb_lookup[0x38] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_b); # SRL r, cpu_state->B
-//        self.instruction_cb_lookup[0x39] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_c); # SRL r, cpu_state->C
-//        self.instruction_cb_lookup[0x3A] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_d); # SRL r, cpu_state->D
-//        self.instruction_cb_lookup[0x3B] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_e); # SRL r, cpu_state->E
-//        self.instruction_cb_lookup[0x3C] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_h); # SRL r, cpu_state->H
-//        self.instruction_cb_lookup[0x3D] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_l); # SRL r, cpu_state->L
-//        self.instruction_cb_lookup[0x3F] = instructions.SRL_r(memory, pc_state, self._reg_wrapper_a); # SRL r, cpu_state->A
-//        self.instruction_cb_lookup[0x3E] = instructions.SRL_HL(memory, pc_state); # SRA b, cpu_state->HL
+//        self.instruction_cb_lookup[0x38] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_b); # SRL r, cpu_state->B
+//        self.instruction_cb_lookup[0x39] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_c); # SRL r, cpu_state->C
+//        self.instruction_cb_lookup[0x3A] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_d); # SRL r, cpu_state->D
+//        self.instruction_cb_lookup[0x3B] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_e); # SRL r, cpu_state->E
+//        self.instruction_cb_lookup[0x3C] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_h); # SRL r, cpu_state->H
+//        self.instruction_cb_lookup[0x3D] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_l); # SRL r, cpu_state->L
+//        self.instruction_cb_lookup[0x3F] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_a); # SRL r, cpu_state->A
+//        self.instruction_cb_lookup[0x3E] = instructions.SRL_HL(clock, memory, pc_state); # SRA b, cpu_state->HL
             _ => {panic!("Extended(0xCB) Opcode not implemented: {:x}", op_code); }
 
         }
@@ -454,49 +464,50 @@ impl Instruction {
 
         match op_code {
             0xcb => { extended_instruction_set::bit_res_set_b_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.ix_reg);}
+            0x22 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.ix_reg);}
+            0x2A => { extended_instruction_set::ld_i_mem_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
+            0x36 => { extended_instruction_set::ld_i_d_n(clock, memory, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
+
+            n if (n & 0b11000111 == 0b01000110) && ((n >> 3) & 0b111 != 0b110) => {
+                    let reg_index = (n >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::ld_r_i_d(clock, memory, pc_state, pc_state.ix_reg.get(), dst_fn);
+                }
+
+            // LD (IX+d)
+            // op code:  0xDD, 0b01110rrr, 0bdddddddd
+            n if (n & 0b11111000 == 0b01110000) && (n  & 0b111 != 0b110) => {
+                    let reg_index = n & 0x7;
+                    extended_instruction_set::ld_i_d_r(clock, memory, select_8_bit_read_register(pc_state, reg_index), &mut pc_state.pc_reg, &pc_state.ix_reg);
+            }
+
+            0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.ix_reg);}
+
+
             _ => {panic!("Extended(0xDD) Opcode not implemented: {:x}", op_code); }
-//        self.instruction_dd_lookup[0x09] = instructions.ADD16(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_bc,15,2);
-//        self.instruction_dd_lookup[0x19] = instructions.ADD16(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_de,15,2);
-//        self.instruction_dd_lookup[0x23] = instructions.INC_16(memory, pc_state, self._reg_wrapper_ix, 10,2);
-//        self.instruction_dd_lookup[0x29] = instructions.ADD16(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_ix,15,2);
-//        self.instruction_dd_lookup[0x2B] = instructions.DEC_16(memory, pc_state, self._reg_wrapper_ix, 10,2);
-//        self.instruction_dd_lookup[0x39] = instructions.ADD16(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_sp,15,2);
+//            0x09 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_bc,15,2);}
+//            0x19 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_de,15,2);}
+//            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
+//            0x29 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_ix,15,2);}
+//            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
+//            0x39 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_sp,15,2);}
 //
-//        self.instruction_dd_lookup[0x21] = instructions.LD_I_nn(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x22] = instructions.LD_nn_I(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x2A] = instructions.LD_I__nn_(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x34] = instructions.INC_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x35] = instructions.DEC_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x36] = instructions.LD_I_d_n(memory, pc_state, self._reg_wrapper_ix)
+//            0x21 => { extended_instruction_set::LD_I_nn(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+
 //
-//        self.instruction_dd_lookup[0x46] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_b)
-//        self.instruction_dd_lookup[0x4E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_c)
-//        self.instruction_dd_lookup[0x56] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_d)
-//        self.instruction_dd_lookup[0x5E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_e)
-//        self.instruction_dd_lookup[0x66] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_h)
-//        self.instruction_dd_lookup[0x6E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_l)
-//        self.instruction_dd_lookup[0x7E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_a)
+//            0x86 => { extended_instruction_set::ADDA_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0x8E => { extended_instruction_set::ADC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0x96 => { extended_instruction_set::SUB_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xA6 => { extended_instruction_set::AND_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xAE => { extended_instruction_set::XOR_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xB6 => { extended_instruction_set::OR_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xBE => { extended_instruction_set::CP_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
 //
-//        self.instruction_dd_lookup[0x70] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_b)
-//        self.instruction_dd_lookup[0x71] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_c)
-//        self.instruction_dd_lookup[0x72] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_d)
-//        self.instruction_dd_lookup[0x73] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_e)
-//        self.instruction_dd_lookup[0x74] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_h)
-//        self.instruction_dd_lookup[0x75] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_l)
-//        self.instruction_dd_lookup[0x77] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_ix, self._reg_wrapper_a)
-//
-//        self.instruction_dd_lookup[0x86] = instructions.ADDA_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x8E] = instructions.ADC_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0x96] = instructions.SUB_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xA6] = instructions.AND_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xAE] = instructions.XOR_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xB6] = instructions.OR_I_d(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xBE] = instructions.CP_I_d(memory, pc_state, self._reg_wrapper_ix)
-//
-//        self.instruction_dd_lookup[0xE1] = instructions.POP_I(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xE3] = instructions.EX_SP_I(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xE5] = instructions.PUSH_I(memory, pc_state, self._reg_wrapper_ix)
-//        self.instruction_dd_lookup[0xE9] = instructions.LD_PC_I(memory, pc_state, self._reg_wrapper_ix)
+//            0xE1 => { extended_instruction_set::POP_I(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xE3 => { extended_instruction_set::EX_SP_I(clock, memory, pc_state, self._reg_wrapper_ix);}
+//            0xE5 => { extended_instruction_set::PUSH_I(clock, memory, pc_state, self._reg_wrapper_ix);}
         }
     } 
     // Extended instructions
@@ -509,48 +520,49 @@ impl Instruction {
 
         match op_code {
             0xcb => { extended_instruction_set::bit_res_set_b_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.iy_reg);}
+            0x22 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.iy_reg);}
+            0x2A => { extended_instruction_set::ld_i_mem_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
+            0x36 => { extended_instruction_set::ld_i_d_n(clock, memory, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
+
+            n if (n & 0b11000111 == 0b01000110) && ((n >> 3) & 0b111 != 0b110) => {
+                    let reg_index = (n >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::ld_r_i_d(clock, memory, pc_state, pc_state.iy_reg.get(), dst_fn);
+                }
+
+            // LD (IY+d)
+            // op code:  0xFD, 0b01110rrr, 0bdddddddd
+            n if (n & 0b11111000 == 0b01110000) && (n  & 0b111 != 0b110) => {
+                    let reg_index = n & 0x7;
+                    extended_instruction_set::ld_i_d_r(clock, memory, select_8_bit_read_register(pc_state, reg_index), &mut pc_state.pc_reg, &pc_state.iy_reg);
+            }
+
+            0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.iy_reg);}
+
              _ => {println!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
-//        self.instruction_fd_lookup[0x09] = instructions.ADD16(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_bc,15,2);
-//        self.instruction_fd_lookup[0x19] = instructions.ADD16(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_de,15,2);
-//        self.instruction_fd_lookup[0x23] = instructions.INC_16(memory, pc_state, self._reg_wrapper_iy, 10,2);
-//        self.instruction_fd_lookup[0x29] = instructions.ADD16(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_iy,15,2);
-//        self.instruction_fd_lookup[0x2B] = instructions.DEC_16(memory, pc_state, self._reg_wrapper_iy, 10,2);
-//        self.instruction_fd_lookup[0x39] = instructions.ADD16(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_sp,15,2);
+//            0x09 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_bc,15,2);}}
+//            0x19 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_de,15,2);}}
+//            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
+//            0x29 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_iy,15,2);}}
+//            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
+//            0x39 => { extended_instruction_set::ADD16(clock, memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_sp,15,2);}}
 //
-//        self.instruction_fd_lookup[0x21] = instructions.LD_I_nn(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x22] = instructions.LD_nn_I(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x2A] = instructions.LD_I__nn_(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x34] = instructions.INC_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x35] = instructions.DEC_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x36] = instructions.LD_I_d_n(memory, pc_state, self._reg_wrapper_iy)
+//            0x21 => { extended_instruction_set::LD_I_nn(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
 //
-//        self.instruction_fd_lookup[0x46] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_b)
-//        self.instruction_fd_lookup[0x4E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_c)
-//        self.instruction_fd_lookup[0x56] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_d)
-//        self.instruction_fd_lookup[0x5E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_e)
-//        self.instruction_fd_lookup[0x66] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_h)
-//        self.instruction_fd_lookup[0x6E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_l)
-//        self.instruction_fd_lookup[0x7E] = instructions.LD_r_I_e(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_a)
 //
-//        self.instruction_fd_lookup[0x70] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_b)
-//        self.instruction_fd_lookup[0x71] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_c)
-//        self.instruction_fd_lookup[0x72] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_d)
-//        self.instruction_fd_lookup[0x73] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_e)
-//        self.instruction_fd_lookup[0x74] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_h)
-//        self.instruction_fd_lookup[0x75] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_l)
-//        self.instruction_fd_lookup[0x77] = instructions.LD_I_d_r(memory, pc_state, self._reg_wrapper_iy, self._reg_wrapper_a)
 //
-//        self.instruction_fd_lookup[0x86] = instructions.ADDA_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x8E] = instructions.ADC_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0x96] = instructions.SUB_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xA6] = instructions.AND_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xAE] = instructions.XOR_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xB6] = instructions.OR_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xBE] = instructions.CP_I_d(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xE1] = instructions.POP_I(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xE3] = instructions.EX_SP_I(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xE5] = instructions.PUSH_I(memory, pc_state, self._reg_wrapper_iy)
-//        self.instruction_fd_lookup[0xE9] = instructions.LD_PC_I(memory, pc_state, self._reg_wrapper_iy)
+//            0x86 => { extended_instruction_set::ADDA_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0x8E => { extended_instruction_set::ADC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0x96 => { extended_instruction_set::SUB_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xA6 => { extended_instruction_set::AND_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xAE => { extended_instruction_set::XOR_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xB6 => { extended_instruction_set::OR_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xBE => { extended_instruction_set::CP_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xE1 => { extended_instruction_set::POP_I(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xE3 => { extended_instruction_set::EX_SP_I(clock, memory, pc_state, self._reg_wrapper_iy);}
+//            0xE5 => { extended_instruction_set::PUSH_I(clock, memory, pc_state, self._reg_wrapper_iy);}
         }
     } 
     // Extended instructions
@@ -565,55 +577,63 @@ impl Instruction {
         match op_code {
             0x00 => { instruction_set::noop(clock, pc_state);} 
             0x56 => { instruction_set::im_1(clock, pc_state);} 
-//        self.instruction_ed_lookup[0x40] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_b)
-//        self.instruction_ed_lookup[0x48] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_c)
-//        self.instruction_ed_lookup[0x50] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_d)
-//        self.instruction_ed_lookup[0x58] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_e)
-//        self.instruction_ed_lookup[0x60] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_h)
-//        self.instruction_ed_lookup[0x68] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_l)
-//        self.instruction_ed_lookup[0x78] = instructions.IN_r_C(memory, pc_state, ports, self._reg_wrapper_a)
-//
-//        self.instruction_ed_lookup[0x41] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_b)
-//        self.instruction_ed_lookup[0x49] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_c)
-//        self.instruction_ed_lookup[0x51] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_d)
-//        self.instruction_ed_lookup[0x59] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_e)
-//        self.instruction_ed_lookup[0x61] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_h)
-//        self.instruction_ed_lookup[0x69] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_l)
-//        self.instruction_ed_lookup[0x79] = instructions.OUT_C_r(memory, pc_state, ports, self._reg_wrapper_a)
-//
-//        self.instruction_ed_lookup[0x42] = instructions.SBC_HL_r16(memory, pc_state, self._reg_wrapper_bc)
-//        self.instruction_ed_lookup[0x43] = instructions.LD_nn_BC(memory, pc_state)
-//        self.instruction_ed_lookup[0x44] = instructions.NEG(memory, pc_state)
-//        self.instruction_ed_lookup[0x47] = instructions.LD_I_A(memory, pc_state)
-//        self.instruction_ed_lookup[0x4A] = instructions.ADC_HL_r16(memory, pc_state, self._reg_wrapper_bc)
-//        self.instruction_ed_lookup[0x4B] = instructions.LD_BC_nn(memory, pc_state)
-//        self.instruction_ed_lookup[0x4D] = instructions.RETI(memory, pc_state)
-//        self.instruction_ed_lookup[0x52] = instructions.SBC_HL_r16(memory, pc_state, self._reg_wrapper_de)
-//        self.instruction_ed_lookup[0x53] = instructions.LD_nn_DE(memory, pc_state)
-//        self.instruction_ed_lookup[0x56] = instructions.IM_1(memory, pc_state)
-//        self.instruction_ed_lookup[0x57] = instructions.LD_A_I(memory, pc_state)
-//        self.instruction_ed_lookup[0x5A] = instructions.ADC_HL_r16(memory, pc_state, self._reg_wrapper_de)
-//        self.instruction_ed_lookup[0x5B] = instructions.LD_DE_nn(memory, pc_state)
-//        self.instruction_ed_lookup[0x5F] = instructions.LD_A_R(memory, pc_state)
-//        self.instruction_ed_lookup[0x62] = instructions.SBC_HL_r16(memory, pc_state, self._reg_wrapper_hl)
-//        self.instruction_ed_lookup[0x63] = instructions.LD_nn_HL(memory, pc_state)
-//        self.instruction_ed_lookup[0x67] = instructions.RRD(memory, pc_state)
-//        self.instruction_ed_lookup[0x6A] = instructions.ADC_HL_r16(memory, pc_state, self._reg_wrapper_hl)
-//        self.instruction_ed_lookup[0x6B] = instructions.LD_HL_nn(memory, pc_state)
-//        self.instruction_ed_lookup[0x72] = instructions.SBC_HL_r16(memory, pc_state, self._reg_wrapper_sp)
-//        self.instruction_ed_lookup[0x73] = instructions.LD_nn_SP(memory, pc_state)
-//        self.instruction_ed_lookup[0x7A] = instructions.ADC_HL_r16(memory, pc_state, self._reg_wrapper_sp)
-//        self.instruction_ed_lookup[0x7B] = instructions.LD_SP_nn(memory, pc_state)
-//        self.instruction_ed_lookup[0xA0] = instructions.LDI(memory, pc_state)
-//        self.instruction_ed_lookup[0xA1] = instructions.CPI(memory, pc_state)
-//        self.instruction_ed_lookup[0xA2] = instructions.INI(memory, pc_state, ports)
-//        self.instruction_ed_lookup[0xA3] = instructions.OUTI(memory, pc_state, ports)
-//        self.instruction_ed_lookup[0xAB] = instructions.OUTD(memory, pc_state, ports)
-//        self.instruction_ed_lookup[0xB0] = instructions.LDIR(memory, pc_state)
-//        self.instruction_ed_lookup[0xB1] = instructions.CPIR(memory, pc_state)
-//        self.instruction_ed_lookup[0xB3] = instructions.OTIR(memory, pc_state, ports)
-//        self.instruction_ed_lookup[0xB8] = instructions.LDDR(memory, pc_state)
+
+            // 0b00dd0001 -> BC 00, DE 01, HL 10, SP 11
+            n if (n & 0b11001111 == 0b00000001) => {
+                let dd = (n >> 4) & 0x3;
+                extended_instruction_set::ld_dd_mem_nn(clock, memory, get_16_bit_ss_set_function(dd), pc_state);
+            }
+
+            // 0b00dd0001 -> dd -> BC 00, DE 01, HL 10, SP 11
+            0x43 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.bc_reg);}
+            0x53 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.de_reg);}
+            0x63 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.hl_reg);}
+            0x73 => { extended_instruction_set::ld_mem_nn_reg16(clock, memory, &mut pc_state.pc_reg, &pc_state.sp_reg);}
+
+            0x5F => { extended_instruction_set::ld_a_r(clock, pc_state);}
+            0x57 => { extended_instruction_set::ld_a_i(clock, pc_state);}
+            0x47 => { extended_instruction_set::ld_i_a(clock, pc_state);}
+            0x4F => { extended_instruction_set::ld_r_a(clock, pc_state);}
+
             _ => {println!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
+
+//            0x40 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_b);}
+//            0x48 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_c);}
+//            0x50 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_d);}
+//            0x58 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_e);}
+//            0x60 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_h);}
+//            0x68 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_l);}
+//            0x78 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_a);}
+//
+//            0x41 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_b);}
+//            0x49 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_c);}
+//            0x51 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_d);}
+//            0x59 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_e);}
+//            0x61 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_h);}
+//            0x69 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_l);}
+//            0x79 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_a);}
+//
+//            0x42 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
+//            0x44 => { extended_instruction_set::NEG(clock, memory, pc_state);}
+//            0x4A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
+//            0x4D => { extended_instruction_set::RETI(clock, memory, pc_state);}
+//            0x52 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
+//            0x56 => { extended_instruction_set::IM_1(clock, memory, pc_state);}
+//            0x5A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
+//            0x62 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
+//            0x67 => { extended_instruction_set::RRD(clock, memory, pc_state);}
+//            0x6A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
+//            0x72 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
+//            0x7A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
+//            0xA0 => { extended_instruction_set::LDI(clock, memory, pc_state);}
+//            0xA1 => { extended_instruction_set::CPI(clock, memory, pc_state);}
+//            0xA2 => { extended_instruction_set::INI(clock, memory, pc_state, ports);}
+//            0xA3 => { extended_instruction_set::OUTI(clock, memory, pc_state, ports);}
+//            0xAB => { extended_instruction_set::OUTD(clock, memory, pc_state, ports);}
+//            0xB0 => { extended_instruction_set::LDIR(clock, memory, pc_state);}
+//            0xB1 => { extended_instruction_set::CPIR(clock, memory, pc_state);}
+//            0xB3 => { extended_instruction_set::OTIR(clock, memory, pc_state, ports);}
+//            0xB8 => { extended_instruction_set::LDDR(clock, memory, pc_state);}
         }
     } 
 }
