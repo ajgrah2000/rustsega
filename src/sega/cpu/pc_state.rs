@@ -37,12 +37,19 @@ pub struct Reg16 {
     low: u8,
 }
 
+pub struct FlagReg16 {
+    // TODO: I'm sure there's a better way to handle the flag overlay with
+    // 'af'.  This works, can revisit later.
+    reg16: Reg16,
+}
+
+
 pub struct PcState {
 
         // Register overlays
         pub bc_reg: Reg16,
         pub de_reg: Reg16,
-        pub af_reg: Reg16,
+        pub af_reg: FlagReg16,
         pub hl_reg: Reg16,
 
         pub pc_reg: Reg16,
@@ -54,7 +61,7 @@ pub struct PcState {
         shadow_bc_reg: Reg16,
         shadow_de_reg: Reg16,
         shadow_hl_reg: Reg16,
-        shadow_af_reg: Reg16,
+        shadow_af_reg: FlagReg16,
 
         r: u8, // TODO: Check, not sure if this is a 'real' register, used for random?
         iff1: u8,
@@ -87,15 +94,55 @@ impl Reg16 {
         let result = self.low as u16 + ((self.high as u16) << 8);
         result
     }
+}
 
-    // TODO: Scope/constraing this so it only applies to 'AF'
-    pub fn get_flags(&self) -> PcStatusFlagFields {
-        PcStatusFlagFields(self.low)
+pub trait Reg16RW {
+    fn set(&mut self, input: u16) -> ();
+    fn get(&self) -> u16;
+}
+
+impl Reg16RW for Reg16 {
+    fn get(&self) -> u16 {
+        self.get()
     }
 
-    // TODO: Scope/constraing this so it only applies to 'AF'
+    fn set(&mut self, input: u16) -> () {
+        self.set(input)
+    }
+}
+
+
+impl FlagReg16 {
+    fn new() -> Self {
+        Self { 
+            reg16:  Reg16::new(),
+        }
+    }
+
+    pub fn set(&mut self, input: u16) -> () {
+        self.reg16.set(input)
+    }
+    
+    pub fn get(&self) -> u16 {
+        self.reg16.get()
+    }
+
+    pub fn get_flags(&self) -> PcStatusFlagFields {
+        PcStatusFlagFields(self.reg16.low)
+    }
+
     pub fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
-        self.low = flags.0;
+        self.reg16.low = flags.0;
+    }
+}
+
+impl Reg16RW for FlagReg16 {
+    fn get(&self) -> u16 {
+        self.get()
+    }
+
+    fn set(&mut self, input: u16) -> () {
+        self.set(input)
     }
 }
 
@@ -105,7 +152,7 @@ impl PcState {
             // Register overlays
             bc_reg: Reg16::new(),
             de_reg: Reg16::new(),
-            af_reg: Reg16::new(), // 'F' is status flags
+            af_reg: FlagReg16::new(), // 'F' is status flags
             hl_reg: Reg16::new(),
 
             pc_reg: Reg16::new(),
@@ -117,7 +164,7 @@ impl PcState {
             shadow_bc_reg: Reg16::new(),
             shadow_de_reg: Reg16::new(),
             shadow_hl_reg: Reg16::new(),
-            shadow_af_reg: Reg16::new(),
+            shadow_af_reg: FlagReg16::new(),
 
             r: 0, // TODO: Check, not sure if this is a 'real' register, used for random?
             iff1: 0,
@@ -130,8 +177,8 @@ impl PcState {
     pub fn get_c(&self) -> u8 {self.bc_reg.low}
     pub fn get_d(&self) -> u8 {self.de_reg.high}
     pub fn get_e(&self) -> u8 {self.de_reg.low}
-    pub fn get_a(&self) -> u8 {self.af_reg.high}
-    pub fn get_f(&self) -> PcStatusFlagFields {PcStatusFlagFields(self.af_reg.low)}
+    pub fn get_a(&self) -> u8 {self.af_reg.reg16.high}
+    pub fn get_f(&self) -> PcStatusFlagFields {self.af_reg.get_flags()}
     pub fn get_h(&self) -> u8 {self.hl_reg.high}
     pub fn get_l(&self) -> u8 {self.hl_reg.low}
 
@@ -139,13 +186,13 @@ impl PcState {
     pub fn get_c_ref(&mut self) -> &mut u8 {&mut self.bc_reg.low}
     pub fn get_d_ref(&mut self) -> &mut u8 {&mut self.de_reg.high}
     pub fn get_e_ref(&mut self) -> &mut u8 {&mut self.de_reg.low}
-    pub fn get_a_ref(&mut self) -> &mut u8 {&mut self.af_reg.high}
+    pub fn get_a_ref(&mut self) -> &mut u8 {&mut self.af_reg.reg16.high}
     pub fn get_h_ref(&mut self) -> &mut u8 {&mut self.hl_reg.high}
     pub fn get_l_ref(&mut self) -> &mut u8 {&mut self.hl_reg.low}
 
     pub fn get_bc(&self) -> u16 {self.bc_reg.get()}
     pub fn get_de(&self) -> u16 {self.de_reg.get()}
-    pub fn get_af(&self) -> u16 {self.af_reg.get()}
+    pub fn get_af(&self) -> u16 {self.af_reg.reg16.get()}
     pub fn get_hl(&self) -> u16 {self.hl_reg.get()}
 
     pub fn get_pc_high(&self) -> u8 {self.pc_reg.high}
@@ -163,6 +210,7 @@ impl PcState {
     pub fn get_iy(&self) -> u16 {self.iy_reg.get()}
 
     pub fn get_pc_ref(&mut self) -> &mut Reg16 {&mut self.pc_reg}
+    pub fn get_af_ref(&mut self) -> &mut FlagReg16 {&mut self.af_reg}
 
     pub fn get_r   (&self) -> u8 {self.r}
     pub fn get_iff1(&self) -> u8 {self.iff1}
@@ -173,16 +221,16 @@ impl PcState {
     pub fn set_c(&mut self, input: u8) -> () {self.bc_reg.low  = input;}
     pub fn set_d(&mut self, input: u8) -> () {self.de_reg.high = input;}
     pub fn set_e(&mut self, input: u8) -> () {self.de_reg.low  = input;}
-    pub fn set_a(&mut self, input: u8) -> () {self.af_reg.high = input;}
+    pub fn set_a(&mut self, input: u8) -> () {self.af_reg.reg16.high = input;}
     // TODO: Improve setting of flags, this probably won't be ideal, but it
     // will ensure 'af' and 'f' are always in sync.
-    pub fn set_f(&mut self, input: PcStatusFlagFields) -> () {self.af_reg.low  = input.0;}
+    pub fn set_f(&mut self, input: PcStatusFlagFields) -> () {self.af_reg.set_flags(&input);}
     pub fn set_h(&mut self, input: u8) -> () {self.hl_reg.high = input;}
     pub fn set_l(&mut self, input: u8) -> () {self.hl_reg.low  = input;}
 
     pub fn set_bc(&mut self, input: u16) -> () {self.bc_reg.set(input);}
     pub fn set_de(&mut self, input: u16) -> () {self.de_reg.set(input);}
-    pub fn set_af(&mut self, input: u16) -> () {self.af_reg.set(input);}
+    pub fn set_af(&mut self, input: u16) -> () {self.af_reg.reg16.set(input);}
     pub fn set_hl(&mut self, input: u16) -> () {self.hl_reg.set(input);}
 
     pub fn set_pc_high(&mut self, input: u8) -> () {self.pc_reg.high = input;}
@@ -205,7 +253,7 @@ impl PcState {
     pub fn set_im  (&mut self, input: u8) -> () {self.im   = input;}
 
     // Additional utility functions, intended to simplify some of the calls.
-    pub fn increment_reg(register: &mut Reg16, increment: i8) -> () {
+    pub fn increment_reg(register: &mut dyn Reg16RW, increment: i8) -> () {
         let update_value = ((register.get() as i16) + (increment as i16)) as u16;
         register.set(update_value);
     }

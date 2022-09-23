@@ -40,47 +40,55 @@ pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
 
-fn add8(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> u8 {
+fn add8(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> u8 {
     // Just call the add c function.
-    add8c(pc_state, a, b, false)
+    add8c(a, b, false, af_reg)
 }
 
-fn add8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
-    let mut f_status = pc_state.get_f();
+fn add8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
+    let mut f_status = af_reg.get_flags();
+    let result = status_flags::u8_carry(a, b, c, &mut f_status);
     f_status.set_n(0); // Clear N to indicate add
-    pc_state.set_f(f_status);
-    status_flags::u8_carry(pc_state, a, b, c) 
+    af_reg.set_flags(&f_status);
+
+    result
 }
 
-fn cp_flags(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> () {
+fn cp_flags(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> () {
     // CP flags calculated set the same as for subtaction, but the result is ignored.
-    sub8c(pc_state, a, b, false);
+    sub8c(a, b, false, af_reg);
 }
 
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
-fn sub8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
-    let mut f_status = pc_state.get_f();
+fn sub8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
+    let mut f_status = af_reg.get_flags();
+    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
+    let result = status_flags::u8_carry(a, !b, !c, &mut f_status);
     f_status.set_n(1); // Set N to indicate subtract
-    pc_state.set_f(f_status);
+    af_reg.set_flags(&f_status);
 
-    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    status_flags::u8_carry(pc_state, a, !b, !c)
+    result
+
 }
 
 
-fn add16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
-    let mut f_status = pc_state.get_f();
+fn add16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
+    let mut f_status = af_reg.get_flags();
+    let result = status_flags::u16_carry(a, b, c, &mut f_status);
     f_status.set_n(0);
-    pc_state.set_f(f_status);
-    status_flags::u16_carry(pc_state, a, b, c)
+    af_reg.set_flags(&f_status);
+
+    result
 }
 
-fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
-    let mut f_status = pc_state.get_f();
-    f_status.set_n(1);
-    pc_state.set_f(f_status);
+fn sub16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
+    let mut f_status = af_reg.get_flags();
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    status_flags::u16_carry(pc_state, a, !b, !c)
+    let result = status_flags::u16_carry(a, !b, !c, &mut f_status);
+    f_status.set_n(1);
+    af_reg.set_flags(&f_status);
+
+    result
 }
 
 // Calculate the result of the DAA functio
@@ -177,7 +185,7 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
 
 //  LD dd, nn, Load a 16-bit register with the value 'nn'
 pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
-              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+              pc_reg: &mut dyn pc_state::Reg16RW, r16_reg: &mut dyn pc_state::Reg16RW) -> () {
     r16_reg.set(memory.read16(pc_reg.get() +1)); 
 
     pc_state::PcState::increment_reg(pc_reg, 3);
@@ -188,7 +196,7 @@ pub fn ld_16_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 // eg: LD (HL), r
 // Load the 8-bit register, r, 16-bit address
 pub fn ld_mem_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
-                r: u8, pc_reg: &mut pc_state::Reg16, address_reg: &pc_state::Reg16) -> () {
+                r: u8, pc_reg: &mut dyn pc_state::Reg16RW, address_reg: &dyn pc_state::Reg16RW) -> () {
     memory.write(address_reg.get(), r);
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(7);
@@ -219,7 +227,7 @@ pub fn ld_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock
 // LD r, (nn)
 // Load the value from the 16-bit address into the 16-bit register
 pub fn ld_r16_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
-              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+              pc_reg: &mut dyn pc_state::Reg16RW, r16_reg: &mut dyn pc_state::Reg16RW) -> () {
     r16_reg.set(memory.read16(memory.read16(pc_reg.get()+1)));
     pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(20);
@@ -229,7 +237,7 @@ pub fn ld_r16_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
 // eg LD (HL), n
 // Load the value 'n' into the 16-bit address
 pub fn ld_mem_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
-              pc_reg: &mut pc_state::Reg16, r16_reg: &mut pc_state::Reg16) -> () {
+              pc_reg: &mut dyn pc_state::Reg16RW, r16_reg: &mut dyn pc_state::Reg16RW) -> () {
     // Load the 8 bit value 'n' into memory.
     memory.write(r16_reg.get(), memory.read(pc_reg.get() + 1));
     pc_state::PcState::increment_reg(pc_reg, 2);
@@ -248,8 +256,8 @@ pub fn ld_r8_mem<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::
 
 //  
 //  LD SP, HL Load a 16-bit register with the value from another 16-bit register
-pub fn ld_sp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, 
-                pc_reg: &mut pc_state::Reg16, sp_reg: &mut pc_state::Reg16) -> () {
+pub fn ld_sp_hl(clock: &mut clocks::Clock, hl_reg: &dyn pc_state::Reg16RW, 
+                pc_reg: &mut dyn pc_state::Reg16RW, sp_reg: &mut dyn pc_state::Reg16RW) -> () {
     sp_reg.set(hl_reg.get()); 
 
     pc_state::PcState::increment_reg(pc_reg, 1);
@@ -259,7 +267,7 @@ pub fn ld_sp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16,
 // LD (nn), r
 // eg LD (nn), A   - Which is the only version of this function.
 pub fn ld_nn_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8,
-              pc_reg: &mut pc_state::Reg16) -> () {
+              pc_reg: &mut dyn pc_state::Reg16RW) -> () {
     memory.write(memory.read16(pc_reg.get()+1), r);
     pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(13);
@@ -287,7 +295,7 @@ pub fn ld_nn_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
 // Compare accumulator with 'n' to set status flags (but don't change accumulator)
 pub fn cp_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
     // This function sets the 'pc_state.f'
-    cp_flags(pc_state, pc_state.get_a(),  memory.read(pc_state.get_pc() +1));
+    cp_flags(pc_state.get_a(),  memory.read(pc_state.get_pc() +1), &mut pc_state.af_reg);
 
     pc_state.increment_pc(2);
     clock.increment(7);
@@ -297,7 +305,7 @@ pub fn cp_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_s
 // Compare accumulator with register r to set status flags (but don't change accumulator)
 pub fn cp_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_state: &mut pc_state::PcState) -> () {
     // This function sets the 'pc_state.f'
-    cp_flags(pc_state, pc_state.get_a(),  r);
+    cp_flags(pc_state.get_a(),  r, &mut pc_state.af_reg);
 
     pc_state.increment_pc(1);
     clock.increment(4);
@@ -307,7 +315,7 @@ pub fn cp_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u
 // Compare accumulator with the value from (HL) to set status flags (but don't change accumulator)
 pub fn cp_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
     // This function sets the 'pc_state.f'
-    cp_flags(pc_state, pc_state.get_a(), memory.read(pc_state.get_hl()));
+    cp_flags(pc_state.get_a(), memory.read(pc_state.get_hl()), &mut pc_state.af_reg);
 
     pc_state.increment_pc(1);
     clock.increment(7);
@@ -325,7 +333,7 @@ pub fn jp_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 
 //  JP (HL)
 // Load PC with HL, to jump to that location.
-pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &pc_state::Reg16, pc_reg: &mut pc_state::Reg16) -> () {
+pub fn jp_hl(clock: &mut clocks::Clock, hl_reg: &dyn pc_state::Reg16RW, pc_reg: &mut dyn pc_state::Reg16RW) -> () {
     pc_reg.set(hl_reg.get()); 
     clock.increment(4);
 }
@@ -420,7 +428,7 @@ pub fn dec_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc
 }
 
 // DEC (IX+d), INC (IY+d), 
-pub fn dec_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut pc_state::Reg16, af_reg: &mut pc_state::Reg16, i16_reg: &pc_state::Reg16) -> () {
+pub fn dec_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16, i16_reg: &dyn pc_state::Reg16RW) -> () {
 
     let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
     let new_value =  memory.read(address).wrapping_sub(1);
@@ -472,7 +480,7 @@ pub fn inc_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc
 }
 
 // INC (IX+d), INC (IY+d), 
-pub fn inc_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut pc_state::Reg16, af_reg: &mut pc_state::Reg16, i16_reg: &pc_state::Reg16) -> () {
+pub fn inc_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16, i16_reg: &dyn pc_state::Reg16RW) -> () {
 
     let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
     let new_value =  memory.read(address).wrapping_add(1);
@@ -2761,41 +2769,41 @@ mod tests {
         let mut pc_state = pc_state::PcState::new();
         assert_eq!(instruction_set::signed_char_to_int(-1 as i8), -1 as i16);
 
-        assert_eq!(instruction_set::add8c(&mut pc_state, 0, 0, false), 0);
+        assert_eq!(instruction_set::add8c(0, 0, false, &mut pc_state.af_reg), 0);
         assert_eq!(pc_state.get_f().get_z(), 1);
 
-        assert_eq!(instruction_set::add8c(&mut pc_state, 0, 0, true), 1);
+        assert_eq!(instruction_set::add8c(0, 0, true, &mut pc_state.af_reg), 1);
         assert_eq!(pc_state.get_f().get_z(), 0);
 
-        assert_eq!(instruction_set::add8c(&mut pc_state, 0x7, 0x9, true), 0x11);
+        assert_eq!(instruction_set::add8c(0x7, 0x9, true, &mut pc_state.af_reg), 0x11);
         assert_eq!(pc_state.get_f().get_z(), 0);
         assert_eq!(pc_state.get_f().get_h(), 1);
         assert_eq!(pc_state.get_f().get_n(), 0);
 
-        assert_eq!(instruction_set::add8c(&mut pc_state, 0xFF, 0xFF, true), 0xFF);
+        assert_eq!(instruction_set::add8c(0xFF, 0xFF, true, &mut pc_state.af_reg), 0xFF);
         assert_eq!(pc_state.get_f().get_z(), 0);
         assert_eq!(pc_state.get_f().get_c(), 1);
         assert_eq!(pc_state.get_f().get_pv(), 0);
 
-        assert_eq!(instruction_set::sub8c(&mut pc_state, 0xFF, 0xFF, true), 0xFF);
-        assert_eq!(instruction_set::sub8c(&mut pc_state, 0x7F, 0xFF, true), 0x7F);
+        assert_eq!(instruction_set::sub8c(0xFF, 0xFF, true, &mut pc_state.af_reg), 0xFF);
+        assert_eq!(instruction_set::sub8c(0x7F, 0xFF, true, &mut pc_state.af_reg), 0x7F);
         assert_eq!(pc_state.get_f().get_pv(), 0);
         assert_eq!(pc_state.get_f().get_c(), 0);
         assert_eq!(pc_state.get_f().get_n(), 1);
 
-        assert_eq!(instruction_set::sub8c(&mut pc_state, 0xFF, 0x2, true), 0xFC);
+        assert_eq!(instruction_set::sub8c(0xFF, 0x2, true, &mut pc_state.af_reg), 0xFC);
         assert_eq!(pc_state.get_f().get_pv(), 0);
         assert_eq!(pc_state.get_f().get_c(), 1);
 
-        assert_eq!(instruction_set::add16c(&mut pc_state, 0xFFFF, 0xFFFF, true), 0xFFFF);
-        assert_eq!(instruction_set::add16c(&mut pc_state, 0, 0, false), 0);
+        assert_eq!(instruction_set::add16c( 0xFFFF, 0xFFFF, true, &mut pc_state.af_reg), 0xFFFF);
+        assert_eq!(instruction_set::add16c(0, 0, false, &mut pc_state.af_reg), 0);
         assert_eq!(pc_state.get_f().get_z(), 1);
         assert_eq!(pc_state.get_f().get_n(), 0);
 
-        assert_eq!(instruction_set::add16c(&mut pc_state, 0x3FFF, 0x7001, true), 0xB001);
+        assert_eq!(instruction_set::add16c(0x3FFF, 0x7001, true, &mut pc_state.af_reg), 0xB001);
         assert_eq!(pc_state.get_f().get_h(), 1);
 
-        assert_eq!(instruction_set::sub16c(&mut pc_state, 0x0000, 0x000F, true), 0xFFF0);
+        assert_eq!(instruction_set::sub16c(0x0000, 0x000F, true, &mut pc_state.af_reg), 0xFFF0);
         assert_eq!(pc_state.get_f().get_n(), 1);
     }
 }

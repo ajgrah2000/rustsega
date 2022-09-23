@@ -11,8 +11,7 @@ pub fn calculate_parity(a: u8) -> bool {
 }
 
 // self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
-pub fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
-    let mut f_status = pc_state.get_f();
+pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
     let r = a.wrapping_add(b).wrapping_add(u8::from(c));
 
     if (r & 0x80) != 0 { // Negative
@@ -59,15 +58,12 @@ pub fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
         }
     }
     
-    pc_state.set_f(f_status);
- 
     return r;
 }
 
-pub fn u16_carry(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
+pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {
     // Perform a u16-bit add with carry, setting the flags (except N, which is
     // left to add/sub)
-    let mut f_status = pc_state.get_f();
     let r = a.wrapping_add(b).wrapping_add(u16::from(c));
 
     if (r & 0x8000) != 0 { // Negative
@@ -113,8 +109,6 @@ pub fn u16_carry(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 
             f_status.set_c(0);
         }
     }
-    
-    pc_state.set_f(f_status);
  
     return r;
 }
