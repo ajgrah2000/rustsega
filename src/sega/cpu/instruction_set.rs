@@ -2,7 +2,7 @@ use super::pc_state;
 use super::super::memory::memory;
 use super::super::ports;
 use super::super::clocks;
-use super::flagtables;
+use super::status_flags;
 
 //0x00
 pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
@@ -40,60 +40,6 @@ pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
 
-// self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
-fn u8_carry(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
-    let mut f_status = pc_state.get_f();
-    let r = a.wrapping_add(b).wrapping_add(u8::from(c));
-
-    if (r & 0x80) != 0 { // Negative
-        f_status.set_s(1);
-    } else {
-        f_status.set_s(0);
-    }
- 
-    if (r & 0xFF) == 0 { // Zero
-        f_status.set_z(1);
-    } else {
-        f_status.set_z(0);
-    }
- 
-    // An Overflow can't occur if a and b have different sign bits
-    // If they're the same, an overflow occurred if the sign of the result changed.
-    // Basically, tread both arguments as signed numbers
-
-    if (((a & 0x80) ^ (b & 0x80)) == 0x00) && // arguments same sign
-       (((a & 0x80) ^ (r & 0x80)) == 0x80) {  // result different sign
-        f_status.set_pv(1);
-    } else {
-        f_status.set_pv(0);
-    }
-
-    f_status.set_h(0);
-    if (((a & 0xF) + (b & 0xF) + u8::from(c)) & 0x10) == 0x10 { // Half carry
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
- 
-    if c {
-        if a > 0xFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
-    } else {
-        if a >= 0xFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
-    }
-    
-    pc_state.set_f(f_status);
- 
-    return r;
-}
-
 fn add8(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> u8 {
     // Just call the add c function.
     add8c(pc_state, a, b, false)
@@ -103,7 +49,7 @@ fn add8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
     let mut f_status = pc_state.get_f();
     f_status.set_n(0); // Clear N to indicate add
     pc_state.set_f(f_status);
-    u8_carry(pc_state, a, b, c) 
+    status_flags::u8_carry(pc_state, a, b, c) 
 }
 
 fn cp_flags(pc_state: &mut pc_state::PcState, a:u8, b:u8) -> () {
@@ -118,69 +64,15 @@ fn sub8c(pc_state: &mut pc_state::PcState, a:u8, b:u8, c:bool) -> u8 {
     pc_state.set_f(f_status);
 
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    u8_carry(pc_state, a, !b, !c)
+    status_flags::u8_carry(pc_state, a, !b, !c)
 }
 
-fn u16_carry(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
-    // Perform a u16-bit add with carry, setting the flags (except N, which is
-    // left to add/sub)
-    let mut f_status = pc_state.get_f();
-    let r = a.wrapping_add(b).wrapping_add(u16::from(c));
-
-    if (r & 0x8000) != 0 { // Negative
-        f_status.set_s(1);
-    } else {
-        f_status.set_s(0);
-    }
- 
-    if (r & 0xFFFF) == 0 { // Zero
-        f_status.set_z(1);
-    } else {
-        f_status.set_z(0);
-    }
- 
-    // An Overflow can't occur if a and b have different sign bits
-    // If they're the same, an overflow occurred if the sign of the result changed.
-    // Basically, tread both arguments as signed numbers
-
-    if (((a & 0x8000) ^ (b & 0x8000)) == 0x0000) && // arguments same sign
-       (((a & 0x8000) ^ (r & 0x8000)) == 0x8000) {  // result different sign
-        f_status.set_pv(1);
-    } else {
-        f_status.set_pv(0);
-    }
-
-    f_status.set_h(0);
-    if (((a & 0xFFF) + (b & 0xFFF) + u16::from(c)) & 0x1000) == 0x1000 { // Half carry
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
- 
-    if c {
-        if a > 0xFFFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
-    } else {
-        if a >= 0xFFFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
-    }
-    
-    pc_state.set_f(f_status);
- 
-    return r;
-}
 
 fn add16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
     let mut f_status = pc_state.get_f();
     f_status.set_n(0);
     pc_state.set_f(f_status);
-    u16_carry(pc_state, a, b, c)
+    status_flags::u16_carry(pc_state, a, b, c)
 }
 
 fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
@@ -188,7 +80,7 @@ fn sub16c(pc_state: &mut pc_state::PcState, a:u16, b:u16, c:bool) -> u16 {
     f_status.set_n(1);
     pc_state.set_f(f_status);
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    u16_carry(pc_state, a, !b, !c)
+    status_flags::u16_carry(pc_state, a, !b, !c)
 }
 
 // Calculate the result of the DAA functio
@@ -225,7 +117,7 @@ fn calculate_daa_add(pc_state: &mut pc_state::PcState) -> () {
         }
     }
 
-    f_status.set_pv(u8::from(flagtables::calculate_parity(pc_state.get_a())));
+    f_status.set_pv(u8::from(status_flags::calculate_parity(pc_state.get_a())));
     if (pc_state.get_a() & 0x80) != 0 { // Is negative
         f_status.set_s(1);
     } else {
@@ -263,7 +155,7 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
         }
     }
 
-    f_status.set_pv(u8::from(flagtables::calculate_parity(pc_state.get_a())));
+    f_status.set_pv(u8::from(status_flags::calculate_parity(pc_state.get_a())));
     if (pc_state.get_a() & 0x80) != 0 { // Is negative
         f_status.set_s(1);
     } else {
@@ -383,6 +275,11 @@ pub fn ld_nn_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
 }
 
 /*************************************************************************************/
+/* Extended Load Instructions                                                        */
+/*************************************************************************************/
+
+
+/*************************************************************************************/
 /* Compare Instructions                                                              */
 /*************************************************************************************/
 
@@ -493,7 +390,7 @@ pub fn dec_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Cloc
     dst_fn(pc_state, new_value);
 
     let mut f_value = pc_state.get_f();
-    flagtables::calculate_dec_flags(&mut f_value, new_value);
+    status_flags::calculate_dec_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
     pc_state.increment_pc(1);
@@ -515,11 +412,27 @@ pub fn dec_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc
     memory.write(pc_state.get_hl(), new_value);
 
     let mut f_value = pc_state.get_f();
-    flagtables::calculate_dec_flags(&mut f_value, new_value);
+    status_flags::calculate_dec_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
     pc_state.increment_pc(1);
     clock.increment(11);
+}
+
+// DEC (IX+d), INC (IY+d), 
+pub fn dec_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut pc_state::Reg16, af_reg: &mut pc_state::Reg16, i16_reg: &pc_state::Reg16) -> () {
+
+    let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
+    let new_value =  memory.read(address).wrapping_sub(1);
+
+    memory.write(address, new_value);
+
+    let mut f_value = af_reg.get_flags();
+    status_flags::calculate_dec_flags(&mut f_value, new_value);
+    af_reg.set_flags(&f_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(23);
 }
 
 // INC r
@@ -529,7 +442,7 @@ pub fn inc_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Cloc
     dst_fn(pc_state, new_value);
 
     let mut f_value = pc_state.get_f();
-    flagtables::calculate_inc_flags(&mut f_value, new_value);
+    status_flags::calculate_inc_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
     pc_state.increment_pc(1);
@@ -551,11 +464,27 @@ pub fn inc_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc
     memory.write(pc_state.get_hl(), new_value);
 
     let mut f_value = pc_state.get_f();
-    flagtables::calculate_inc_flags(&mut f_value, new_value);
+    status_flags::calculate_inc_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
     pc_state.increment_pc(1);
     clock.increment(11);
+}
+
+// INC (IX+d), INC (IY+d), 
+pub fn inc_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut pc_state::Reg16, af_reg: &mut pc_state::Reg16, i16_reg: &pc_state::Reg16) -> () {
+
+    let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
+    let new_value =  memory.read(address).wrapping_add(1);
+
+    memory.write(address, new_value);
+
+    let mut f_value = af_reg.get_flags();
+    status_flags::calculate_inc_flags(&mut f_value, new_value);
+    af_reg.set_flags(&f_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(23);
 }
 
 ////////////////////////////////////////////////////
@@ -1243,36 +1172,6 @@ pub fn inc_hl(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc
 //         self.pc_state.PC += 4
 //     
 //         return 20
-//     
-// # INC (self.I_reg+d)
-// class INC_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp16 = self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))
-//         self.memory.write(tmp16, self.memory.read(tmp16) + 1)
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_INC8) | flagtables.FlagTables.getStatusInc8(self.memory.read(tmp16))
-//         self.pc_state.PC+=3
-//         return 23
-//     
-// # self.pc_state.DEC (self.I_reg+d)
-// class DEC_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp16 = self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))
-//         self.memory.write(tmp16, self.memory.read(tmp16) - 1)
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = (self.pc_state.F.value & Instruction.FLAG_MASK_DEC8) | flagtables.FlagTables.getStatusDec8(self.memory.read(tmp16))
-//         self.pc_state.PC+=3
-//         return 23
 //     
 // # LD (self.I_reg + d), n
 // class LD_I_d_n(Instruction):

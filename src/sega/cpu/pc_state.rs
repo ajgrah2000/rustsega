@@ -87,6 +87,16 @@ impl Reg16 {
         let result = self.low as u16 + ((self.high as u16) << 8);
         result
     }
+
+    // TODO: Scope/constraing this so it only applies to 'AF'
+    pub fn get_flags(&self) -> PcStatusFlagFields {
+        PcStatusFlagFields(self.low)
+    }
+
+    // TODO: Scope/constraing this so it only applies to 'AF'
+    pub fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
+        self.low = flags.0;
+    }
 }
 
 impl PcState {
