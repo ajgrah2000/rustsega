@@ -543,7 +543,7 @@ impl Instruction {
                                                 &mut pc_state.pc_reg, &mut pc_state.iy_reg, &mut pc_state.af_reg);
             }
 
-             _ => {println!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
+             _ => {panic!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
 
 //            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
 //            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
@@ -594,7 +594,7 @@ impl Instruction {
             0x47 => { extended_instruction_set::ld_i_a(clock, pc_state);}
             0x4F => { extended_instruction_set::ld_r_a(clock, pc_state);}
 
-            _ => {println!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
+            _ => {panic!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
 
 //            0x40 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_b);}
 //            0x48 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_c);}
