@@ -14,18 +14,6 @@ pub fn calculate_parity(a: u8) -> bool {
 pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
     let r = a.wrapping_add(b).wrapping_add(u8::from(c));
 
-    if (r & 0x80) != 0 { // Negative
-        f_status.set_s(1);
-    } else {
-        f_status.set_s(0);
-    }
- 
-    if (r & 0xFF) == 0 { // Zero
-        f_status.set_z(1);
-    } else {
-        f_status.set_z(0);
-    }
- 
     // An Overflow can't occur if a and b have different sign bits
     // If they're the same, an overflow occurred if the sign of the result changed.
     // Basically, tread both arguments as signed numbers
@@ -57,6 +45,8 @@ pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
             f_status.set_c(0);
         }
     }
+
+    zero_and_sign_flags(f_status, r);
     
     return r;
 }
@@ -114,16 +104,6 @@ pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFiel
 }
 
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
-    if new_value & 0x80 != 0 { // Is negative
-      status.set_s(1);
-    } else {
-      status.set_s(0);
-    }
-    if new_value == 0x0 { // Is zero
-      status.set_z(1);
-    } else {
-      status.set_z(0);
-    }
     if (new_value & 0xF) == 0xF { // Half borrow
       status.set_h(1);
     } else {
@@ -135,19 +115,10 @@ pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     } else {
       status.set_pv(0);
     }
+    zero_and_sign_flags(status, new_value);
 }
 
 pub fn calculate_inc_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
-    if new_value & 0x80 != 0 { // Is negative
-      status.set_s(1);
-    } else {
-      status.set_s(0);
-    }
-    if new_value == 0 { // Is zero
-      status.set_z(1);
-    } else {
-      status.set_z(0);
-    }
     if (new_value & 0xF) == 0x0 { // Half borrow
       status.set_h(1);
     } else {
@@ -159,6 +130,7 @@ pub fn calculate_inc_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     } else {
       status.set_pv(0);
     }
+    zero_and_sign_flags(status, new_value);
 }
 
 pub fn accumulator_flags(status: &mut pc_state::PcStatusFlagFields, accumulator: u8, iff2: bool) {
@@ -166,12 +138,39 @@ pub fn accumulator_flags(status: &mut pc_state::PcStatusFlagFields, accumulator:
       status.set_n(0);
       status.set_h(0);
       status.set_pv(iff2 as u8);
-      status.set_s((accumulator & 0x80) >> 7);
-      if accumulator == 0 {
+      zero_and_sign_flags(status, accumulator)
+}
+
+pub fn and_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
+      // Used by AND s
+      status.set_c(0);
+      status.set_n(0);
+      status.set_h(1);
+      status.set_pv(calculate_parity(value) as u8); // Documented as 'set on overflow', not sure what it should be here
+      zero_and_sign_flags(status, value)
+}
+
+pub fn xor_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
+      // Used by AND s
+      status.set_c(0);
+      status.set_n(0);
+      status.set_h(0);
+      status.set_pv(calculate_parity(value) as u8); // Documented as set on even for xor
+      zero_and_sign_flags(status, value)
+}
+
+pub fn zero_and_sign_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
+    // Utility function, to set the zero and sign flags
+      status.set_s((value & 0x80) >> 7);
+      if value == 0 {
           status.set_z(1);
       } else {
           status.set_z(0);
       }
+}
+
+pub fn or_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
+    xor_flags(status, value);
 }
 
 // Add two 8 bit ints plus the carry bit, and set flags accordingly

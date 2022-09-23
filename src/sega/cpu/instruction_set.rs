@@ -45,6 +45,11 @@ fn add8(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> u8 {
     add8c(a, b, false, af_reg)
 }
 
+fn sub8(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> u8 {
+    // Just call the sub c function.
+    sub8c(a, b, false, af_reg)
+}
+
 fn add8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
     let mut f_status = af_reg.get_flags();
     let result = status_flags::u8_carry(a, b, c, &mut f_status);
@@ -54,7 +59,7 @@ fn add8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
     result
 }
 
-fn cp_flags(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> () {
+pub fn cp_flags(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> () {
     // CP flags calculated set the same as for subtaction, but the result is ignored.
     sub8c(a, b, false, af_reg);
 }
@@ -70,8 +75,7 @@ fn sub8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
     result
 }
 
-
-fn add16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
+pub fn add16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
     let mut f_status = af_reg.get_flags();
     let result = status_flags::u16_carry(a, b, c, &mut f_status);
     f_status.set_n(0);
@@ -500,6 +504,100 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
     clock.increment(20);
 }
 
+////////////////////////////////////////////////////
+// 8-bit arithmetic Group
+////////////////////////////////////////////////////
+
+pub fn add_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = add8(pc_state.get_a(), r, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+pub fn adc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let carry = pc_state.get_f().get_c();
+    let result = add8c(pc_state.get_a(), r, carry==1, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+
+pub fn sub_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = sub8(pc_state.get_a(), r, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+pub fn sbc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let carry = pc_state.get_f().get_c();
+    let result = sub8c(pc_state.get_a(), r, carry==1, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+
+pub fn and_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = pc_state.get_a() & r;
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+pub fn xor_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = pc_state.get_a() ^ r;
+    let mut f_status = pc_state.get_f();
+    status_flags::xor_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+pub fn or_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = pc_state.get_a() | r;
+    let mut f_status = pc_state.get_f();
+    status_flags::or_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+
+////////////////////////////////////////////////////
+// 16-bit arithmetic Group
+////////////////////////////////////////////////////
+
+// ADD HL, ss
+pub fn add16(clock: &mut clocks::Clock, src_value: u16, 
+             pc_reg: &mut dyn pc_state::Reg16RW, hl_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16) -> () {
+
+    hl_reg.set(add16c(hl_reg.get(), src_value, false, af_reg));
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(11);
+}
 
 ////////////////////////////////////////////////////
 // END Rust
@@ -534,33 +632,6 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
 // 
 //         return 4;
 // 
-// 
-// class AND_r(Instruction):
-//     def __init__(self, memory, pc_state, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.src = src
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A & self.src.get();
-//         self.pc_state.PC += 1
-//     
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
-//     
-//         return 4;
-// 
-// class AND_a(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
-//         return 4;
-// 
 // class AND_n(Instruction):
 //     def __init__(self, memory, pc_state):
 //         self.memory = memory
@@ -574,76 +645,6 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 //     
 //         return 7;
-// 
-// class OR_r(Instruction):
-//     def __init__(self, memory, pc_state, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.src = src
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A | self.src.get();
-//         self.pc_state.PC += 1
-//     
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//     
-//         return 4;
-// 
-// class OR_a(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//         return 4;
-// 
-// class OR_e(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A | self.pc_state.E
-//         self.pc_state.PC += 1
-//     
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//     
-//         return 4;
-// 
-// class XOR_r(Instruction):
-//     def __init__(self, memory, pc_state, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.src = src
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A ^ self.src.get();
-//         self.pc_state.PC += 1
-//     
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//     
-//         return 4;
-// 
-// class XOR_a(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//              ************* FLAGS *****************
-//         self.status = flagtables.FlagTables.getStatusOr(0);
-// 
-//     def execute(self):
-//         self.pc_state.A = 0
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = self.status
-//     
-//         return 4;
 // 
 // class EXX(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -822,19 +823,6 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
 //         self.pc_state.PC += 1
 //         return 7;
 // 
-// # self.pc_state.ADC r
-// class ADC_r(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.reg.get(), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC += 1
-//         return 4;
-// 
 // # self.pc_state.ADC (self.pc_state.HL)
 // class ADC_HL(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -859,19 +847,6 @@ pub fn ld_mem_nn_hl_extended(clock: &mut clocks::Clock, memory: &mut memory::Mem
 //         self.pc_state.A = self.pc_state.A - self.memory.read(self.pc_state.HL);
 //         self.pc_state.PC += 1
 //         return 7;
-// 
-// # SBC r
-// class SBC_A_r(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.reg.get(), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC += 1
-//         return 4;
 // 
 // # SBC (self.pc_state.HL)
 // class SBC_A_HL(Instruction):

@@ -13,6 +13,7 @@ use super::pc_state;
 use super::super::memory::memory;
 use super::super::clocks;
 use super::status_flags;
+use super::instruction_set;
 
 /*************************************************************************************/
 /* Extended Load Instructions                                                        */
@@ -219,81 +220,33 @@ pub fn jp_i(clock: &mut clocks::Clock, pc_reg: &mut dyn pc_state::Reg16RW, i16_r
     clock.increment(8);
 }
 
+// CP n
+// Compare accumulator with 'n' to set status flags (but don't change accumulator)
+pub fn cp_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, i16_value: u16, pc_state: &mut pc_state::PcState) -> () {
+
+    // This function sets the 'pc_state.f'
+    instruction_set::cp_flags(pc_state.get_a(),  memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)), &mut pc_state.af_reg);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+////////////////////////////////////////////////////
+// 16-bit arithmetic Group
+////////////////////////////////////////////////////
+
+// ADD HL, ss
+pub fn add16(clock: &mut clocks::Clock, src_value: u16, 
+             pc_reg: &mut dyn pc_state::Reg16RW, dst_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16) -> () {
+
+    dst_reg.set(instruction_set::add16c(dst_reg.get(), src_value, false, af_reg));
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(15);
+}
 
 
 // # Addition instructions
-// 
-// # Exists a both 'normal' and 'extended'
-// class ADD16(Instruction):
-//     def __init__(self, memory, pc_state, dst, add, cycles, pcInc = 1):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-//         self.add = add
-//         self.cycles = cycles
-//         self.pcInc = pcInc
-// 
-//     def execute(self):
-//         a = self.dst.get()
-//         b = self.add.get()
-// 
-//         r = (a & 0xFFF) + (b & 0xFFF);
-//         if (r & 0x1000): # Half carry
-//              ************* FLAGS *****************
-//           self.pc_state.F.Fstatus.H = 1 # Half carry
-//         else:
-//           self.pc_state.F.Fstatus.H = 0 # Half carry
-//         self.pc_state.F.Fstatus.N = 0;
-//     
-//         r = (a & 0xFFFF) + (b & 0xFFFF);
-//         if (r & 0x10000): # Carry
-//           self.pc_state.F.Fstatus.C = 1 # Carry
-//         else:
-//           self.pc_state.F.Fstatus.C = 0 # Carry
-//     
-//         self.dst.set(r)
-//     
-//         self.pc_state.PC += self.pcInc;
-//     
-//         return self.cycles;
-// 
-// class ADD_r(Instruction):
-//     def __init__(self, memory, pc_state, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.src = src
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//             self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.src.get());
-//             self.pc_state.A = self.pc_state.A + self.src.get();
-//             self.pc_state.PC += 1
-//             return 4;
-// 
-// class SUB_r(Instruction):
-//     def __init__(self, memory, pc_state, src):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.src = src
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//             self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.src.get());
-//             self.pc_state.A = self.pc_state.A - self.src.get();
-//             self.pc_state.PC += 1
-//             return 4;
-// 
-// class SUB_a(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//             self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.pc_state.A);
-//             self.pc_state.A = 0
-//             self.pc_state.PC += 1
-//             return 4;
 // 
 // class RLCA(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -630,19 +583,6 @@ pub fn jp_i(clock: &mut clocks::Clock, pc_reg: &mut dyn pc_state::Reg16RW, i16_r
 //         self.pc_state.PC += 3
 //         return  19
 //     
-// # CP (self.I_reg + d)
-// class CP_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.I_reg.get() + 
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,tmp8)
-//         self.pc_state.PC+=3
-//         return 19
 //     
 // # POP self.I_reg
 // class POP_I(Instruction):
