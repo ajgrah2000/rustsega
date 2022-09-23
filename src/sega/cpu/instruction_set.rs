@@ -380,6 +380,29 @@ pub fn jump_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute
     clock.increment(10);
 }
 
+// Call on condition
+// CALL cc, nn
+pub fn call_cc_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, condition:bool) -> () {
+    pc_state.increment_pc(3);
+    if condition {
+        pc_state.increment_sp(-1);
+        memory.write(pc_state.sp_reg.get(), pc_state.pc_reg.high);
+        pc_state.increment_sp(-1);
+        memory.write(pc_state.sp_reg.get(), pc_state.pc_reg.low);
+        pc_state.pc_reg.set(memory.read16(pc_state.pc_reg.get() - 2));
+        clock.increment(17);
+    } else {
+        clock.increment(10);
+    }
+}
+
+// Call on condition
+// CALL nn
+pub fn call_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState) -> () {
+    // Call is the same as a conditional call that's always true.
+    call_cc_nn(clock, memory, pc_state, true);
+}
+
 // DEC r
 // Decrement register and set status flags.
 // Slowest dec function ever, why didn't Zilog come up with simpler instruction.
@@ -921,27 +944,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //             cycles +=5;
 //         return cycles
 // 
-// # CALL NZ, nn
-// class CALL_NZ_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.Z == 0):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-//             cycles += 7;
-// 
-//         cycles += 10;
-//         return cycles
-// 
 // # PUSH 
 // class PUSH(Instruction):
 //     def __init__(self, memory, pc_state, reg):
@@ -1009,44 +1011,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //             cycles +=5;
 //         return cycles
 // 
-// # CALL Z, nn
-// class CALL_Z_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.Z == 1):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-// 
-//             cycles += 7;
-//         else:
-//             cycles += 10;
-//         return cycles
-// 
-// # CALL nn
-// class CALL_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PC += 3;
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//         self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-// 
-//         return  17;
-// 
 // # self.pc_state.ADC nn
 // class ADC_nn(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1094,28 +1058,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //         self.pc_state.PC += 1
 //         return  10;
 // 
-// # CALL NC, nn  
-// class CALL_NC_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.C == 0):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-// 
-//             cycles += 7;
-//         else:
-//             cycles += 10;
-//         return cycles
-// 
 // # SUB n
 // class SUB_n(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1147,27 +1089,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //         else:
 //             self.pc_state.PC += 1
 //             cycles+=5;
-//         return cycles
-// 
-// # Call C, nn
-// class CALL_C_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.C == 1):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-//             cycles += 17;
-//         else:
-//             cycles += 10;
 //         return cycles
 // 
 // # SBC n 
@@ -1219,27 +1140,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //         self.pc_state.PC += 1
 //         return  19;
 // 
-// # CALL PO, nn 
-// class CALL_PO_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.PV == 0):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-//             cycles += 7;
-// 
-//         cycles += 10;
-//         return cycles
-// 
 // # RET PE  
 // class RET_PE(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1272,27 +1172,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //         self.pc_state.HL = tmp16;
 //         self.pc_state.PC += 1
 //         return 4;
-// 
-// # CALL PE, nn
-// class CALL_PE_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.PV == 1):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-//             cycles += 7;
-// 
-//         cycles += 10;
-//         return cycles
 // 
 // # XOR n
 // class XOR_n(Instruction):
@@ -1356,27 +1235,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 //         self.pc_state.PC += 1
 // 
 //         return 4;
-// 
-// # CALL P, nn  if Positive
-// class CALL_P_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.S == 0):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-//             cycles += 7;
-// 
-//         cycles += 10;
-//         return cycles
 // 
 // # PUSH self.pc_state.AF
 // class PUSH_AF(Instruction):
@@ -1467,27 +1325,6 @@ pub fn add16(clock: &mut clocks::Clock, src_value: u16,
 // 
 //         return 4
 // 
-// # CALL M, nn  if Negative
-// class CALL_M_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.PC += 3;
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.S == 1):
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//             self.pc_state.SP -= 1
-//             self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-//             self.pc_state.PC = self.memory.read16(self.pc_state.PC-2);
-// 
-//             cycles += 7;
-//         else:
-//             cycles += 10;
-//         return cycles
 
 #[cfg(test)]
 mod tests {
