@@ -33,8 +33,8 @@ impl fmt::Display for PcStatusFlagFields {
 }
 
 pub struct Reg16 {
-    high: u8,
-    low: u8,
+    pub high: u8,
+    pub low: u8,
 }
 
 pub struct FlagReg16 {

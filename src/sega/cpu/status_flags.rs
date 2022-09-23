@@ -161,8 +161,18 @@ pub fn calculate_inc_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     }
 }
 
+// self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
+pub fn set_bit_test_flags(r: u8, bit_pos: u8, f_status: &mut pc_state::PcStatusFlagFields) -> () {
+    f_status.set_z((r >> (bit_pos & 7)) ^ 0x1);
+    f_status.set_pv(calculate_parity(r) as u8); // Documented as 'unknown', not sure if/where this is needed.
+    f_status.set_h(1);
+    f_status.set_n(0);
+    f_status.set_s(0);
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::sega::cpu::pc_state;
     use crate::sega::cpu::status_flags;
 
     #[test]
@@ -173,5 +183,13 @@ mod tests {
         assert_eq!(status_flags::calculate_parity(0b00101001), false);
         assert_eq!(status_flags::calculate_parity(0b00000001), false);
         assert_eq!(status_flags::calculate_parity(0b10000000), false);
+    }
+    #[test]
+    fn test_bit_set() {
+        let mut f_status = pc_state::PcStatusFlagFields(0);
+        status_flags::set_bit_test_flags(0x30, 5, &mut f_status);
+        assert_eq!(f_status.get_z(), 0);
+        status_flags::set_bit_test_flags(0x30, 3, &mut f_status);
+        assert_eq!(f_status.get_z(), 1);
     }
 }
