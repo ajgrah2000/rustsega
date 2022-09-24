@@ -1,7 +1,7 @@
 use super::pc_state;
 use super::super::memory::memory;
 use super::super::clocks;
-use super::super::interuptor;
+use super::super::interruptor;
 use super::super::ports;
 use super::instructions;
 
@@ -10,24 +10,24 @@ pub struct Core<M> {
     memory:     M,
     pc_state:   pc_state::PcState,
     ports:      ports::Ports,
-    interuptor: interuptor::Interuptor,
+    interruptor: interruptor::Interruptor,
 }
 
 impl<M: memory::MemoryRW> Core<M> {
-    const IRQIM1ADDR: u16 = 0x38;
+    pub const IRQIM1ADDR: u16 = 0x38;
 
     pub fn new(clock: clocks::Clock, 
            memory: M, 
            pc_state: pc_state::PcState, 
            ports: ports::Ports,
-           interuptor: interuptor::Interuptor) -> Self where M: memory::MemoryRW {
+           interruptor: interruptor::Interruptor) -> Self where M: memory::MemoryRW {
     
         Self {
             clock: clock,
             memory: memory,
             pc_state: pc_state,
             ports: ports,
-            interuptor: interuptor,
+            interruptor: interruptor,
         }
     }
     fn interupt(&mut self) -> () {
@@ -39,7 +39,7 @@ impl<M: memory::MemoryRW> Core<M> {
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_low());
                 self.pc_state.set_pc(Core::<M>::IRQIM1ADDR);
 
-                // Disable maskable interupts
+                // Disable mask-able interrupts
                 self.pc_state.set_iff1(false);
             } else {
                 // TODO: Fix error messages/handling.
@@ -50,7 +50,7 @@ impl<M: memory::MemoryRW> Core<M> {
 
     pub fn step(&mut self, debug: bool) -> (){
         // Start with 'expanded' version of step
-        self.interuptor.set_cycle(self.clock.cycles);
+        self.interruptor.set_cycle(self.clock.cycles);
 
         let op_code = self.memory.read(self.pc_state.get_pc());
 
@@ -59,7 +59,7 @@ impl<M: memory::MemoryRW> Core<M> {
             print!("{} {:x} {:x} ({:x}) ", self.clock.cycles, op_code, self.pc_state.get_pc(), op_code);
             println!("{}", self.pc_state);
         }
-        instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interuptor);
+        instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interruptor);
     }
 }
 
@@ -69,8 +69,8 @@ fn test_core_creation() {
     let memory = memory::MemoryAbsolute::new();
     let pc_state = pc_state::PcState::new();
     let ports = ports::Ports::new();
-    let interuptor = interuptor::Interuptor::new();
-    let mut core = Core::new(clock, memory, pc_state, ports, interuptor);
+    let interruptor = interruptor::Interruptor::new();
+    let mut core = Core::new(clock, memory, pc_state, ports, interruptor);
 
     core.step(true);
     println!("{}", core.pc_state);

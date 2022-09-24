@@ -32,6 +32,17 @@ pub fn out_n_a<M>(clock: &mut clocks::Clock, memory: &mut M,
 
 
 //0xF3, disable interrupts
+pub fn ei(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+    // The 'step' and program counter increment is currently implemented
+    // 'outside' of this function.
+
+    pc_state.set_iff1(true);
+    pc_state.set_iff2(true);
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+//0xF3, disable interrupts
 pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     pc_state.set_iff1(false);
     pc_state.set_iff2(false);
@@ -1137,56 +1148,6 @@ pub fn halt(clock: &mut clocks::Clock) -> () {
     clock.increment(4);
     panic!("halt not correctly implemented");
 }
-
-
-
-
-////////////////////////////////////////////////////
-// END Rust
-////////////////////////////////////////////////////
-
-// class OUT_n_A(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports    = ports
-// 
-// # OUT (n), self.pc_state.A
-// # Write register A, to port n
-//     def execute(self):
-//      self.ports.portWrite(self.memory.read(self.pc_state.PC + 1), self.pc_state.A)
-//      self.pc_state.PC+=2;
-// 
-//      return 11;
-// 
-// ################ NEW INSTRUCTIONS ##################
-// 
-// # Enable interupts
-// # EI
-// class EI(Instruction):
-//     def __init__(self, memory, clocks, pc_state, interupt, poll_interupts, step):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.interupt = interupt
-//         self.poll_interupts = poll_interupts
-//         self.step = step
-//         self.clocks = clocks
-// 
-//     def execute(self):
-//         self.pc_state.PC += 1
-// 
-//         # Process next instruction before enabling interupts
-//         self.step(); # Single step
-// 
-//         self.pc_state.IFF1 = 1;
-//         self.pc_state.IFF2 = 1;
-// 
-//           # Check for any pending interupts
-//         if (self.poll_interupts(self.clocks.cycles) == True):
-//             self.interupt()
-// 
-//         return 4
-// 
 
 #[cfg(test)]
 mod tests {

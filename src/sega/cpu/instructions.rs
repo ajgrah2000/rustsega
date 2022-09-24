@@ -1,7 +1,7 @@
 use super::pc_state;
 use super::super::memory::memory;
 use super::super::clocks;
-use super::super::interuptor;
+use super::super::interruptor;
 use super::super::ports;
 use super::instruction_set;
 use super::extended_instruction_set;
@@ -86,17 +86,28 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW{
+           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW{
         match op_code {
             // Extended op codes, not executed directly
-            0xcb => { Self::execute_cb(clock, memory, pc_state, ports, interuptor);}
-            0xdd => { Self::execute_dd(clock, memory, pc_state, ports, interuptor);}
-            0xed => { Self::execute_ed(clock, memory, pc_state, ports, interuptor);}
-            0xfd => { Self::execute_fd(clock, memory, pc_state, ports, interuptor);}
+            0xcb => { Self::execute_cb(clock, memory, pc_state, ports, interruptor);}
+            0xdd => { Self::execute_dd(clock, memory, pc_state, ports, interruptor);}
+            0xed => { Self::execute_ed(clock, memory, pc_state, ports, interruptor);}
+            0xfd => { Self::execute_fd(clock, memory, pc_state, ports, interruptor);}
 
-//            0xfb => { instruction_set::ei(clock, memory, clocks, pc_state, interupt, poll_interupts, step_func);}
+            0xfb => { 
+                pc_state.increment_pc(1);
+                // Perform a 'step' before enabling interrupts.
+                let net_op_code = memory.read(pc_state.get_pc());
+                Self::execute(op_code, clock, memory, pc_state, ports, interruptor);
 
-            0x00 => { instruction_set::noop(clock, pc_state);}
+                instruction_set::ei(clock, pc_state);
+                // TODO: Actually do the polling call
+                //  if (self.poll_interupts(self.clocks.cycles) == True):
+                      interruptor::Interruptor::interrupt(pc_state, memory);
+            }
+
+            0x00 => { instruction_set::noop(clock, pc_state);
+            }
             0x01 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD dd, nn : for BC
             0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD (BC), A
             0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD (DE), A
@@ -117,7 +128,8 @@ impl Instruction {
             0x21 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, nn
             0x2a => { instruction_set::ld_r16_mem(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, (nn)
             0x31 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg);} // LD DE, nn
-            0x20 => { instruction_set::jrnz_e(clock, memory, pc_state);} // JR NZ, e
+            0x20 => { instruction_set::jrnz_e(clock, memory, pc_state);
+            } // JR NZ, e
             0x28 => { instruction_set::jrz_e(clock, memory, pc_state);} // JR Z, e
 
             // INC ss,  Op Code: 0b00ss0011
@@ -338,7 +350,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -470,7 +482,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -524,7 +536,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -577,7 +589,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
         println!("clock: {}, op_code: {:x}, pc: {}", clock.cycles, op_code, pc_state.get_pc());
 
@@ -651,7 +663,7 @@ mod tests {
     use crate::sega::cpu::pc_state;
     use crate::sega::memory::memory;
     use crate::sega::clocks;
-    use crate::sega::interuptor;
+    use crate::sega::interruptor;
     use crate::sega::ports;
     use crate::impl_common_memoryrw;
 
@@ -665,7 +677,7 @@ mod tests {
         pub memory:     TestMemory,
         pub pc_state:   pc_state::PcState,
         pub ports:      ports::Ports,
-        pub interuptor: interuptor::Interuptor,
+        pub interruptor: interruptor::Interruptor,
     }
     impl TestCore {
         pub fn new() -> Self {
@@ -674,7 +686,7 @@ mod tests {
                 memory: TestMemory::new(),
                 pc_state: pc_state::PcState::new(),
                 ports: ports::Ports::new(),
-                interuptor: interuptor::Interuptor::new(),
+                interruptor: interruptor::Interruptor::new(),
             }
         }
     }
@@ -704,7 +716,7 @@ mod tests {
         test_core.clock.cycles = 0;
         let initial_op_code = op_code[0];
         test_core.memory.dummy_memory = op_code; // Op-code to test
-        instructions::Instruction::execute(initial_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+        instructions::Instruction::execute(initial_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor);
     }
 
 
@@ -763,7 +775,7 @@ mod tests {
         assert_eq!(test_core.pc_state.get_b(), 0);
 
         test_core.pc_state.set_c(0x42);
-        instructions::Instruction::execute(0b01000001, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // LD r,'r  C -> B
+        instructions::Instruction::execute(0b01000001, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // LD r,'r  C -> B
         assert_eq!(test_core.pc_state.get_b(), 0x42);
         assert_eq!(test_core.clock.cycles, 4);
     }
@@ -774,7 +786,7 @@ mod tests {
 
         test_core.pc_state.set_hl(0x4233);
         test_core.pc_state.set_pc(0x2003);
-        instructions::Instruction::execute(0xE9, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // JP (HL)
+        instructions::Instruction::execute(0xE9, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // JP (HL)
         assert_eq!(test_core.pc_state.get_pc(), 0x4233);
     }
 
@@ -786,7 +798,7 @@ mod tests {
         let mut flags = test_core.pc_state.get_f();
         flags.set_c(1);
         test_core.pc_state.set_f(flags);
-        instructions::Instruction::execute(0b00100101, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // dec_r, for h
+        instructions::Instruction::execute(0b00100101, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // dec_r, for h
         assert_eq!(test_core.pc_state.get_h(), 0x7F);
         assert_eq!(test_core.pc_state.get_f().get_h(), 1);
         assert_eq!(test_core.pc_state.get_f().get_c(), 1);
@@ -798,7 +810,7 @@ mod tests {
         let mut test_core = TestCore::new();
 
         test_core.memory.dummy_memory = vec![0x00];
-        instructions::Instruction::execute(0x00, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // no-op
+        instructions::Instruction::execute(0x00, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // no-op
         assert_eq!(test_core.pc_state.get_pc(), 0x1);
         assert_eq!(test_core.clock.cycles, 4);
 
@@ -808,7 +820,7 @@ mod tests {
         test_core.clock.cycles = 0;
         let test_op_code = 0x01;
         test_core.memory.dummy_memory = vec![test_op_code, 0x10, 0x33]; // Op-code to test
-        instructions::Instruction::execute(test_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+        instructions::Instruction::execute(test_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor);
         assert_eq!(test_core.pc_state.get_pc(), 0x3);
         assert_eq!(test_core.pc_state.get_bc(), 0x3310);
         assert_eq!(test_core.clock.cycles, 10);

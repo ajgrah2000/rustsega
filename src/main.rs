@@ -37,10 +37,10 @@ fn main() {
         let mut memory = sega::memory::memory::MemoryAbsolute::new();
         let pc_state = sega::cpu::pc_state::PcState::new();
         let ports = sega::ports::Ports::new();
-        let interuptor = sega::interuptor::Interuptor::new();
+        let interruptor = sega::interruptor::Interruptor::new();
 
         memory.set_cartridge(cartridge);
-        let mut core = sega::cpu::core::Core::new(clock, memory, pc_state, ports, interuptor);
+        let mut core = sega::cpu::core::Core::new(clock, memory, pc_state, ports, interruptor);
 
         let debug = true;
 
