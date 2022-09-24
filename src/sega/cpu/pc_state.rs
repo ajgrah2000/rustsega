@@ -43,9 +43,7 @@ pub struct FlagReg16 {
     reg16: Reg16,
 }
 
-
 pub struct PcState {
-
         // Register overlays
         pub bc_reg: Reg16,
         pub de_reg: Reg16,
@@ -102,6 +100,11 @@ pub trait Reg16RW {
     fn get(&self) -> u16;
 }
 
+pub trait FlagReg {
+    fn get_flags(&self) -> PcStatusFlagFields;
+    fn set_flags(&mut self, flags: &PcStatusFlagFields) -> ();
+}
+
 impl Reg16RW for Reg16 {
     fn get(&self) -> u16 {
         self.get()
@@ -120,30 +123,25 @@ impl FlagReg16 {
         }
     }
 
-    pub fn set(&mut self, input: u16) -> () {
-        self.reg16.set(input)
-    }
-    
-    pub fn get(&self) -> u16 {
-        self.reg16.get()
-    }
+}
 
-    pub fn get_flags(&self) -> PcStatusFlagFields {
+impl FlagReg for FlagReg16{
+    fn get_flags(&self) -> PcStatusFlagFields {
         PcStatusFlagFields(self.reg16.low)
     }
 
-    pub fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
+    fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
         self.reg16.low = flags.0;
     }
 }
 
-impl Reg16RW for FlagReg16 {
-    fn get(&self) -> u16 {
-        self.get()
-    }
-
+impl Reg16RW for FlagReg16{
     fn set(&mut self, input: u16) -> () {
-        self.set(input)
+        self.reg16.set(input)
+    }
+    
+    fn get(&self) -> u16 {
+        self.reg16.get()
     }
 }
 

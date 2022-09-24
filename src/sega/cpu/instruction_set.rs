@@ -40,17 +40,23 @@ pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
 
-fn add8(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> u8 {
+fn add8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
+    where F16: pc_state::FlagReg {
+
     // Just call the add c function.
     add8c(a, b, false, af_reg)
 }
 
-fn sub8(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> u8 {
+fn sub8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
+    where F16: pc_state::FlagReg {
+
     // Just call the sub c function.
     sub8c(a, b, false, af_reg)
 }
 
-fn add8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
+fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8 
+    where F16: pc_state::FlagReg {
+
     let mut f_status = af_reg.get_flags();
     let result = status_flags::u8_carry(a, b, c, &mut f_status);
     f_status.set_n(0); // Clear N to indicate add
@@ -59,13 +65,17 @@ fn add8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
     result
 }
 
-pub fn cp_flags(a:u8, b:u8, af_reg: &mut pc_state::FlagReg16) -> () {
+pub fn cp_flags<F16>(a:u8, b:u8, af_reg: &mut F16) -> ()
+    where F16: pc_state::FlagReg {
+
     // CP flags calculated set the same as for subtaction, but the result is ignored.
     sub8c(a, b, false, af_reg);
 }
 
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
-fn sub8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
+fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
+    where F16: pc_state::FlagReg {
+
     let mut f_status = af_reg.get_flags();
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
     let result = status_flags::u8_carry(a, !b, !c, &mut f_status);
@@ -75,7 +85,9 @@ fn sub8c(a:u8, b:u8, c:bool, af_reg: &mut pc_state::FlagReg16) -> u8 {
     result
 }
 
-pub fn add16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
+pub fn add16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
+    where F16: pc_state::FlagReg {
+
     let mut f_status = af_reg.get_flags();
     let result = status_flags::u16_carry(a, b, c, &mut f_status);
     f_status.set_n(0);
@@ -84,7 +96,9 @@ pub fn add16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
     result
 }
 
-fn sub16c(a:u16, b:u16, c:bool, af_reg: &mut pc_state::FlagReg16) -> u16 {
+fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
+    where F16: pc_state::FlagReg {
+
     let mut f_status = af_reg.get_flags();
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
     let result = status_flags::u16_carry(a, !b, !c, &mut f_status);
@@ -447,9 +461,10 @@ pub fn dec_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_st
 }
 
 // DEC (IX+d), INC (IY+d), 
-pub fn dec_i_d<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
-                  af_reg: &mut pc_state::FlagReg16, i16_reg: &R16) -> () where M: memory::MemoryRW,     
-                                                                             R16: pc_state::Reg16RW {
+pub fn dec_i_d<M, F16, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
+                  af_reg: &mut F16, i16_reg: &R16) -> () where M: memory::MemoryRW,     
+                                                                             R16: pc_state::Reg16RW,
+                                                                             F16: pc_state::FlagReg {
 
     let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
     let new_value =  memory.read(address).wrapping_sub(1);
@@ -501,9 +516,11 @@ pub fn inc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_st
 }
 
 // INC (IX+d), INC (IY+d), 
-pub fn inc_i_d<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
-                  af_reg: &mut pc_state::FlagReg16, i16_reg: &R16) -> () where M: memory::MemoryRW, 
-                                                                             R16: pc_state::Reg16RW {
+pub fn inc_i_d<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
+                  af_reg: &mut F16, i16_reg: &R16) -> () 
+    where M: memory::MemoryRW, 
+          R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg {
 
     let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
     let new_value =  memory.read(address).wrapping_add(1);
@@ -623,8 +640,10 @@ pub fn or_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) 
 ////////////////////////////////////////////////////
 
 // ADD HL, ss
-pub fn add16<R16>(clock: &mut clocks::Clock, src_value: u16, 
-             pc_reg: &mut R16, hl_reg: &mut R16, af_reg: &mut pc_state::FlagReg16) -> () where R16: pc_state::Reg16RW {
+pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16, 
+             pc_reg: &mut R16, hl_reg: &mut R16, af_reg: &mut F16) -> () 
+    where R16: pc_state::Reg16RW, 
+          F16: pc_state::FlagReg {
 
     hl_reg.set(add16c(hl_reg.get(), src_value, false, af_reg));
 
