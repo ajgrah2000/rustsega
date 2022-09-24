@@ -175,6 +175,14 @@ pub fn set_shift_register_flags(value: u8, carry:bool, status: &mut pc_state::Pc
     zero_and_sign_flags(status, value)
 }
 
+pub fn rotate_decimal_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
+    // Carry not affected
+    status.set_n(0);
+    status.set_h(0);
+    status.set_pv(calculate_parity(value) as u8);
+    zero_and_sign_flags(status, value)
+}
+
 pub fn zero_and_sign_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
     // Utility function, to set the zero and sign flags
       status.set_s((value & 0x80) >> 7);

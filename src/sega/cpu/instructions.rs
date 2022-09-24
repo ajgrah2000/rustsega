@@ -619,6 +619,9 @@ impl Instruction {
             0x47 => { extended_instruction_set::ld_i_a(clock, pc_state);}
             0x4F => { extended_instruction_set::ld_r_a(clock, pc_state);}
 
+            0x67 => { extended_instruction_set::rrd(clock, memory, pc_state);}
+            0x6f => { extended_instruction_set::rld(clock, memory, pc_state);}
+
             _ => {panic!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
 
 //            0x40 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_b);}
@@ -645,7 +648,6 @@ impl Instruction {
 //            0x56 => { extended_instruction_set::IM_1(clock, memory, pc_state);}
 //            0x5A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
 //            0x62 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
-//            0x67 => { extended_instruction_set::RRD(clock, memory, pc_state);}
 //            0x6A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
 //            0x72 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
 //            0x7A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
@@ -714,6 +716,16 @@ mod tests {
 
     // Allow the memory to be used as 'MemoryRW'
     impl_common_memoryrw!(TestMemory);
+
+    fn simple_execute(test_core: &mut TestCore, op_code: Vec<u8>) {
+        // Reset the PC counter and call execute
+        test_core.pc_state.set_pc(0);
+        test_core.clock.cycles = 0;
+        let initial_op_code = op_code[0];
+        test_core.memory.dummy_memory = op_code; // Op-code to test
+        instructions::Instruction::execute(initial_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+    }
+
 
 
     #[test]
@@ -823,21 +835,40 @@ mod tests {
 
     #[test]
     fn test_opcode_cycle_times() {
-        let mut test_core = TestCore::new();
-
         fn test_op_code_cycle_count(test_core: &mut TestCore, op_code: Vec<u8>, expected_pc: u16, expected_cycles: u32) {
-            // Reset the PC counter.
-            test_core.pc_state.set_pc(0);
-            test_core.clock.cycles = 0;
-            let initial_op_code = op_code[0];
-            test_core.memory.dummy_memory = op_code; // Op-code to test
-            instructions::Instruction::execute(initial_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+            simple_execute(test_core, op_code);
             assert_eq!(test_core.pc_state.get_pc(), expected_pc);
             assert_eq!(test_core.clock.cycles, expected_cycles);
         }
 
+        let mut test_core = TestCore::new();
+
         test_op_code_cycle_count(&mut test_core, vec![0x00], 1, 4); // no-op
         test_op_code_cycle_count(&mut test_core, vec![0x01, 0x10, 0x33], 3, 10); // LD dd, nn
+    }
+
+    #[test]
+    fn test_rotate_opcode_cycle_times() {
+        fn test_op_code_cycle_count(test_core: &mut TestCore, op_code: Vec<u8>, expected_pc: u16, expected_cycles: u32) {
+            simple_execute(test_core, op_code);
+            assert_eq!(test_core.pc_state.get_pc(), expected_pc);
+            assert_eq!(test_core.clock.cycles, expected_cycles);
+        }
+
+        let mut test_core = TestCore::new();
+
+        test_core.pc_state.set_a(0xAB);
+        test_core.pc_state.set_hl(0x02);
+        test_op_code_cycle_count(&mut test_core, vec![0xED, 0x67, 0xCD], 2, 18); // RRD
+        assert_eq!(test_core.memory.dummy_memory[2], 0xBC);
+        assert_eq!(test_core.pc_state.get_a(), 0xAD);
+
+        test_core.pc_state.set_a(0xAB);
+        test_core.pc_state.set_hl(0x02);
+        test_op_code_cycle_count(&mut test_core, vec![0xED, 0x6F, 0xCD], 2, 18); // RLD
+        assert_eq!(test_core.pc_state.get_a(), 0xAC);
+        assert_eq!(test_core.memory.dummy_memory[2], 0xDB);
+
 
     }
 }

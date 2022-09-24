@@ -423,6 +423,46 @@ pub fn srl_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &m
     clock.increment(15);
 }
 
+// RRD
+// Rotate right decimal (basically nibble shift right).
+pub fn rrd<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let original_a = pc_state.get_a();
+    let original_hl_mem = memory.read(pc_state.hl_reg.get());
+
+    let new_value = original_a & 0xF0 |original_hl_mem & 0xF;
+    pc_state.set_a(new_value); 
+
+    // Write back to HL
+    memory.write(pc_state.hl_reg.get(), (original_hl_mem >> 4) & 0xF | (original_a & 0xF) << 4);
+
+    let mut f_value = pc_state.get_f();
+    status_flags::rotate_decimal_flags(&mut f_value, new_value);
+
+    pc_state.increment_pc(2);
+    clock.increment(18);
+}
+
+// RLD
+// Rotate left decimal (basically nibble shift right).
+pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let original_a = pc_state.get_a();
+    let original_hl_mem = memory.read(pc_state.hl_reg.get());
+
+    let new_value = original_a & 0xF0 | (original_hl_mem >> 4) & 0xF;
+    pc_state.set_a(new_value); 
+
+    // Write back to HL
+    memory.write(pc_state.hl_reg.get(), ((original_hl_mem & 0xF) << 4) | (original_a & 0xF));
+
+    let mut f_value = pc_state.get_f();
+    status_flags::rotate_decimal_flags(&mut f_value, new_value);
+
+    pc_state.increment_pc(2);
+    clock.increment(18);
+}
+
 
 
 // # Addition instructions
@@ -640,26 +680,6 @@ pub fn srl_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &m
 //         return  14;
 //                 
 // # Fself.pc_state.IXME, can't find existance of this instruction
-// # RRD, wacky instruction
-// class RRD(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.pc_state.A;
-//         self.pc_state.A = (self.pc_state.A & 0xF0) | (self.memory.read(self.pc_state.HL) & 0xF);
-//         self.memory.write(self.pc_state.HL, 
-//                ((self.memory.read(self.pc_state.HL) >> 4) & 0xF) | 
-//                ((tmp8 << 4) & 0xF0));
-//     
-//              ************* FLAGS *****************
-//         tmp8 = self.pc_state.F.Fstatus.C;
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//         self.pc_state.F.Fstatus.C = tmp8;
-//     
-//         self.pc_state.PC+=2;
-//         return  18;
 //     
 // # self.pc_state.ADC self.pc_state.HL, self.pc_state.r16
 // class ADC_HL_r16(Instruction):
