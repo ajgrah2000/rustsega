@@ -16,6 +16,22 @@ use super::status_flags;
 use super::instruction_set;
 
 /*************************************************************************************/
+/* Utility functions                                                                 */
+/*************************************************************************************/
+
+fn get_i8_displacement_as_u8<M, R16>(memory: &mut M, pc_reg: &R16) -> u16 where M: memory::MemoryRW, R16: pc_state::Reg16RW {
+    // Note the '+2' assumes the 'dddddddd' is at a specific offset from the current pc.
+    memory.read(pc_reg.get() + 2) as i8 as u16
+}
+
+// 'pc_reg' and 'i16_reg' need the same trait, but can be different types.
+fn get_i_d_address<M, R1, R2>(memory: &mut M, pc_reg: &R1, i16_reg: &R2) -> u16 where M: memory::MemoryRW, R1: pc_state::Reg16RW , R2: pc_state::Reg16RW {
+    let address = i16_reg.get().wrapping_add(get_i8_displacement_as_u8(memory, pc_reg));
+    address
+}
+
+
+/*************************************************************************************/
 /* Extended Load Instructions                                                        */
 /*************************************************************************************/
 
@@ -27,7 +43,8 @@ use super::instruction_set;
 pub fn ld_i_d_r<M, R16>(clock: &mut clocks::Clock, memory: &mut M, r: u8, pc_reg: &mut R16, i16_reg: &R16) -> () 
     where M: memory::MemoryRW, R16: pc_state::Reg16RW {
 
-    memory.write(i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16), r); 
+    let address = get_i_d_address(memory, pc_reg, i16_reg); 
+    memory.write(address, r); 
     pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(19);
 }
@@ -58,11 +75,11 @@ pub fn ld_i_mem_nn<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &m
 // pub fn ld_nn_hl_extended
 // pub fn ld_nn_hl
 // pub fn ld_nn_I
-pub fn ld_mem_nn_reg16<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, reg16: &pc_state::Reg16) -> () 
+pub fn ld_mem_nn_reg16<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, reg16: &R16) -> () 
     where M: memory::MemoryRW, R16: pc_state::Reg16RW {
 
-    memory.write(memory.read16(pc_reg.get()+2),   reg16.low);
-    memory.write(memory.read16(pc_reg.get()+2)+1, reg16.high);
+    memory.write(memory.read16(pc_reg.get()+2),   reg16.get_low());
+    memory.write(memory.read16(pc_reg.get()+2)+1, reg16.get_high());
 
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(20);
@@ -85,7 +102,7 @@ pub fn ld_dd_mem_nn<M, F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut 
 pub fn ld_i_d_n<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &mut R16) -> () 
     where M: memory::MemoryRW, R16: pc_state::Reg16RW {
 
-    let tmp16 = i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16);
+    let tmp16 = get_i_d_address(memory, pc_reg, i16_reg); 
     memory.write(tmp16, memory.read(pc_reg.get()+3));
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(19);
@@ -97,7 +114,8 @@ pub fn ld_i_d_n<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut 
 pub fn ld_r_i_d<M, F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, i16_value: u16, mut dst_fn: F) -> () 
     where M: memory::MemoryRW {
 
-    dst_fn(pc_state, memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)));
+    let address = i16_value.wrapping_add(get_i8_displacement_as_u8(memory, &pc_state.pc_reg));
+    dst_fn(pc_state, memory.read(address));
     pc_state.increment_pc(3);
     clock.increment(16);
 }
@@ -138,6 +156,42 @@ pub fn ld_i_a(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> ()
     pc_state.set_i(pc_state.get_a());
     pc_state.increment_pc(2);
     clock.increment(9);
+}
+
+// POP I
+pub fn pop_i<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
+    i16_reg.set_low(memory.read(sp_reg.get()));
+    pc_state::PcState::increment_reg(sp_reg, 1);
+    i16_reg.set_high(memory.read(sp_reg.get()));
+    pc_state::PcState::increment_reg(sp_reg, 1);
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+// PUSH I
+pub fn push_i<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
+    pc_state::PcState::increment_reg(sp_reg, -1);
+    memory.write(sp_reg.get(), i16_reg.get_high());
+
+    pc_state::PcState::increment_reg(sp_reg, -1);
+    memory.write(sp_reg.get(), i16_reg.get_low());
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+// EX SP I
+pub fn ex_sp_i<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
+    let mut tmp8 = memory.read(sp_reg.get());
+    memory.write(sp_reg.get(), i16_reg.get_low());
+    i16_reg.set_low(tmp8);
+
+    tmp8 = memory.read(sp_reg.get() + 1);
+    memory.write(sp_reg.get() + 1, i16_reg.get_high());
+    i16_reg.set_high(tmp8);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -206,7 +260,7 @@ pub fn res_b_mem<M, R16>(clock: &mut clocks::Clock, memory: &mut M, bit_pos: u8,
 pub fn bit_res_set_b_i_d<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, i16_reg: & R16) -> () 
     where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg  {
 
-    let tmp16 = i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16);
+    let tmp16 = get_i_d_address(memory, pc_reg, i16_reg);
     let test_value  = memory.read(tmp16);
     let op_details    = memory.read(pc_reg.get()+3);
     let bit_pos = (op_details >> 3) & 0x7;
@@ -268,6 +322,219 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(15);
 }
+
+// INC I
+pub fn inc_16<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, reg16: &mut R16) -> () where R16: pc_state::Reg16RW {
+    reg16.set(reg16.get().wrapping_add(1));
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(10);
+}
+
+// DEC I
+pub fn dec_16<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, reg16: &mut R16) -> () where R16: pc_state::Reg16RW {
+    reg16.set(reg16.get().wrapping_sub(1));
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(10);
+}
+
+// INC (IX+d), INC (IY+d), 
+pub fn inc_i_d<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
+                  af_reg: &mut F16, i16_reg: &R16) -> () 
+    where M: memory::MemoryRW, 
+          R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg {
+
+    let address = get_i_d_address(memory, pc_reg, i16_reg);
+    let new_value =  memory.read(address).wrapping_add(1);
+
+    memory.write(address, new_value);
+
+    let mut f_value = af_reg.get_flags();
+    status_flags::calculate_inc_flags(&mut f_value, new_value);
+    af_reg.set_flags(&f_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(23);
+}
+
+// DEC (IX+d), DEC (IY+d), 
+pub fn dec_i_d<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
+                  af_reg: &mut F16, i16_reg: &R16) -> () 
+    where M: memory::MemoryRW, 
+          R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg {
+
+    let address = get_i_d_address(memory, pc_reg, i16_reg);
+    let new_value =  memory.read(address).wrapping_sub(1);
+
+    memory.write(address, new_value);
+
+    let mut f_value = af_reg.get_flags();
+    status_flags::calculate_dec_flags(&mut f_value, new_value);
+    af_reg.set_flags(&f_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 3);
+    clock.increment(23);
+}
+
+// ADC (IX+d)
+pub fn adc_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+
+    let carry = pc_state.get_f().get_c();
+    let new_value = instruction_set::add8c(pc_state.get_a(), memory.read(address), carry==1, &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// ADC (IY+d), 
+pub fn adc_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+
+    let new_value = instruction_set::add8c(pc_state.get_a(), memory.read(address), pc_state.get_f().get_c()==1, &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// SUB (IX+d)
+pub fn sub_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+    let new_value = instruction_set::sub8(pc_state.get_a(), memory.read(address), &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// SUB (IY+d), 
+pub fn sub_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+    let new_value = instruction_set::sub8(pc_state.get_a(), memory.read(address), &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// AND (IX+d)
+pub fn and_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+    let new_value = pc_state.get_a() & memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// AND (IY+d), 
+pub fn and_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+    let new_value = pc_state.get_a() & memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// XOR (IX+d)
+pub fn xor_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+    let new_value = pc_state.get_a() ^ memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::xor_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// XOR (IY+d), 
+pub fn xor_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+    let new_value = pc_state.get_a() ^ memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::xor_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// OR (IX+d)
+pub fn or_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+    let new_value = pc_state.get_a() | memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::or_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// OR (IY+d), 
+pub fn or_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+    let new_value = pc_state.get_a() | memory.read(address);
+    let mut f_status = pc_state.get_f();
+    status_flags::or_flags(&mut f_status, new_value); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// ADD A (IX+d)
+pub fn add_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
+
+    let carry = pc_state.get_f().get_c();
+    let new_value = instruction_set::add8(pc_state.get_a(), memory.read(address), &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+// ADD AC (IY+d), 
+pub fn add_iy_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.iy_reg);
+
+    let new_value = instruction_set::add8(pc_state.get_a(), memory.read(address), &mut pc_state.af_reg);
+    pc_state.set_a(new_value);
+
+    pc_state.increment_pc(3);
+    clock.increment(19);
+}
+
+
+
 
 ////////////////////////////////////////////////////
 // Rotate and shift group
@@ -467,148 +734,6 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 
 // # Addition instructions
 // 
-// # self.pc_state.ADD self.pc_state.A,(self.I_reg+d)
-// class ADDA_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.I_reg.get() + 
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,tmp8)
-//         self.pc_state.A = self.pc_state.A + tmp8
-//         self.pc_state.PC += 3
-//         return  19
-//     
-// # self.pc_state.ADC (self.I_reg + d)
-// class ADC_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.I_reg.get() + signed_char_to_int(self.memory.read(self.pc_state.PC+2))), self.pc_state.F.Fstatus.C)
-//         self.pc_state.PC+=3
-//         return 19
-//     
-// # SUB (self.I_reg + d)
-// class SUB_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.I_reg.get() + 
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,tmp8)
-//         self.pc_state.A = self.pc_state.A - tmp8
-//         self.pc_state.PC += 3
-//         return  19
-//     
-// # self.pc_state.AND (self.I_reg + d)
-// class AND_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A & self.memory.read(self.I_reg.get() +
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//         self.pc_state.PC+=3
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A)
-//     
-//         return 19
-//     
-// # XOR (self.I_reg + d)
-// class XOR_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.I_reg.get() +
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//         self.pc_state.PC+=3
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A)
-//     
-//         return  19
-//     
-// # OR (self.I_reg + d)
-// class OR_I_d(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.I_reg.get() + 
-//                          signed_char_to_int(self.memory.read(self.pc_state.PC+2)))
-//         self.pc_state.A = self.pc_state.A | tmp8
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A)
-//         self.pc_state.PC += 3
-//         return  19
-//     
-//     
-// # POP self.I_reg
-// class POP_I(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.I_reg.set_low(self.memory.read(self.pc_state.SP))
-//         self.pc_state.SP += 1
-//         self.I_reg.set_high(self.memory.read(self.pc_state.SP))
-//         self.pc_state.SP += 1
-//         self.pc_state.PC += 2
-//         return  14
-//     
-// # EX (self.pc_state.SP), self.I_reg
-// class EX_SP_I(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.SP)
-//         self.memory.write(self.pc_state.SP, self.I_reg.get_low())
-//         self.I_reg.set_low(tmp8)
-//         tmp8 = self.memory.read(self.pc_state.SP+1)
-//         self.memory.write(self.pc_state.SP+1, self.I_reg.get_high())
-//         self.I_reg.set_high(tmp8)
-//         self.pc_state.PC+=2
-//         return  23
-//     
-// # PUSH self.I_reg
-// class PUSH_I(Instruction):
-//     def __init__(self, memory, pc_state, I_reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.I_reg = I_reg
-// 
-//     def execute(self):
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.I_reg.get_high())
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.I_reg.get_low())
-//         self.pc_state.PC += 2
-//     
-//         return 15
-//     
 // # IN r, (C)
 // class IN_r_C(Instruction):
 //     def __init__(self, memory, pc_state, ports, reg):

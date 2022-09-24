@@ -98,6 +98,11 @@ impl Reg16 {
 pub trait Reg16RW {
     fn set(&mut self, input: u16) -> ();
     fn get(&self) -> u16;
+    // Used by stack pointer
+    fn set_low(&mut self, input: u8) -> ();
+    fn set_high(&mut self, input: u8) -> ();
+    fn get_low(&self) -> u8;
+    fn get_high(&self) -> u8;
 }
 
 pub trait FlagReg {
@@ -112,6 +117,19 @@ impl Reg16RW for Reg16 {
 
     fn set(&mut self, input: u16) -> () {
         self.set(input)
+    }
+    fn set_low(&mut self, input: u8) -> () {
+        self.low = input;
+    }
+    fn set_high(&mut self, input: u8) -> () {
+        self.high = input;
+    }
+
+    fn get_low(&self) -> u8 {
+        self.low
+    }
+    fn get_high(&self) -> u8 {
+        self.high
     }
 }
 
@@ -142,6 +160,19 @@ impl Reg16RW for FlagReg16{
     
     fn get(&self) -> u16 {
         self.reg16.get()
+    }
+
+    fn set_low(&mut self, input: u8) -> () {
+        self.reg16.low = input;
+    }
+    fn set_high(&mut self, input: u8) -> () {
+        self.reg16.high = input;
+    }
+    fn get_low(&self) -> u8 {
+        self.reg16.low
+    }
+    fn get_high(&self) -> u8 {
+        self.reg16.high
     }
 }
 

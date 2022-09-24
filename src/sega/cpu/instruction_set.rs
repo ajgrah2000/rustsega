@@ -112,21 +112,21 @@ pub fn rotate_left(input:u8, carry: bool) -> (u8, bool)
     (result, bit7)
 }
 
-fn add8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
+pub fn add8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
     where F16: pc_state::FlagReg {
 
     // Just call the add c function.
     add8c(a, b, false, af_reg)
 }
 
-fn sub8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
+pub fn sub8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
     where F16: pc_state::FlagReg {
 
     // Just call the sub c function.
     sub8c(a, b, false, af_reg)
 }
 
-fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8 
+pub fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8 
     where F16: pc_state::FlagReg {
 
     let mut f_status = af_reg.get_flags();
@@ -585,26 +585,6 @@ pub fn inc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_st
 
     pc_state.increment_pc(1);
     clock.increment(11);
-}
-
-// INC (IX+d), INC (IY+d), 
-pub fn inc_i_d<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, 
-                  af_reg: &mut F16, i16_reg: &R16) -> () 
-    where M: memory::MemoryRW, 
-          R16: pc_state::Reg16RW,
-          F16: pc_state::FlagReg {
-
-    let address = i16_reg.get().wrapping_add(memory.read(pc_reg.get() + 2) as u16);
-    let new_value =  memory.read(address).wrapping_add(1);
-
-    memory.write(address, new_value);
-
-    let mut f_value = af_reg.get_flags();
-    status_flags::calculate_inc_flags(&mut f_value, new_value);
-    af_reg.set_flags(&f_value);
-
-    pc_state::PcState::increment_reg(pc_reg, 3);
-    clock.increment(23);
 }
 
 // LD (nn), HL

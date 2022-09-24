@@ -119,10 +119,7 @@ impl Instruction {
 
             0x34 => { instruction_set::inc_hl(clock, memory, pc_state);} // INC HL
             0x35 => { instruction_set::dec_hl(clock, memory, pc_state);} // DEC HL
-// 
             0x36 => { instruction_set::ld_mem_n(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD (HL), n
-// 
-// 
             0x3a => { instruction_set::ld_r8_mem(clock, memory, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)});} // LD A, (n)
 
             // inc_r instructions
@@ -511,25 +508,21 @@ impl Instruction {
                                                 &mut pc_state.pc_reg, &mut pc_state.ix_reg, &mut pc_state.af_reg);
             }
 
+            0x23 => { extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
+            0x2B => { extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
+            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.ix_reg);}
+            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.ix_reg);}
+            0x8E => { extended_instruction_set::adc_ix_d(clock, memory, pc_state);}
+            0x96 => { extended_instruction_set::sub_ix_d(clock, memory, pc_state);}
+            0xA6 => { extended_instruction_set::and_ix_d(clock, memory, pc_state);}
+            0xAE => { extended_instruction_set::xor_ix_d(clock, memory, pc_state);}
+            0xB6 => { extended_instruction_set::or_ix_d(clock, memory, pc_state);}
+            0x86 => { extended_instruction_set::add_ix_d(clock, memory, pc_state);}
+            0xE1 => { extended_instruction_set::pop_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.ix_reg);}
+            0xE5 => { extended_instruction_set::push_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.ix_reg);}
+            0xE3 => { extended_instruction_set::ex_sp_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.ix_reg);}
+
             _ => {panic!("Extended(0xDD) Opcode not implemented: {:x}", op_code); }
-
-//            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
-//            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_ix, 10,2);}
-//
-//            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-
-//
-//            0x86 => { extended_instruction_set::ADDA_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0x8E => { extended_instruction_set::ADC_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0x96 => { extended_instruction_set::SUB_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0xA6 => { extended_instruction_set::AND_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0xAE => { extended_instruction_set::XOR_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0xB6 => { extended_instruction_set::OR_I_d(clock, memory, pc_state, self._reg_wrapper_ix);}
-//
-//            0xE1 => { extended_instruction_set::POP_I(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0xE3 => { extended_instruction_set::EX_SP_I(clock, memory, pc_state, self._reg_wrapper_ix);}
-//            0xE5 => { extended_instruction_set::PUSH_I(clock, memory, pc_state, self._reg_wrapper_ix);}
         }
     } 
     // Extended instructions
@@ -568,25 +561,21 @@ impl Instruction {
                                                 &mut pc_state.pc_reg, &mut pc_state.iy_reg, &mut pc_state.af_reg);
             }
 
-             _ => {panic!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
+            0x23 => { extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
+            0x2B => { extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
+            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.iy_reg);}
+            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.iy_reg);}
+            0x8E => { extended_instruction_set::adc_iy_d(clock, memory, pc_state);}
+            0x96 => { extended_instruction_set::sub_iy_d(clock, memory, pc_state);}
+            0xA6 => { extended_instruction_set::and_iy_d(clock, memory, pc_state);}
+            0xAE => { extended_instruction_set::xor_iy_d(clock, memory, pc_state);}
+            0xB6 => { extended_instruction_set::or_iy_d(clock, memory, pc_state);}
+            0x86 => { extended_instruction_set::add_iy_d(clock, memory, pc_state);}
+            0xE1 => { extended_instruction_set::pop_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.iy_reg);}
+            0xE5 => { extended_instruction_set::push_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.iy_reg);}
+            0xE3 => { extended_instruction_set::ex_sp_i(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.iy_reg);}
 
-//            0x23 => { extended_instruction_set::INC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
-//            0x2B => { extended_instruction_set::DEC_16(clock, memory, pc_state, self._reg_wrapper_iy, 10,2);}}
-//
-//            0x34 => { extended_instruction_set::INC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0x35 => { extended_instruction_set::DEC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//
-//
-//
-//            0x86 => { extended_instruction_set::ADDA_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0x8E => { extended_instruction_set::ADC_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0x96 => { extended_instruction_set::SUB_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xA6 => { extended_instruction_set::AND_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xAE => { extended_instruction_set::XOR_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xB6 => { extended_instruction_set::OR_I_d(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xE1 => { extended_instruction_set::POP_I(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xE3 => { extended_instruction_set::EX_SP_I(clock, memory, pc_state, self._reg_wrapper_iy);}
-//            0xE5 => { extended_instruction_set::PUSH_I(clock, memory, pc_state, self._reg_wrapper_iy);}
+             _ => {panic!("Extended(0xFD) Opcode not implemented: {:x}", op_code); }
         }
     } 
     // Extended instructions
@@ -868,6 +857,14 @@ mod tests {
         test_op_code_cycle_count(&mut test_core, vec![0xED, 0x6F, 0xCD], 2, 18); // RLD
         assert_eq!(test_core.pc_state.get_a(), 0xAC);
         assert_eq!(test_core.memory.dummy_memory[2], 0xDB);
+
+        test_core.pc_state.set_ix(0x04);
+        test_op_code_cycle_count(&mut test_core, vec![0xDD, 0x34, 0xFF,0x09], 3, 23); // INC (IX+d) (d = -1)
+        assert_eq!(test_core.memory.dummy_memory[3], 0xA);
+
+        test_core.pc_state.set_iy(0x06);
+        test_op_code_cycle_count(&mut test_core, vec![0xFD, 0x35, 0xFD,0x09], 3, 23); // DEC (IY+d) (d = -3)
+        assert_eq!(test_core.memory.dummy_memory[3], 0x8);
 
 
     }
