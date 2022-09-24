@@ -108,7 +108,7 @@ impl MemoryBase {
 type BankSizeType = u16;
 type NumBanksType = u8;
 type NumPagesType = u8;
-type AddressType  = u16;
+pub type AddressType  = u16;
 type AbsoluteAddressType = u32;
 
 //const fn max<T: ~const PartialOrd + Copy>(a: T, b: T) -> T {
@@ -170,10 +170,6 @@ impl MemoryAbsolute {
 
      pub fn read(&self, address: AddressType) -> u8 {
         self.memory_map[(self.upper_mappings[(address >> 13) as usize] | (address & 0x1FFF) as AbsoluteAddressType) as usize]
-     }
-
-     pub fn read16(&self, address: AddressType) -> u16 {
-         self.read(address) as u16 + ((self.read(address + 1)  as u16) << 8)
      }
 
      pub fn read_array(&self, address: AddressType, length: AddressType) -> Vec<u8> {
@@ -288,26 +284,28 @@ impl MemoryAbsolute {
 }
 
 // Common macro to help export the read/write rules
+#[macro_export]
 macro_rules! impl_common_memoryrw{
     ($T:ident) => {
-        impl MemoryRW for $T {
-            fn read(&self, address: AddressType) -> u8
-            {
+        impl $crate::sega::memory::memory::MemoryRW for $T {
+            fn read(&self, address: $crate::sega::memory::memory::AddressType) -> u8 {
                 self.read(address)
             }
 
-            fn read16(&self, address: AddressType) -> u16
-            {
-                self.read16(address)
+            // Also create a 'little endian' 16-bit read.
+            fn read16(&self, address: $crate::sega::memory::memory::AddressType) -> u16 {
+                self.read(address) as u16 + ((self.read(address + 1)  as u16) << 8)
             }
 
-            fn write(&mut self, address: AddressType, data: u8) -> ()
-            {
+            fn write(&mut self, address: $crate::sega::memory::memory::AddressType, data: u8) -> () {
                 self.write(address, data);
             }
         }
     }
 }
+
+pub(crate) use impl_common_memoryrw;
+
 impl_common_memoryrw!(MemoryAbsolute);
 
 pub trait MemoryRW {

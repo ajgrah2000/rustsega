@@ -125,15 +125,17 @@ impl Instruction {
             // inc_r instructions
             // op_code: 0b00rrr100
             n if (n & 0b11000111 == 0b00000100) && (((n >> 3) & 0x7) != 0x6) => {
-                    let dst_fn = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
-                    instruction_set::inc_r(clock, pc_state, dst_fn, select_8_bit_read_register(pc_state, op_code & 0x7));
+                    let reg_index = (op_code >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function (reg_index);
+                    instruction_set::inc_r(clock, pc_state, dst_fn, select_8_bit_read_register(pc_state, reg_index));
                 }
 
             // ld_mem_r instructions
             // opcode: 0b01110rrr 
             n if (n & 0b11111000 == 0b01110000) && (n != 0x76) => {
+                    let reg_index = n & 0x7;
                     instruction_set::ld_mem_r(clock, memory, 
-                            select_8_bit_read_register(pc_state, op_code & 0x7), // gets the appropriate register getter fromt the supplied op-code
+                            select_8_bit_read_register(pc_state, reg_index), // gets the appropriate register getter fromt the supplied op-code
                             &mut pc_state.pc_reg, &mut pc_state.hl_reg); // LD (HL), r
                 }
 
@@ -141,42 +143,43 @@ impl Instruction {
             // op code: 0b10000rrr
             n if (n & 0b11111000 == 0b10000000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::add_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::add_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // SUB r
             // op code: 0b10011rrr
             n if (n & 0b11111000 == 0b10011000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::sub_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::sub_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // AND r
             // op code: 0b10100rrr
             n if (n & 0b11111000 == 0b10100000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::and_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::and_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // XOR r
             // op code: 0b10101rrr
             n if (n & 0b11111000 == 0b10101000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::xor_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::xor_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // OR r
             // op code: 0b10101rrr
             n if (n & 0b11111000 == 0b10110000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::or_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::or_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // cp_r instructions
             // opcode: 0b10111rrr 
             n if (n & 0b11111000 == 0b10111000) && (n != 0b11111110) => {
+                    let reg_index = n & 0x7;
                     instruction_set::cp_r(clock, memory, 
-                            select_8_bit_read_register(pc_state, op_code & 0x7), // gets the appropriate register getter fromt the supplied op-code
+                            select_8_bit_read_register(pc_state, reg_index), // gets the appropriate register getter fromt the supplied op-code
                             pc_state); // CP r
                 }
 
@@ -206,14 +209,16 @@ impl Instruction {
             // dec_r instructions
             // op_code: 0b00rrr101
             n if (n & 0b11000111 == 0b00000101) && (((n >> 3) & 0x7) != 0x6) => {
-                    let dst_fn = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
-                    instruction_set::dec_r(clock, pc_state, dst_fn, select_8_bit_read_register(pc_state, op_code & 0x7));
+                    let reg_index = (op_code >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function (reg_index);
+                    instruction_set::dec_r(clock, pc_state, dst_fn, select_8_bit_read_register(pc_state, reg_index));
                 }
 
             // ld_r_mem instructions (eg // LD r, (HL)
             // op_code: 0b01rrr110  // LD r, (HL)
             n if (n & 0b11000111 == 0b01000110) && (((n >> 3) & 0x7) != 0x6) => {
-                    let dst_fn = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
+                    let reg_index = (op_code >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function (reg_index);
                     instruction_set::ld_r_mem(clock, memory, pc_state, dst_fn, pc_state.hl_reg.get()); // LD r, (HL)
                 }
             0x0a => { instruction_set::ld_r_mem(clock, memory, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.bc_reg.get());} // LD A, (BC)
@@ -222,7 +227,8 @@ impl Instruction {
             // LD r,n
             // opcode: 0b00rrr110 nnnnnnnn
             n if (n & 0b11000111 == 0b00000110) && (((n >> 3) & 0x7) != 0x6) => {
-                    let dst_fn = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
+                    let reg_index = (op_code >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function (reg_index);
                     instruction_set::ld_r(clock, memory, pc_state, dst_fn); // LD r, n
                 }
 
@@ -256,14 +262,14 @@ impl Instruction {
             // op code: 0b10001rrr
             n if (n & 0b11111000 == 0b10001000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::adc_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::adc_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // SBC r
             // op code: 0b10011rrr
             n if (n & 0b11111000 == 0b10011000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::sbc_r(clock, select_8_bit_read_register(pc_state, op_code & 0x7), pc_state);
+                    instruction_set::sbc_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }
 
             // CALL cc, nn instructions
@@ -347,7 +353,8 @@ impl Instruction {
             // 0xCB, 0b01bbbrrr
             n if (n & 0b11000000 == 0b01000000) && (n & 0b111 != 0b110) => {
                     let bit_pos = (n >> 3) & 0x7;
-                    let r = select_8_bit_read_register(pc_state, op_code & 0x7);
+                    let reg_index = n & 0x7;
+                    let r = select_8_bit_read_register(pc_state, reg_index);
                     extended_instruction_set::bit_b_r(clock, bit_pos, r, &mut pc_state.pc_reg, &mut pc_state.af_reg);
                 }
             n if (n & 0b11000110 == 0b01000110) => {
@@ -654,6 +661,51 @@ mod tests {
     use crate::sega::clocks;
     use crate::sega::interuptor;
     use crate::sega::ports;
+    use crate::impl_common_memoryrw;
+
+    // Create a 'test memory' class, to allow simple/arbitrary population of memory.
+    pub struct TestMemory {
+        pub dummy_memory:     Vec<u8>
+    }
+
+    pub struct TestCore {
+        pub clock:      clocks::Clock,
+        pub memory:     TestMemory,
+        pub pc_state:   pc_state::PcState,
+        pub ports:      ports::Ports,
+        pub interuptor: interuptor::Interuptor,
+    }
+    impl TestCore {
+        pub fn new() -> Self {
+            Self {
+                clock: clocks::Clock::new(),
+                memory: TestMemory::new(),
+                pc_state: pc_state::PcState::new(),
+                ports: ports::Ports::new(),
+                interuptor: interuptor::Interuptor::new(),
+            }
+        }
+    }
+
+    impl TestMemory {
+        pub fn new () -> Self {
+            Self {
+                dummy_memory: Vec::new(),
+            }
+        }
+
+        fn read(&self, address: memory::AddressType) -> u8 {
+            self.dummy_memory[address as usize]
+        }
+
+        fn write(&mut self, address: memory::AddressType, data: u8) -> () {
+            self.dummy_memory[address as usize] = data;
+        }
+    }
+
+    // Allow the memory to be used as 'MemoryRW'
+    impl_common_memoryrw!(TestMemory);
+
 
     #[test]
     fn test_instruction_match_style_check() {
@@ -698,70 +750,85 @@ mod tests {
 
     #[test]
     fn test_ld_r_r_functions() {
-        let mut clock = clocks::Clock::new();
-        let mut memory = memory::MemoryAbsolute::new();
-        let mut pc_state = pc_state::PcState::new();
-        let mut ports = ports::Ports::new();
-        let mut interuptor = interuptor::Interuptor::new();
+        let mut test_core = TestCore::new();
 
         // ld_r_r instructions ( 0b01dddsss) 
         // 111 -> A, 000 -> B, 001 -> C, 
         // 010 -> D, 011 -> E, 100 -> H, 
         // 101 -> L
         
-        assert_eq!(clock.cycles, 0);
-        assert_eq!(pc_state.get_b(), 0);
+        assert_eq!(test_core.clock.cycles, 0);
+        assert_eq!(test_core.pc_state.get_b(), 0);
 
-        pc_state.set_c(0x42);
-        instructions::Instruction::execute(0b01000001, &mut clock, &mut memory, &mut pc_state, &mut ports, &mut interuptor); // LD r,'r  C -> B
-        assert_eq!(pc_state.get_b(), 0x42);
-        assert_eq!(clock.cycles, 4);
+        test_core.pc_state.set_c(0x42);
+        instructions::Instruction::execute(0b01000001, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // LD r,'r  C -> B
+        assert_eq!(test_core.pc_state.get_b(), 0x42);
+        assert_eq!(test_core.clock.cycles, 4);
     }
 
     #[test]
     fn test_jump_functions() {
-        let mut clock = clocks::Clock::new();
-        let mut memory = memory::MemoryAbsolute::new();
-        let mut pc_state = pc_state::PcState::new();
-        let mut ports = ports::Ports::new();
-        let mut interuptor = interuptor::Interuptor::new();
+        let mut test_core = TestCore::new();
 
-        pc_state.set_hl(0x4233);
-        pc_state.set_pc(0x2003);
-        instructions::Instruction::execute(0xE9, &mut clock, &mut memory, &mut pc_state, &mut ports, &mut interuptor); // JP (HL)
-        assert_eq!(pc_state.get_pc(), 0x4233);
+        test_core.pc_state.set_hl(0x4233);
+        test_core.pc_state.set_pc(0x2003);
+        instructions::Instruction::execute(0xE9, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // JP (HL)
+        assert_eq!(test_core.pc_state.get_pc(), 0x4233);
     }
 
+    #[test]
     fn test_dec_functions() {
-        let mut clock = clocks::Clock::new();
-        let mut memory = memory::MemoryAbsolute::new();
-        let mut pc_state = pc_state::PcState::new();
-        let mut ports = ports::Ports::new();
-        let mut interuptor = interuptor::Interuptor::new();
+        let mut test_core = TestCore::new();
 
-        pc_state.set_h(0x80);
-        let mut flags = pc_state.get_f();
+        test_core.pc_state.set_h(0x80);
+        let mut flags = test_core.pc_state.get_f();
         flags.set_c(1);
-        pc_state.set_f(flags);
-        instructions::Instruction::execute(0b00100101, &mut clock, &mut memory, &mut pc_state, &mut ports, &mut interuptor); // JP (HL)
-        assert_eq!(pc_state.get_h(), 0x7F);
-        assert_eq!(pc_state.get_f().get_h(), 1);
-        assert_eq!(pc_state.get_f().get_c(), 1);
-        assert_eq!(pc_state.get_f().get_s(), 0);
+        test_core.pc_state.set_f(flags);
+        instructions::Instruction::execute(0b00100101, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // dec_r, for h
+        assert_eq!(test_core.pc_state.get_h(), 0x7F);
+        assert_eq!(test_core.pc_state.get_f().get_h(), 1);
+        assert_eq!(test_core.pc_state.get_f().get_c(), 1);
+        assert_eq!(test_core.pc_state.get_f().get_s(), 0);
     }
 
+    #[test]
+    fn test_specific_opcodes() {
+        let mut test_core = TestCore::new();
+
+        test_core.memory.dummy_memory = vec![0x00];
+        instructions::Instruction::execute(0x00, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor); // no-op
+        assert_eq!(test_core.pc_state.get_pc(), 0x1);
+        assert_eq!(test_core.clock.cycles, 4);
+
+        // LD dd, nn: for BC
+        // Reset the PC counter.
+        test_core.pc_state.set_pc(0);
+        test_core.clock.cycles = 0;
+        let test_op_code = 0x01;
+        test_core.memory.dummy_memory = vec![test_op_code, 0x10, 0x33]; // Op-code to test
+        instructions::Instruction::execute(test_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+        assert_eq!(test_core.pc_state.get_pc(), 0x3);
+        assert_eq!(test_core.pc_state.get_bc(), 0x3310);
+        assert_eq!(test_core.clock.cycles, 10);
+    }
+
+    #[test]
     fn test_opcode_cycle_times() {
-        let mut clock = clocks::Clock::new();
-        let mut memory = memory::MemoryAbsolute::new();
-        let mut pc_state = pc_state::PcState::new();
-        let mut ports = ports::Ports::new();
-        let mut interuptor = interuptor::Interuptor::new();
+        let mut test_core = TestCore::new();
 
+        fn test_op_code_cycle_count(test_core: &mut TestCore, op_code: Vec<u8>, expected_pc: u16, expected_cycles: u32) {
+            // Reset the PC counter.
+            test_core.pc_state.set_pc(0);
+            test_core.clock.cycles = 0;
+            let initial_op_code = op_code[0];
+            test_core.memory.dummy_memory = op_code; // Op-code to test
+            instructions::Instruction::execute(initial_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interuptor);
+            assert_eq!(test_core.pc_state.get_pc(), expected_pc);
+            assert_eq!(test_core.clock.cycles, expected_cycles);
+        }
 
-//    pub fn execute(op_code: u8, clock: &mut clocks::Clock, 
-//           memory: &mut memory::MemoryAbsolute, 
-//           pc_state: &mut pc_state::PcState, 
-//           ports: &mut ports::Ports, 
-//           interuptor: &mut interuptor::Interuptor) -> () {
+        test_op_code_cycle_count(&mut test_core, vec![0x00], 1, 4); // no-op
+        test_op_code_cycle_count(&mut test_core, vec![0x01, 0x10, 0x33], 3, 10); // LD dd, nn
+
     }
 }

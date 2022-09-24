@@ -11,9 +11,6 @@ pub struct Core<M> {
     pc_state:   pc_state::PcState,
     ports:      ports::Ports,
     interuptor: interuptor::Interuptor,
-    
-//    instruction_lookup = instruction_store.InstructionStore(self.clocks, self.pc_state, self.ports)
-    
 }
 
 impl<M: memory::MemoryRW> Core<M> {
