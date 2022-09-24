@@ -32,8 +32,6 @@ impl fmt::Display for PcStatusFlagFields {
     }
 }
 
-// Copy, Clone is used to simplify the 'exx' operation.
-//#[derive(Copy, Clone)]
 pub struct Reg16 {
     pub high: u8,
     pub low: u8,

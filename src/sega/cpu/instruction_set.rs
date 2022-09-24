@@ -493,19 +493,19 @@ pub fn djnz<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     }
 }
 
+// Note, could also add '#[derive(Copy, Clone)]' to 'Reg16'
+fn exchange_reg<R16>(first: &mut R16, second: &mut R16) -> () where R16: pc_state::Reg16RW {
+    let tmp_high = first.get_high();
+    let tmp_low  = first.get_low();
+    first.set_high(second.get_high());
+    first.set_low(second.get_low());
+    second.set_low(tmp_low);
+    second.set_high(tmp_high);
+}
+
 // EXX
 // Exchange shadow registers.
 pub fn exx(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
-
-    // Note, could also add '#[derive(Copy, Clone)]' to 'Reg16'
-    fn exchange_reg<R16>(first: &mut R16, second: &mut R16) -> () where R16: pc_state::Reg16RW {
-        let tmp_high = first.get_high();
-        let tmp_low  = first.get_low();
-        first.set_high(second.get_high());
-        first.set_low(second.get_low());
-        second.set_low(tmp_low);
-        second.set_high(tmp_high);
-    }
 
     exchange_reg(&mut pc_state.bc_reg, &mut pc_state.shadow_bc_reg);
     exchange_reg(&mut pc_state.de_reg, &mut pc_state.shadow_de_reg);
@@ -515,6 +515,33 @@ pub fn exx(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     clock.increment(4);
 }
 
+// EX
+// Exchange AF, AF', or DE, HL registers
+pub fn ex<R1, R2>(clock: &mut clocks::Clock, pc_reg: &mut R1, first: &mut R2, second: &mut R2) -> () 
+    where R1: pc_state::Reg16RW,
+          R2: pc_state::Reg16RW,
+{
+    exchange_reg(first, second);
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(4);
+}
+
+// EX (SP), HL
+pub fn ex_sp_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () 
+    where M: memory::MemoryRW
+{
+
+    let mut tmp8 = memory.read(pc_state.sp_reg.get());
+    memory.write(pc_state.sp_reg.get(), pc_state.get_l());
+    pc_state.set_l(tmp8);
+
+    tmp8 = memory.read(pc_state.sp_reg.get() + 1);
+    memory.write(pc_state.sp_reg.get() + 1, pc_state.get_h());
+    pc_state.set_h(tmp8);
+
+    pc_state.increment_pc(1);
+    clock.increment(19);
+}
 
 // Call on condition
 // CALL cc, nn
@@ -692,6 +719,51 @@ pub fn adc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     clock.increment(4);
 }
 
+pub fn add_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = add8(pc_state.get_a(), memory.read(pc_state.hl_reg.get()), &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+pub fn adc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let carry = pc_state.get_f().get_c();
+    let result = add8c(pc_state.get_a(), memory.read(pc_state.hl_reg.get()), carry==1, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+pub fn add_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = add8(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), &mut pc_state.af_reg);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+pub fn adc_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let carry = pc_state.get_f().get_c();
+    let result = add8c(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), carry == 1, &mut pc_state.af_reg);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+
 
 pub fn sub_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
 
@@ -712,9 +784,51 @@ pub fn sbc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     clock.increment(4);
 }
 
+pub fn sub_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = sub8(pc_state.get_a(), memory.read(pc_state.hl_reg.get()), &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+pub fn sbc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let carry = pc_state.get_f().get_c();
+    let result = sub8c(pc_state.get_a(), memory.read(pc_state.hl_reg.get()), carry==1, &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+pub fn sub_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = sub8(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), &mut pc_state.af_reg);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+pub fn sbc_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let carry = pc_state.get_f().get_c();
+    let result = sub8c(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), carry == 1, &mut pc_state.af_reg);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
 
 pub fn and_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
-
     let result = pc_state.get_a() & r;
     let mut f_status = pc_state.get_f();
     status_flags::and_flags(&mut f_status, result); 
@@ -724,6 +838,20 @@ pub fn and_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     pc_state.increment_pc(1);
     clock.increment(4);
 }
+
+pub fn and_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = pc_state.get_a() & memory.read(pc_state.hl_reg.get());
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+
 
 pub fn xor_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
 
@@ -735,6 +863,18 @@ pub fn xor_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
 
     pc_state.increment_pc(1);
     clock.increment(4);
+}
+
+pub fn xor_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = pc_state.get_a() ^ memory.read(pc_state.hl_reg.get());
+    let mut f_status = pc_state.get_f();
+    status_flags::xor_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
 }
 
 pub fn or_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
@@ -749,6 +889,53 @@ pub fn or_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) 
     clock.increment(4);
 }
 
+pub fn or_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
+
+    let result = pc_state.get_a() | memory.read(pc_state.hl_reg.get());
+    let mut f_status = pc_state.get_f();
+    status_flags::or_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(1);
+    clock.increment(7);
+}
+
+
+pub fn and_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW{
+    let result = pc_state.get_a() & memory.read(pc_state.pc_reg.get() +1);
+    let mut f_status = pc_state.get_f();
+    status_flags::and_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+pub fn xor_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW{
+
+    let result = pc_state.get_a() ^ memory.read(pc_state.pc_reg.get() +1);
+    let mut f_status = pc_state.get_f();
+    status_flags::xor_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
+
+pub fn or_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW{
+
+    let result = pc_state.get_a() | memory.read(pc_state.pc_reg.get() +1);
+    let mut f_status = pc_state.get_f();
+    status_flags::or_flags(&mut f_status, result); 
+    pc_state.set_f(f_status);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(7);
+}
 
 ////////////////////////////////////////////////////
 // 16-bit arithmetic Group
@@ -884,6 +1071,74 @@ pub fn push<M, R1, R2>(clock: &mut clocks::Clock, memory: &mut M, pc_reg : &mut 
     clock.increment(11);
 }
 
+pub fn daa(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> ()
+{
+    if pc_state.get_f().get_n() == 0 { // perform addition
+        calculate_daa_add(pc_state);
+    } else { // perform Subtraction
+        calculate_daa_sub(pc_state);
+    }
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+/*************************************************************************************/
+/* General purpose arithmetic and CPU control                                        */
+/*************************************************************************************/
+
+// CPL
+// one's complement of 'A'
+pub fn cpl(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> ()
+{
+    let mut f_status = pc_state.get_f();
+    f_status.set_h(1);
+    f_status.set_n(1);
+    pc_state.set_f(f_status);
+    pc_state.set_a(pc_state.get_a() ^0xFF);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// SCF
+// Set the carry flag
+pub fn scf<R16, F16>(clock: &mut clocks::Clock, pc_reg : &mut R16, af_reg: &mut F16) -> () 
+    where R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg,
+{
+    let mut f_status = af_reg.get_flags();
+    f_status.set_h(0);
+    f_status.set_n(0);
+    f_status.set_c(1);
+    af_reg.set_flags(&f_status);
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(4);
+}
+
+// CCF
+// Compliment/Invert the carry flag
+pub fn ccf<R16, F16>(clock: &mut clocks::Clock, pc_reg : &mut R16, af_reg: &mut F16) -> () 
+    where R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg,
+{
+    let mut f_status = af_reg.get_flags();
+    f_status.set_h(f_status.get_c());
+    f_status.set_n(0);
+    f_status.set_c(f_status.get_c() ^ 1);
+    af_reg.set_flags(&f_status);
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(4);
+}
+
+pub fn halt(clock: &mut clocks::Clock) -> () {
+    // Should 'loop/no-op' until an inerrupt occurs (or just immediately trigger one).
+    clock.increment(4);
+    panic!("halt not correctly implemented");
+}
+
+
 
 
 ////////////////////////////////////////////////////
@@ -904,293 +1159,7 @@ pub fn push<M, R1, R2>(clock: &mut clocks::Clock, memory: &mut M, pc_reg : &mut 
 // 
 //      return 11;
 // 
-// class AND_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//     
-//         self.pc_state.A = self.pc_state.A & self.memory.read(self.pc_state.PC +1);
-//         self.pc_state.PC += 2;
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
-//     
-//         return 7;
-// 
 // ################ NEW INSTRUCTIONS ##################
-// 
-// # EX self.pc_state.AF, self.pc_state.AF'
-// class EX(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmpa = self.pc_state.A;
-//              ************* FLAGS *****************
-//         tmpf = self.pc_state.F.value;
-//         self.pc_state.A = self.pc_state.A_;
-//         self.pc_state.F.value = self.pc_state.F_;
-//         self.pc_state.A_ = tmpa;
-//         self.pc_state.F_ = tmpf;
-// 
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # Really need to put this into a table
-// class DAA(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.N == 0): # self.pc_state.Addition instruction
-//             calculateDAAAdd(self.pc_state);
-//         else: # Subtraction instruction
-//             calculateDAASub(self.pc_state);
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # CPL
-// class CPL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.H = 1;
-//         self.pc_state.F.Fstatus.N = 1;
-//         self.pc_state.A ^= 0xFF;
-//         self.pc_state.PC += 1
-// 
-//         return 4;
-// 
-// # SCF
-// class SCF(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//          self.pc_state.F.Fstatus.H = 0;
-//          self.pc_state.F.Fstatus.N = 0;
-//          self.pc_state.F.Fstatus.C = 1;
-//          self.pc_state.PC += 1
-//          return  4;
-// 
-// # CCF
-// class CCF(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.H = self.pc_state.F.Fstatus.C;
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.F.Fstatus.C = 1-self.pc_state.F.Fstatus.C; #Invert carry flag
-//         self.pc_state.PC += 1
-//         return  4;
-// 
-// # self.pc_state.ADD (self.pc_state.HL) 
-// class ADD_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.memory.read(self.pc_state.HL));
-//         self.pc_state.A = self.pc_state.A + self.memory.read(self.pc_state.HL);
-//         self.pc_state.PC += 1
-//         return 7;
-// 
-// # self.pc_state.ADC (self.pc_state.HL)
-// class ADC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.HL), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC += 1
-//         return 7;
-// 
-// # SUB (self.pc_state.HL) 
-// class SUB_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
-//         self.pc_state.A = self.pc_state.A - self.memory.read(self.pc_state.HL);
-//         self.pc_state.PC += 1
-//         return 7;
-// 
-// # SBC (self.pc_state.HL)
-// class SBC_A_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.HL), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC += 1
-//         return 7;
-// 
-// # self.pc_state.AND (self.pc_state.HL)
-// class AND_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A & self.memory.read(self.pc_state.HL);
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
-// 
-//         return 7;
-// 
-// # XOR (self.pc_state.HL)
-// class XOR_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.pc_state.HL);
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-// 
-//         return  7;
-// 
-// # OR (self.pc_state.HL)
-// class OR_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A | self.memory.read(self.pc_state.HL);
-//         self.pc_state.PC += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-// 
-//         return  7;
-// 
-// # self.pc_state.ADD n
-// class ADD_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusAdd(self.pc_state.A,self.memory.read(self.pc_state.PC + 1));
-//         self.pc_state.A = self.pc_state.A + self.memory.read(self.pc_state.PC + 1);
-//         self.pc_state.PC+=2;
-//         return 7;
-// 
-// # self.pc_state.ADC nn
-// class ADC_nn(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC+=2;
-//         return 4;
-// 
-// # SUB n
-// class SUB_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.PC + 1));
-//         self.pc_state.A = self.pc_state.A - self.memory.read(self.pc_state.PC + 1);
-//         self.pc_state.PC += 2;
-//         return  7;
-// 
-// # SBC n 
-// class SBC_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC+=2;
-//         return 7;
-// 
-// # EX (self.pc_state.SP), self.pc_state.HL
-// class EX_SP_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.SP);
-//         self.memory.write(self.pc_state.SP, self.pc_state.L);
-//         self.pc_state.L = tmp8;
-//         tmp8 = self.memory.read(self.pc_state.SP+1);
-//         self.memory.write(self.pc_state.SP+1, self.pc_state.H);
-//         self.pc_state.H = tmp8;
-//         self.pc_state.PC += 1
-//         return  19;
-// 
-// # EX self.pc_state.DE, self.pc_state.HL
-// class EX_DE_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp16 = self.pc_state.DE;
-//         self.pc_state.DE = self.pc_state.HL;
-//         self.pc_state.HL = tmp16;
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # XOR n
-// class XOR_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A ^ self.memory.read(self.pc_state.PC + 1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//         self.pc_state.PC+=2;
-//         return 7;
-// 
-// # OR n
-// class OR_n(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = self.pc_state.A | self.memory.read(self.pc_state.PC + 1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
-//         self.pc_state.PC += 2;
-//         return 7;
 // 
 // # Enable interupts
 // # EI
