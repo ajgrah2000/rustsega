@@ -269,250 +269,163 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     clock.increment(15);
 }
 
+////////////////////////////////////////////////////
+// Rotate and shift group
+////////////////////////////////////////////////////
+
+// RL r
+// Rotate Left 
+fn common_rotate_shift<F: FnMut(&mut pc_state::PcState, u8)-> (), Rot: Fn(u8, bool)->(u8, bool) >(shift_rot_fn: Rot, clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let mut f_value = pc_state.get_f();
+    let (new_value, carry) =  shift_rot_fn(src, f_value.get_c()==1);
+
+    dst_fn(pc_state, new_value);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(2);
+    clock.increment(8);
+}
+
+// RRC r
+// Rotate Right with carry
+pub fn rrc_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::rotate_right_carry(input)}, clock, pc_state, dst_fn, src);
+}
+
+// RR r
+// Rotate Right 
+pub fn rr_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    common_rotate_shift(instruction_set::rotate_right, clock, pc_state, dst_fn, src);
+}
+
+// RLC r
+// Rotate Left with carry
+pub fn rlc_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::rotate_left_carry(input)}, clock, pc_state, dst_fn, src);
+}
+
+// RL r
+// Rotate Left 
+pub fn rl_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    common_rotate_shift(instruction_set::rotate_left, clock, pc_state, dst_fn, src);
+}
+
+// SLA r
+// Shift Left Arithmetic
+pub fn sla_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::shift_left_arithmetic(input)}, clock, pc_state, dst_fn, src);
+}
+
+// SLL r
+// Shift Left Logical (?) undocumented, inserts a 1 in the lower bit
+pub fn sll_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::shift_left_logical(input)}, clock, pc_state, dst_fn, src);
+}
+
+
+// SRA r
+// Shift Right Arithmetic
+pub fn sra_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::shift_right_arithmetic(input)}, clock, pc_state, dst_fn, src);
+}
+
+// SRL r
+// Shift Right Logical
+pub fn srl_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, dst_fn: F, src: u8) -> () {
+    // Create closure for unused argument
+    common_rotate_shift(|input, _carry|{instruction_set::shift_right_logical(input)}, clock, pc_state, dst_fn, src);
+}
+
+// RLC (HL) 
+pub fn rlc_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, addr_reg: & R16) -> () 
+    where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg 
+{
+    let src = memory.read(addr_reg.get());
+    let mut f_value = af_reg.get_flags();
+
+    let (new_value, carry) = instruction_set::rotate_left_carry(src);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    af_reg.set_flags(&f_value);
+    memory.write(addr_reg.get(), new_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+// RRC (HL) 
+pub fn rrc_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, addr_reg: & R16) -> () 
+    where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg 
+{
+    let src = memory.read(addr_reg.get());
+    let mut f_value = af_reg.get_flags();
+
+    let (new_value, carry) = instruction_set::rotate_right_carry(src);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    af_reg.set_flags(&f_value);
+    memory.write(addr_reg.get(), new_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+// SLA (HL) 
+pub fn sla_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, addr_reg: & R16) -> () 
+    where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg 
+{
+    let src = memory.read(addr_reg.get());
+    let mut f_value = af_reg.get_flags();
+
+    let (new_value, carry) = instruction_set::shift_left_arithmetic(src);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    af_reg.set_flags(&f_value);
+    memory.write(addr_reg.get(), new_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+
+// SRA (HL) 
+pub fn sra_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, addr_reg: & R16) -> () 
+    where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg 
+{
+    let src = memory.read(addr_reg.get());
+    let mut f_value = af_reg.get_flags();
+
+    let (new_value, carry) = instruction_set::shift_right_arithmetic(src);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    af_reg.set_flags(&f_value);
+    memory.write(addr_reg.get(), new_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+// SRL (HL) 
+pub fn srl_hl<M, R16, F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut F16, addr_reg: & R16) -> () 
+    where M: memory::MemoryRW, R16: pc_state::Reg16RW, F16: pc_state::FlagReg 
+{
+    let src = memory.read(addr_reg.get());
+    let mut f_value = af_reg.get_flags();
+
+    let (new_value, carry) = instruction_set::shift_right_logical(src);
+    status_flags::set_shift_register_flags(new_value, carry, &mut f_value);
+    af_reg.set_flags(&f_value);
+    memory.write(addr_reg.get(), new_value);
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+
 
 // # Addition instructions
-// 
-// class RLCA(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.A = (self.pc_state.A << 1) | ((self.pc_state.A >> 7) & 0x1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.C = self.pc_state.A & 0x1;
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # RLC r
-// class RLC_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         self.dst.set((int(self.dst) << 1) | ((int(self.dst) >> 7) & 0x1));
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
-//         self.pc_state.F.Fstatus.C = int(self.dst) & 0x1; # bit-7 of src = bit-0
-//         self.pc_state.PC+=2;
-//         return 8;
-// 
-// # RLC (HL)
-// class RLC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.HL);
-//         self.memory.write(self.pc_state.HL, (tmp8 << 1) | ((tmp8 >> 7) & 0x1));
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = (tmp8 >> 7) & 0x1; # bit-7 of src
-//         self.pc_state.PC+=2;
-//         return 15;
-// 
-// # RRC r
-// class RRC_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         self.dst.set((int(self.dst) >> 1) | ((int(self.dst) & 0x1) << 7));
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.dst);
-//         self.pc_state.F.Fstatus.C = (int(self.dst) >> 7) & 0x1; # bit-0 of src
-//         self.pc_state.PC+=2;
-//         return 8
-// 
-// # RRC (HL)
-// class RRC_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.HL);
-//         self.memory.write(self.pc_state.HL,(tmp8 >> 1) | ((tmp8 & 0x1) << 7));
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1; # bit-0 of src
-//         self.pc_state.PC+=2;
-//         return 8;
-// 
-// # RL r
-// class RL_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = int(self.dst);
-//              ************* FLAGS *****************
-//         self.dst.set((int(self.dst) << 1) | (self.pc_state.F.Fstatus.C));
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
-//         self.pc_state.F.Fstatus.C = (tmp8 >> 7) & 0x1;
-//         self.pc_state.PC+=2;
-//         return 8
-// 
-// # RR r
-// class RR_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = int(self.dst);
-//              ************* FLAGS *****************
-//         self.dst.set((int(self.dst) >> 1) | (self.pc_state.F.Fstatus.C << 7));
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-//         self.pc_state.PC+=2;
-//         return 8;
-// 
-// # SLA r
-// class SLA_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = (int(self.dst) >> 7) & 0x1;
-//         self.dst.set(int(self.dst) << 1)
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst))
-//         self.pc_state.F.Fstatus.C = tmp8;
-// 
-//         self.pc_state.PC += 2;
-//         return 8
-// 
-// # SLA (HL)
-// class SLA_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = (self.memory.read(self.pc_state.HL) >> 7) & 0x1;
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) << 1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = tmp8;
-// 
-//         self.pc_state.PC += 2;
-//         return 15
-// 
-// # SRA r
-// class SRA_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = int(self.dst);
-//         self.dst.set((int(self.dst) & 0x80) | ((int(self.dst) >> 1) & 0x7F));
-// 
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.dst);
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-// 
-//         self.pc_state.PC += 2;
-//         return 8
-// 
-// # SRA (HL)
-// class SRA_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.HL);
-//         self.memory.write(self.pc_state.HL, (tmp8 & 0x80) | ((tmp8 >> 1) & 0x7F));
-// 
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-// 
-//         self.pc_state.PC += 2;
-//         return 15;
-// 
-// # SLL r
-// class SLL_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = (int(self.dst) >> 7) & 0x1;
-//         self.dst.set(int(self.dst) << 1 | 0x1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
-//         self.pc_state.F.Fstatus.C = tmp8;
-// 
-//         self.pc_state.PC += 2;
-//         return 8
-// 
-// # SLL (HL)
-// class SLL_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = (self.memory.read(self.pc_state.HL) >> 7) & 0x1;
-//         self.memory.write(self.pc_state.HL, self.memory.read(self.pc_state.HL) << 1 | 0x1);
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = tmp8;
-// 
-//         self.pc_state.PC += 2;
-//         return 15
-// 
-// # SRL r
-// class SRL_r(Instruction):
-//     def __init__(self, memory, pc_state, dst):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.dst = dst
-// 
-//     def execute(self):
-//         tmp8 = int(self.dst);
-//         self.dst.set((int(self.dst) >> 1) & 0x7F);
-// 
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(int(self.dst));
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-// 
-//         self.pc_state.PC += 2;
-//         return 8;
-// 
-// # SRL (HL)
-// class SRL_HL(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.memory.read(self.pc_state.HL);
-//         self.memory.write(self.pc_state.HL, (tmp8 >> 1) & 0x7F);
-// 
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.memory.read(self.pc_state.HL));
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-// 
-//         self.pc_state.PC += 2;
-//         return 15;
 // 
 // # self.pc_state.ADD self.pc_state.A,(self.I_reg+d)
 // class ADDA_I_d(Instruction):

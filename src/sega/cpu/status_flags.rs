@@ -159,6 +159,22 @@ pub fn xor_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
       zero_and_sign_flags(status, value)
 }
 
+// The 'new' value and carry
+pub fn set_rotate_accumulator_flags(carry:bool, status: &mut pc_state::PcStatusFlagFields) -> () {
+    status.set_c(carry as u8);
+    status.set_h(0);
+    status.set_n(0);
+}
+
+// The 'new' value and carry.  The flags set for rotating accumulator vs registers differ.
+pub fn set_shift_register_flags(value: u8, carry:bool, status: &mut pc_state::PcStatusFlagFields) -> () {
+    status.set_c(carry as u8);
+    status.set_n(0);
+    status.set_h(0);
+    status.set_pv(calculate_parity(value) as u8); // Documented as set on even for xor
+    zero_and_sign_flags(status, value)
+}
+
 pub fn zero_and_sign_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
     // Utility function, to set the zero and sign flags
       status.set_s((value & 0x80) >> 7);

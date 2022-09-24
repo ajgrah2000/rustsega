@@ -40,6 +40,78 @@ pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
 
+pub fn shift_right_arithmetic(input:u8) -> (u8, bool) 
+{
+    // Shifts to the right, maintaining the sign bit.
+    let bit0 = input & 0b1 == 1;
+
+    let result = (input >> 1) | (input & 0x80 as u8);
+    (result, bit0)
+}
+
+pub fn shift_right_logical(input:u8) -> (u8, bool) 
+{
+    // Shifts to the right
+    let bit0 = input & 0b1 == 1;
+
+    let result = input >> 1;
+    (result, bit0)
+}
+
+pub fn shift_left_arithmetic(input:u8) -> (u8, bool) 
+{
+    // Rotates to the right, bit 7 goes into carry & result
+    let bit7 = (input >> 7) & 0b1 == 1;
+
+    let result = input << 1;
+    (result, bit7)
+}
+
+pub fn shift_left_logical(input:u8) -> (u8, bool) 
+{
+    // Rotates to the right, bit 7 goes into carry & result
+    let bit7 = (input >> 7) & 0b1 == 1;
+
+    let result = (input << 1) | 0x1;
+    (result, bit7)
+}
+
+pub fn rotate_right_carry(input:u8) -> (u8, bool) 
+{
+    // Rotates to the right, bit 0 goes into carry & result
+    let bit0 = input & 0b1 == 1;
+
+    let result = (input >> 1) | ((bit0 as u8) << 7);
+    (result, bit0)
+}
+
+pub fn rotate_right(input:u8, carry: bool) -> (u8, bool) 
+{
+    // Rotates to the right, bit 0 goes into carry, carry into bit 7
+    let bit0 = input & 0b1 == 1;
+
+    let result = (input >> 1) | ((carry as u8) << 7);
+    (result, bit0)
+}
+
+pub fn rotate_left_carry(input:u8) -> (u8, bool) 
+{
+    // Rotates to the right, bit 7 goes into carry & result
+    let bit7 = (input >> 7) & 0b1 == 1;
+
+    let result = (input << 1) | (bit7 as u8);
+    (result, bit7)
+}
+
+pub fn rotate_left(input:u8, carry: bool) -> (u8, bool) 
+{
+    // Rotates to the left, bit 7 goes into carry, carry into bit 0
+    let bit7 = (input >> 7) & 0b1 == 1;
+
+    let result = (input << 1) | (carry as u8);
+    (result, bit7)
+}
+
 fn add8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
     where F16: pc_state::FlagReg {
 
@@ -652,6 +724,68 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
 }
 
 ////////////////////////////////////////////////////
+// Rotate and shift group
+////////////////////////////////////////////////////
+
+// RRCA
+// Rotate Right with carry
+pub fn rrca<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let (new_value, carry) =  rotate_right_carry(src);
+
+    dst_fn(pc_state, new_value);
+    let mut f_value = pc_state.get_f();
+    status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// RRA
+// Rotate Right 
+pub fn rra<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let mut f_value = pc_state.get_f();
+    let (new_value, carry) =  rotate_right(src, f_value.get_c()==1);
+
+    dst_fn(pc_state, new_value);
+    status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// RLCA
+// Rotate Left with carry
+pub fn rlca<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let (new_value, carry) =  rotate_left_carry(src);
+
+    dst_fn(pc_state, new_value);
+    let mut f_value = pc_state.get_f();
+    status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+// RLA
+// Rotate Left 
+pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
+    let mut f_value = pc_state.get_f();
+    let (new_value, carry) =  rotate_left(src, f_value.get_c()==1);
+
+    dst_fn(pc_state, new_value);
+    status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
+    pc_state.set_f(f_value);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+
+
+////////////////////////////////////////////////////
 // END Rust
 ////////////////////////////////////////////////////
 
@@ -668,21 +802,6 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
 //      self.pc_state.PC+=2;
 // 
 //      return 11;
-// 
-// class RRCA(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.C = self.pc_state.A & 0x1;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.A = (self.pc_state.A >> 1) | ((self.pc_state.A & 0x1) << 7);
-//         self.pc_state.PC += 1
-// 
-//         return 4;
 // 
 // class AND_n(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -770,37 +889,6 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
 //         self.pc_state.A_ = tmpa;
 //         self.pc_state.F_ = tmpf;
 // 
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # RLA
-// class RLA(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.pc_state.A;
-//              ************* FLAGS *****************
-//         self.pc_state.A = (self.pc_state.A << 1) | (self.pc_state.F.Fstatus.C);
-//         self.pc_state.F.Fstatus.C = (tmp8 & 0x80) >> 7;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.PC += 1
-//         return 4;
-// 
-// # RRA
-// class RRA(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp8 = self.pc_state.A;
-//         self.pc_state.A = (self.pc_state.A >> 1) | (self.pc_state.F.Fstatus.C << 7);
-//         self.pc_state.F.Fstatus.C = tmp8 & 0x1;
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.N = 0;
 //         self.pc_state.PC += 1
 //         return 4;
 // 

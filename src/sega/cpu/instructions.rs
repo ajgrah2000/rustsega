@@ -85,7 +85,6 @@ impl Instruction {
             0x01 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD dd, nn : for BC
             0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD (BC), A
             0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD (DE), A
-//            0x07 => { instruction_set::rlca(clock, memory, pc_state);}  //RLCA
 
             n if (n & 0b11001111 == 0b00001001) => {
                 let ss = (n >> 4) & 0x3;
@@ -93,7 +92,11 @@ impl Instruction {
                                        &mut pc_state.pc_reg, &mut pc_state.hl_reg, &mut pc_state.af_reg);
             }
 
-//            0x0f => { instruction_set::rrca(clock, memory, pc_state);}
+            0x0f => { instruction_set::rrca(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
+            0x1f => { instruction_set::rra(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
+            0x07 => { instruction_set::rlca(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
+            0x17 => { instruction_set::rla(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
+
 //            0x10 => { instruction_set::djnz(clock, memory, pc_state);} // DJNZ n
             0x11 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD DE, nn
             0x21 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, nn
@@ -244,9 +247,8 @@ impl Instruction {
 //            0xc9 => { instruction_set::ret(clock, memory, pc_state);} // RET
 //
 //            0x08 => { instruction_set::ex(clock, memory, pc_state);}
-//            0x17 => { instruction_set::rla(clock, memory, pc_state);}
             0x18 => { instruction_set::jr_e(clock, memory, pc_state);}
-//            0x1f => { instruction_set::rra(clock, memory, pc_state);}
+             
             0x22 => { instruction_set::ld_mem_nn_hl(clock, memory, pc_state);}
 //            0x27 => { instruction_set::daa(clock, memory, pc_state);}
 //            0x2f => { instruction_set::cpl(clock, memory, pc_state);}
@@ -389,77 +391,84 @@ impl Instruction {
                     let bit_pos = (n >> 3) & 0x7;
                     extended_instruction_set::res_b_mem(clock, memory, bit_pos, &mut pc_state.pc_reg, &pc_state.hl_reg);
                 }
-//
-//        # Non-masked op codes
-//        self.instruction_cb_lookup[0x00] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_b); # RLC r, cpu_state->B
-//        self.instruction_cb_lookup[0x01] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_c); # RLC r, cpu_state->C
-//        self.instruction_cb_lookup[0x02] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_d); # RLC r, cpu_state->D
-//        self.instruction_cb_lookup[0x03] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_e); # RLC r, cpu_state->E
-//        self.instruction_cb_lookup[0x04] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_h); # RLC r, cpu_state->H
-//        self.instruction_cb_lookup[0x05] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_l); # RLC r, cpu_state->L
-//        self.instruction_cb_lookup[0x07] = instructions.RLC_r(clock, memory, pc_state, self._reg_wrapper_a); # RLC r, cpu_state->A
-//        self.instruction_cb_lookup[0x06] = instructions.RLC_HL(clock, memory, pc_state); # RLC b, cpu_state->HL
-//
-//        self.instruction_cb_lookup[0x08] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_b); # RRC r, cpu_state->B
-//        self.instruction_cb_lookup[0x09] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_c); # RRC r, cpu_state->C
-//        self.instruction_cb_lookup[0x0A] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_d); # RRC r, cpu_state->D
-//        self.instruction_cb_lookup[0x0B] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_e); # RRC r, cpu_state->E
-//        self.instruction_cb_lookup[0x0C] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_h); # RRC r, cpu_state->H
-//        self.instruction_cb_lookup[0x0D] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_l); # RRC r, cpu_state->L
-//        self.instruction_cb_lookup[0x0F] = instructions.RRC_r(clock, memory, pc_state, self._reg_wrapper_a); # RRC r, cpu_state->A
-//        self.instruction_cb_lookup[0x0E] = instructions.RRC_HL(clock, memory, pc_state); # RRC b, cpu_state->HL
-//
-//        self.instruction_cb_lookup[0x10] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_b); # RL r, cpu_state->B
-//        self.instruction_cb_lookup[0x11] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_c); # RL r, cpu_state->C
-//        self.instruction_cb_lookup[0x12] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_d); # RL r, cpu_state->D
-//        self.instruction_cb_lookup[0x13] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_e); # RL r, cpu_state->E
-//        self.instruction_cb_lookup[0x14] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_h); # RL r, cpu_state->H
-//        self.instruction_cb_lookup[0x15] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_l); # RL r, cpu_state->L
-//        self.instruction_cb_lookup[0x17] = instructions.RL_r(clock, memory, pc_state, self._reg_wrapper_a); # RL r, cpu_state->A
-//
-//        self.instruction_cb_lookup[0x18] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_b); # RR r, cpu_state->B
-//        self.instruction_cb_lookup[0x19] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_c); # RR r, cpu_state->C
-//        self.instruction_cb_lookup[0x1A] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_d); # RR r, cpu_state->D
-//        self.instruction_cb_lookup[0x1B] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_e); # RR r, cpu_state->E
-//        self.instruction_cb_lookup[0x1C] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_h); # RR r, cpu_state->H
-//        self.instruction_cb_lookup[0x1D] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_l); # RR r, cpu_state->L
-//        self.instruction_cb_lookup[0x1F] = instructions.RR_r(clock, memory, pc_state, self._reg_wrapper_a); # RR r, cpu_state->A
-//
-//        self.instruction_cb_lookup[0x20] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_b); # SLA r, cpu_state->B
-//        self.instruction_cb_lookup[0x21] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_c); # SLA r, cpu_state->C
-//        self.instruction_cb_lookup[0x22] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_d); # SLA r, cpu_state->D
-//        self.instruction_cb_lookup[0x23] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_e); # SLA r, cpu_state->E
-//        self.instruction_cb_lookup[0x24] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_h); # SLA r, cpu_state->H
-//        self.instruction_cb_lookup[0x25] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_l); # SLA r, cpu_state->L
-//        self.instruction_cb_lookup[0x27] = instructions.SLA_r(clock, memory, pc_state, self._reg_wrapper_a); # SLA r, cpu_state->A
-//        self.instruction_cb_lookup[0x26] = instructions.SLA_HL(clock, memory, pc_state); # SLA b, cpu_state->HL
-//
-//        self.instruction_cb_lookup[0x28] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_b); # SRA r, cpu_state->B
-//        self.instruction_cb_lookup[0x29] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_c); # SRA r, cpu_state->C
-//        self.instruction_cb_lookup[0x2A] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_d); # SRA r, cpu_state->D
-//        self.instruction_cb_lookup[0x2B] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_e); # SRA r, cpu_state->E
-//        self.instruction_cb_lookup[0x2C] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_h); # SRA r, cpu_state->H
-//        self.instruction_cb_lookup[0x2D] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_l); # SRA r, cpu_state->L
-//        self.instruction_cb_lookup[0x2F] = instructions.SRA_r(clock, memory, pc_state, self._reg_wrapper_a); # SRA r, cpu_state->A
-//        self.instruction_cb_lookup[0x2E] = instructions.SRA_HL(clock, memory, pc_state); # SRA b, cpu_state->HL
-//
-//        self.instruction_cb_lookup[0x30] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_b); # SLL r, cpu_state->B
-//        self.instruction_cb_lookup[0x31] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_c); # SLL r, cpu_state->C
-//        self.instruction_cb_lookup[0x32] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_d); # SLL r, cpu_state->D
-//        self.instruction_cb_lookup[0x33] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_e); # SLL r, cpu_state->E
-//        self.instruction_cb_lookup[0x34] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_h); # SLL r, cpu_state->H
-//        self.instruction_cb_lookup[0x35] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_l); # SLL r, cpu_state->L
-//        self.instruction_cb_lookup[0x37] = instructions.SLL_r(clock, memory, pc_state, self._reg_wrapper_a); # SLL r, cpu_state->A
-//        self.instruction_cb_lookup[0x36] = instructions.SLL_HL(clock, memory, pc_state); # SLL b, cpu_state->HL
-//
-//        self.instruction_cb_lookup[0x38] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_b); # SRL r, cpu_state->B
-//        self.instruction_cb_lookup[0x39] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_c); # SRL r, cpu_state->C
-//        self.instruction_cb_lookup[0x3A] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_d); # SRL r, cpu_state->D
-//        self.instruction_cb_lookup[0x3B] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_e); # SRL r, cpu_state->E
-//        self.instruction_cb_lookup[0x3C] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_h); # SRL r, cpu_state->H
-//        self.instruction_cb_lookup[0x3D] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_l); # SRL r, cpu_state->L
-//        self.instruction_cb_lookup[0x3F] = instructions.SRL_r(clock, memory, pc_state, self._reg_wrapper_a); # SRL r, cpu_state->A
-//        self.instruction_cb_lookup[0x3E] = instructions.SRL_HL(clock, memory, pc_state); # SRA b, cpu_state->HL
+
+            // RLC r
+            // 0xCB, 0b00000rrr
+            n if (n & 0b11111000 == 0b00000000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::rlc_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // RRC r
+            // 0xCB, 0b00001rrr
+            n if (n & 0b11111000 == 0b00001000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::rrc_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // RL r
+            // 0xCB, 0b00010rrr
+            n if (n & 0b11111000 == 0b00010000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::rl_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // RR r
+            // 0xCB, 0b00011rrr
+            n if (n & 0b11111000 == 0b00011000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::rr_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // SLA r
+            // 0xCB, 0b00100rrr
+            n if (n & 0b11111000 == 0b00100000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::sla_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // SRA r
+            // 0xCB, 0b00101rrr
+            n if (n & 0b11111000 == 0b00101000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::sra_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // SLL r
+            // 0xCB, 0b00110rrr
+            n if (n & 0b11111000 == 0b00110000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::sll_r(clock, pc_state, dst_fn, current_r);
+                }
+
+            // SRL r
+            // 0xCB, 0b00111rrr
+            n if (n & 0b11111000 == 0b00111000) && (n & 0b111 != 0b110) => {
+                    let reg_index = op_code & 0x7;
+                    let current_r = select_8_bit_read_register(pc_state, reg_index);
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::srl_r(clock, pc_state, dst_fn, current_r);
+                }
+          0x06 => { extended_instruction_set::rlc_hl(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);}
+          0x0e => { extended_instruction_set::rrc_hl(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);}
+          0x26 => { extended_instruction_set::sla_hl(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);}
+          0x2e => { extended_instruction_set::sra_hl(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);}
+          0x36 => { extended_instruction_set::srl_hl(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.hl_reg);}
+
             _ => {panic!("Extended(0xCB) Opcode not implemented: {:x}", op_code); }
 
         }
