@@ -24,7 +24,7 @@ use super::instruction_set;
 // op code:  0xFD, 0b01110rrr, 0bdddddddd
 // pub fn ld_iy_d_r
 // pub fn ld_ix_d_r
-pub fn ld_i_d_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, r: u8, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_d_r<M, R16>(clock: &mut clocks::Clock, memory: &mut M, r: u8, pc_reg: &mut R16, i16_reg: &R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     memory.write(i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16), r); 
     pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(19);
@@ -32,7 +32,7 @@ pub fn ld_i_d_r(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
 
 // LD I, nn
 // LD IX, nn; LD IY, nn
-pub fn ld_i_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_nn<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     i16_reg.set(memory.read16(pc_reg.get() + 2));
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(20);
@@ -41,7 +41,7 @@ pub fn ld_i_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, p
 // LD I, (nn)
 // LD IX, (nn); LD IY, (nn)
 // was ld_i__nn
-pub fn ld_i_mem_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_mem_nn<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     i16_reg.set(memory.read16(memory.read16(pc_reg.get()+2)));
     pc_state::PcState::increment_reg(pc_reg, 4);
     clock.increment(20);
@@ -52,7 +52,7 @@ pub fn ld_i_mem_nn(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolut
 // pub fn ld_nn_hl_extended
 // pub fn ld_nn_hl
 // pub fn ld_nn_I
-pub fn ld_mem_nn_reg16(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, reg16: &pc_state::Reg16) -> () {
+pub fn ld_mem_nn_reg16<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, reg16: &pc_state::Reg16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     memory.write(memory.read16(pc_reg.get()+2),   reg16.low);
     memory.write(memory.read16(pc_reg.get()+2)+1, reg16.high);
 
@@ -64,7 +64,7 @@ pub fn ld_mem_nn_reg16(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbs
 // 0b00dd0001 -> BC 00, DE 01, HL 10, SP 11
 // 0bnnnnnnnn
 // 0bnnnnnnnn
-pub fn ld_dd_mem_nn<F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, mut reg16: F, pc_state: &mut pc_state::PcState) -> () {
+pub fn ld_dd_mem_nn<M, F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clocks::Clock, memory: &mut M, mut reg16: F, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
     reg16(pc_state, memory.read16(memory.read16(pc_state.get_pc()+2)));
 
     pc_state.increment_pc(4);
@@ -72,7 +72,7 @@ pub fn ld_dd_mem_nn<F: FnMut(&mut pc_state::PcState, u16)-> ()> (clock: &mut clo
 }
 
 // LD (IX+d), n; LD (IY+d), n
-pub fn ld_i_d_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &mut dyn pc_state::Reg16RW) -> () {
+pub fn ld_i_d_n<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     let tmp16 = i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16);
     memory.write(tmp16, memory.read(pc_reg.get()+3));
     pc_state::PcState::increment_reg(pc_reg, 4);
@@ -82,7 +82,7 @@ pub fn ld_i_d_n(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, 
 // LD r, (IY+d); LD r, (IY+d);
 // 0xDD, 0b01rrr110
 // 0xFD, 0b01rrr110
-pub fn ld_r_i_d<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_state: &mut pc_state::PcState, i16_value: u16, mut dst_fn: F) -> () {
+pub fn ld_r_i_d<M, F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, i16_value: u16, mut dst_fn: F) -> () where M: memory::MemoryRW {
     dst_fn(pc_state, memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)));
     pc_state.increment_pc(3);
     clock.increment(16);
@@ -131,7 +131,7 @@ pub fn ld_i_a(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> ()
 ///////////////////////////////////////////////////////////////////////
 
 // BIT b, r
-pub fn bit_b_r(clock: &mut clocks::Clock, bit_pos: u8,  r: u8, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16) -> () {
+pub fn bit_b_r<R16>(clock: &mut clocks::Clock, bit_pos: u8,  r: u8, pc_reg: &mut R16, af_reg: &mut pc_state::FlagReg16) -> () where R16: pc_state::Reg16RW {
     let mut f_status = af_reg.get_flags();
     status_flags::set_bit_test_flags(r, bit_pos, &mut f_status);
     af_reg.set_flags(&f_status);
@@ -140,7 +140,7 @@ pub fn bit_b_r(clock: &mut clocks::Clock, bit_pos: u8,  r: u8, pc_reg: &mut dyn 
 }
 
 // BIT b, (HL) 
-pub fn bit_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16, addr_reg: & dyn pc_state::Reg16RW) -> () {
+pub fn bit_b_mem<M, R16>(clock: &mut clocks::Clock, memory: &mut M, bit_pos: u8, pc_reg: &mut R16, af_reg: &mut pc_state::FlagReg16, addr_reg: & R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     let mut f_status = af_reg.get_flags();
     status_flags::set_bit_test_flags(memory.read(addr_reg.get()), bit_pos, &mut f_status);
     af_reg.set_flags(&f_status);
@@ -155,7 +155,7 @@ pub fn set_b_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Cl
 }
 
 // SET b, (HL) 
-pub fn set_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, addr_reg: & dyn pc_state::Reg16RW) -> () {
+pub fn set_b_mem<M, R16>(clock: &mut clocks::Clock, memory: &mut M, bit_pos: u8, pc_reg: &mut R16, addr_reg: & R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     memory.write(addr_reg.get(), memory.read(addr_reg.get()) | (0x1 << bit_pos));
 
     pc_state::PcState::increment_reg(pc_reg, 2);
@@ -170,7 +170,7 @@ pub fn res_b_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Cl
 }
 
 // RES b, (HL) 
-pub fn res_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, bit_pos: u8, pc_reg: &mut dyn pc_state::Reg16RW, addr_reg: & dyn pc_state::Reg16RW) -> () {
+pub fn res_b_mem<M, R16>(clock: &mut clocks::Clock, memory: &mut M, bit_pos: u8, pc_reg: &mut R16, addr_reg: & R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     memory.write(addr_reg.get(), memory.read(addr_reg.get()) & !(0x1 << bit_pos));
 
     pc_state::PcState::increment_reg(pc_reg, 2);
@@ -181,7 +181,7 @@ pub fn res_b_mem(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute,
 // RES b, (IY+d),  RES b, (IX+d) (if mem at pc + 3 -> 0b10XXXXXX)
 // SET b, (IY+d),  SET b, (IX+d) (if mem at pc + 3 -> 0b11XXXXXX)
 // (if mem at pc + 3 -> 0b11XXXXXX) -> ERROR
-pub fn bit_res_set_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, pc_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16, i16_reg: & dyn pc_state::Reg16RW) -> () {
+pub fn bit_res_set_b_i_d<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, af_reg: &mut pc_state::FlagReg16, i16_reg: & R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     let tmp16 = i16_reg.get().wrapping_add((memory.read(pc_reg.get()+2) as i8) as u16);
     let test_value  = memory.read(tmp16);
     let op_details    = memory.read(pc_reg.get()+3);
@@ -215,14 +215,14 @@ pub fn bit_res_set_b_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryA
 
 //  JP (IX), JP (IY)
 // Load PC with IX, IY, to jump to that location.
-pub fn jp_i(clock: &mut clocks::Clock, pc_reg: &mut dyn pc_state::Reg16RW, i16_reg: &dyn pc_state::Reg16RW) -> () {
+pub fn jp_i<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, i16_reg: &R16) -> () where R16: pc_state::Reg16RW {
     pc_reg.set(i16_reg.get()); 
     clock.increment(8);
 }
 
 // CP n
 // Compare accumulator with 'n' to set status flags (but don't change accumulator)
-pub fn cp_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, i16_value: u16, pc_state: &mut pc_state::PcState) -> () {
+pub fn cp_i_d<M>(clock: &mut clocks::Clock, memory: &mut M, i16_value: u16, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
 
     // This function sets the 'pc_state.f'
     instruction_set::cp_flags(pc_state.get_a(),  memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)), &mut pc_state.af_reg);
@@ -236,8 +236,8 @@ pub fn cp_i_d(clock: &mut clocks::Clock, memory: &mut memory::MemoryAbsolute, i1
 ////////////////////////////////////////////////////
 
 // ADD HL, ss
-pub fn add16(clock: &mut clocks::Clock, src_value: u16, 
-             pc_reg: &mut dyn pc_state::Reg16RW, dst_reg: &mut dyn pc_state::Reg16RW, af_reg: &mut pc_state::FlagReg16) -> () {
+pub fn add16<R16>(clock: &mut clocks::Clock, src_value: u16, 
+             pc_reg: &mut R16, dst_reg: &mut R16, af_reg: &mut pc_state::FlagReg16) -> () where R16: pc_state::Reg16RW {
 
     dst_reg.set(instruction_set::add16c(dst_reg.get(), src_value, false, af_reg));
 

@@ -285,7 +285,35 @@ impl MemoryAbsolute {
             self.memory_map[absolute_address as usize] = data;
         }
      }
+}
 
+// Common macro to help export the read/write rules
+macro_rules! impl_common_memoryrw{
+    ($T:ident) => {
+        impl MemoryRW for $T {
+            fn read(&self, address: AddressType) -> u8
+            {
+                self.read(address)
+            }
+
+            fn read16(&self, address: AddressType) -> u16
+            {
+                self.read16(address)
+            }
+
+            fn write(&mut self, address: AddressType, data: u8) -> ()
+            {
+                self.write(address, data);
+            }
+        }
+    }
+}
+impl_common_memoryrw!(MemoryAbsolute);
+
+pub trait MemoryRW {
+     fn read(&self, address: AddressType) -> u8;
+     fn read16(&self, address: AddressType) -> u16;
+     fn write(&mut self, address: AddressType, data: u8) -> ();
 }
 
 #[cfg(test)]

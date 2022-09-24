@@ -67,11 +67,11 @@ fn get_16_bit_ss_set_function(reg_select: u8) -> impl FnMut(&mut pc_state::PcSta
 
 
 impl Instruction {
-    pub fn execute(op_code: u8, clock: &mut clocks::Clock, 
-           memory: &mut memory::MemoryAbsolute, 
+    pub fn execute<M>(op_code: u8, clock: &mut clocks::Clock, 
+           memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () {
+           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW{
         match op_code {
             // Extended op codes, not executed directly
             0xcb => { Self::execute_cb(clock, memory, pc_state, ports, interuptor);}
@@ -335,11 +335,11 @@ impl Instruction {
     } 
 
     // Extended instructions
-    pub fn execute_cb(clock: &mut clocks::Clock, 
-           memory: &mut memory::MemoryAbsolute, 
+    pub fn execute_cb<M>(clock: &mut clocks::Clock, 
+           memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () {
+           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -459,11 +459,11 @@ impl Instruction {
     } 
 
     // Extended instructions
-    pub fn execute_dd(clock: &mut clocks::Clock, 
-           memory: &mut memory::MemoryAbsolute, 
+    pub fn execute_dd<M>(clock: &mut clocks::Clock, 
+           memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () {
+           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -517,11 +517,11 @@ impl Instruction {
         }
     } 
     // Extended instructions
-    pub fn execute_fd(clock: &mut clocks::Clock, 
-           memory: &mut memory::MemoryAbsolute, 
+    pub fn execute_fd<M>(clock: &mut clocks::Clock, 
+           memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () {
+           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -574,11 +574,11 @@ impl Instruction {
         }
     } 
     // Extended instructions
-    pub fn execute_ed(clock: &mut clocks::Clock, 
-           memory: &mut memory::MemoryAbsolute, 
+    pub fn execute_ed<M>(clock: &mut clocks::Clock, 
+           memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interuptor: &mut interuptor::Interuptor) -> () {
+           interuptor: &mut interuptor::Interuptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
         println!("clock: {}, op_code: {:x}, pc: {}", clock.cycles, op_code, pc_state.get_pc());
 
@@ -748,5 +748,20 @@ mod tests {
         assert_eq!(pc_state.get_f().get_h(), 1);
         assert_eq!(pc_state.get_f().get_c(), 1);
         assert_eq!(pc_state.get_f().get_s(), 0);
+    }
+
+    fn test_opcode_cycle_times() {
+        let mut clock = clocks::Clock::new();
+        let mut memory = memory::MemoryAbsolute::new();
+        let mut pc_state = pc_state::PcState::new();
+        let mut ports = ports::Ports::new();
+        let mut interuptor = interuptor::Interuptor::new();
+
+
+//    pub fn execute(op_code: u8, clock: &mut clocks::Clock, 
+//           memory: &mut memory::MemoryAbsolute, 
+//           pc_state: &mut pc_state::PcState, 
+//           ports: &mut ports::Ports, 
+//           interuptor: &mut interuptor::Interuptor) -> () {
     }
 }

@@ -5,9 +5,9 @@ use super::super::interuptor;
 use super::super::ports;
 use super::instructions;
 
-pub struct Core {
+pub struct Core<M> {
     clock:      clocks::Clock,
-    memory:     memory::MemoryAbsolute,
+    memory:     M,
     pc_state:   pc_state::PcState,
     ports:      ports::Ports,
     interuptor: interuptor::Interuptor,
@@ -16,14 +16,14 @@ pub struct Core {
     
 }
 
-impl Core {
+impl<M: memory::MemoryRW> Core<M> {
     const IRQIM1ADDR: u16 = 0x38;
 
     pub fn new(clock: clocks::Clock, 
-           memory: memory::MemoryAbsolute, 
+           memory: M, 
            pc_state: pc_state::PcState, 
            ports: ports::Ports,
-           interuptor: interuptor::Interuptor) -> Self {
+           interuptor: interuptor::Interuptor) -> Self where M: memory::MemoryRW {
     
         Self {
             clock: clock,
@@ -40,7 +40,7 @@ impl Core {
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_high());
                 self.pc_state.increment_sp(-1);
                 self.memory.write(self.pc_state.get_sp(), self.pc_state.get_pc_low());
-                self.pc_state.set_pc(Core::IRQIM1ADDR);
+                self.pc_state.set_pc(Core::<M>::IRQIM1ADDR);
 
                 // Disable maskable interupts
                 self.pc_state.set_iff1(false);
