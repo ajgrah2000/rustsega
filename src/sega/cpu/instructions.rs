@@ -24,6 +24,21 @@ fn select_8_bit_read_register (pc_state: &pc_state::PcState, reg_select: u8) -> 
     src
 }
 
+fn get_condition_result(pc_state: &mut pc_state::PcState, condition_select: u8) -> bool {
+    let condition = match condition_select & 0b111 {
+        0b000 => {pc_state.get_f().get_z() == 0}  // Non-Zero (NZ)     Z
+        0b001 => {pc_state.get_f().get_z() == 1}  // Zero (Z)          Z
+        0b010 => {pc_state.get_f().get_c() == 0}  // No Carry (NC)     C
+        0b011 => {pc_state.get_f().get_c() == 1}  // Carry (C)         C
+        0b100 => {pc_state.get_f().get_pv() == 0} // Parity Odd (PO)   P/V
+        0b101 => {pc_state.get_f().get_pv() == 1} // Parity Even (PE)  P/V
+        0b110 => {pc_state.get_f().get_s() == 0}  // Sign Positive (P) S
+        0b111 => {pc_state.get_f().get_s() == 1}  // Sign Negative (M) S
+        _ => {panic!("Code path that was thought to be unreachable was reached! {}", condition_select);}
+    };
+    condition
+}
+
 fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u8) -> () {
     // Return a closure here so as to not borrow pc_state more than once to feed to function.
     // Allows register specific 'set' calls to be selected based on op-code.
@@ -97,7 +112,7 @@ impl Instruction {
             0x07 => { instruction_set::rlca(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
             0x17 => { instruction_set::rla(clock, pc_state, |state: &mut pc_state::PcState, x| {state.set_a(x)}, pc_state.get_a());}
 
-//            0x10 => { instruction_set::djnz(clock, memory, pc_state);} // DJNZ n
+            0x10 => { instruction_set::djnz(clock, memory, pc_state);} // DJNZ n
             0x11 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD DE, nn
             0x21 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, nn
             0x2a => { instruction_set::ld_r16_mem(clock, memory, &mut pc_state.pc_reg, &mut pc_state.hl_reg);} // LD HL, (nn)
@@ -186,22 +201,13 @@ impl Instruction {
             // JP cc, nn instructions
             // opcode: 0b11ccc010 
             n if (n & 0b11000111 == 0b11000010) => {
-                    let condition = match (n >> 3) & 0b111 {
-                        0b000 => {pc_state.get_f().get_z() == 0}  // Non-Zero (NZ)     Z
-                        0b001 => {pc_state.get_f().get_z() == 1}  // Zero (Z)          Z
-                        0b010 => {pc_state.get_f().get_c() == 0}  // No Carry (NC)     C
-                        0b011 => {pc_state.get_f().get_c() == 1}  // Carry (C)         C
-                        0b100 => {pc_state.get_f().get_pv() == 0} // Parity Odd (PO)   P/V
-                        0b101 => {pc_state.get_f().get_pv() == 1} // Parity Even (PE)  P/V
-                        0b110 => {pc_state.get_f().get_s() == 0}  // Sign Positive (P) S
-                        0b111 => {pc_state.get_f().get_s() == 1}  // Sign Negative (M) S
-                        _ => {panic!("Code path that was thought to be unreachable was reached! {}", n);}
-                    };
+                    let condition_select = (n >> 3) & 0b111;
+                    let condition = get_condition_result(pc_state, condition_select);
                     instruction_set::jump_cc_nn(clock, memory, pc_state, condition);
                 }
-// 
-//            0xd3 => { instruction_set::out_n_A(clock, memory, pc_state, self.ports);} // OUT (n), cpu_state->A
-//            0xd9 => { instruction_set::exx(clock, memory, pc_state);} // EXX
+
+            0xd3 => { instruction_set::out_n_a(clock, memory, pc_state, ports);} // OUT (n), cpu_state->A
+            0xd9 => { instruction_set::exx(clock, pc_state);} // EXX
 // 
 //            0xe6 => { instruction_set::and_n(clock, memory, pc_state);} // AND n
             0xfe => { instruction_set::cp_n(clock, memory, pc_state);} // CP n
@@ -234,14 +240,16 @@ impl Instruction {
 
             // ld_r_r instructions ( 0b01dddsss) 
             n if ((n & 0b11000000) == 0b01000000) && ((n & 0x07) != 0x6) && ((n & 0x38) != 0x3) => {
-                    let dst_fn = get_8_bit_register_set_function ((op_code >> 3) & 0x7);
-
+                    // gets the appropriate register getter fromt the supplied op-code
+                    let dst_reg_index = (n >> 3) & 0x7;
+                    let src_reg_index = n & 0x7;
+                    let dst_fn = get_8_bit_register_set_function (dst_reg_index);
                     instruction_set::ld_r_r(clock, 
-                            select_8_bit_read_register(pc_state, op_code & 0x7), // gets the appropriate register getter fromt the supplied op-code
+                            select_8_bit_read_register(pc_state, src_reg_index), 
                             pc_state, dst_fn);
                 }
 //
-//            0xc9 => { instruction_set::ret(clock, memory, pc_state);} // RET
+            0xc9 => { instruction_set::ret(clock, memory, pc_state);} // RET
 //
 //            0x08 => { instruction_set::ex(clock, memory, pc_state);}
             0x18 => { instruction_set::jr_e(clock, memory, pc_state);}
@@ -274,21 +282,19 @@ impl Instruction {
             // CALL cc, nn instructions
             // opcode: 0b11ccc100 
             n if (n & 0b11000111 == 0b11000100) => {
-                    let condition = match (n >> 3) & 0b111 {
-                        0b000 => {pc_state.get_f().get_z() == 0}  // Non-Zero (NZ)     Z
-                        0b001 => {pc_state.get_f().get_z() == 1}  // Zero (Z)          Z
-                        0b010 => {pc_state.get_f().get_c() == 0}  // No Carry (NC)     C
-                        0b011 => {pc_state.get_f().get_c() == 1}  // Carry (C)         C
-                        0b100 => {pc_state.get_f().get_pv() == 0} // Parity Odd (PO)   P/V
-                        0b101 => {pc_state.get_f().get_pv() == 1} // Parity Even (PE)  P/V
-                        0b110 => {pc_state.get_f().get_s() == 0}  // Sign Positive (P) S
-                        0b111 => {pc_state.get_f().get_s() == 1}  // Sign Negative (M) S
-                        _ => {panic!("Code path that was thought to be unreachable was reached! {}", n);}
-                    };
+                    let condition_select = (n >> 3) & 0b111;
+                    let condition = get_condition_result(pc_state, condition_select);
                     instruction_set::call_cc_nn(clock, memory, pc_state, condition);
                 }
             0xcd => { instruction_set::call_nn(clock, memory, pc_state);}
 
+            // RET cc instructions
+            // opcode: 0b11ccc000 
+            n if (n & 0b11000111 == 0b11000000) => {
+                    let condition_select = (n >> 3) & 0b111;
+                    let condition = get_condition_result(pc_state, condition_select);
+                    instruction_set::ret_cc(clock, memory, pc_state, condition);
+            }
 //            0x8e => { instruction_set::adc_hl(clock, memory, pc_state);}
 //            0x96 => { instruction_set::sub_hl(clock, memory, pc_state);}
 //            0x9e => { instruction_set::sbc_a_hl(clock, memory, pc_state);}
@@ -296,43 +302,35 @@ impl Instruction {
 //            0xae => { instruction_set::xor_hl(clock, memory, pc_state);}
 //            0xb6 => { instruction_set::or_hl(clock, memory, pc_state);}
             0xbe => { instruction_set::cp_hl(clock, memory, pc_state);}
-//            0xc0 => { instruction_set::ret_nz(clock, memory, pc_state);}
-//            0xc1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.bc_reg);}
+            0xc1 => { instruction_set::pop(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.bc_reg);}
             0xc3 => { instruction_set::jp_nn(clock, memory, pc_state);}
-//            0xc5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.bc_reg);}
+            0xc5 => { instruction_set::push(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &pc_state.bc_reg);}
 //            0xc6 => { instruction_set::add_n(clock, memory, pc_state);}
-//            0xc7 => { instruction_set::rst(clock, memory, pc_state, 0x00);} // RST_00
 //            0xc8 => { instruction_set::rst_z(clock, memory, pc_state);}
 //            0xce => { instruction_set::adc_nn(clock, memory, pc_state);}
-//            0xcf => { instruction_set::rst(clock, memory, pc_state, 0x08);} // RST_08
-//            0xd0 => { instruction_set::ret_nc(clock, memory, pc_state);}
-//            0xd1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.de_reg);}
-//            0xd5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.de_reg);}
+            0xd1 => { instruction_set::pop(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.de_reg);}
+            0xd5 => { instruction_set::push(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &pc_state.de_reg);}
 //            0xd6 => { instruction_set::sub_n(clock, memory, pc_state);}
-//            0xd7 => { instruction_set::rst(clock, memory, pc_state, 0x10);} // RST_10
-//            0xd8 => { instruction_set::ret_c(clock, memory, pc_state);}
             0xdb => { instruction_set::in_a_n(clock, memory, pc_state, ports);}
 //            0xde => { instruction_set::sbc_n(clock, memory, pc_state);}
-//            0xdf => { instruction_set::rst(clock, memory, pc_state, 0x18);} // RST_18
-//            0xe0 => { instruction_set::ret_po(clock, memory, pc_state);}
-//            0xe1 => { instruction_set::pop(clock, memory, pc_state, &mut pc_state.hl_reg);}
+            0xe1 => { instruction_set::pop(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.hl_reg);}
 //            0xe3 => { instruction_set::ex_sp_hl(clock, memory, pc_state);}
-//            0xe5 => { instruction_set::push(clock, memory, pc_state, &mut pc_state.hl_reg);}
-//            0xe7 => { instruction_set::rst(clock, memory, pc_state, 0x20);} // RST_20
-//            0xe8 => { instruction_set::ret_pe(clock, memory, pc_state);}
+            0xe5 => { instruction_set::push(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &pc_state.hl_reg);}
             0xe9 => { instruction_set::jp_hl(clock, &pc_state.hl_reg, &mut pc_state.pc_reg);}
 //            0xeb => { instruction_set::ex_de_hl(clock, memory, pc_state);}
 //            0xee => { instruction_set::xor_n(clock, memory, pc_state);}
-//            0xef => { instruction_set::rst(clock, memory, pc_state, 0x28);} // RST_28
-//            0xf0 => { instruction_set::ret_p(clock, memory, pc_state);}
-//            0xf1 => { instruction_set::pop_af(clock, memory, pc_state);}
+            0xf1 => { instruction_set::pop(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.af_reg);}
             0xf3 => { instruction_set::di(clock, pc_state);}
-//            0xf5 => { instruction_set::push_af(clock, memory, pc_state);}
+            0xf5 => { instruction_set::push(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &pc_state.af_reg);}
 //            0xf6 => { instruction_set::or_n(clock, memory, pc_state);}
-//            0xf7 => { instruction_set::rst(clock, memory, pc_state, 0x30);} // RST_30
-//            0xf8 => { instruction_set::ret_m(clock, memory, pc_state);}
             0xf9 => { instruction_set::ld_sp_hl(clock, &pc_state.hl_reg, &mut pc_state.pc_reg, &mut pc_state.sp_reg);}
-//            0xff => { instruction_set::rst(clock, memory, pc_state, 0x38);} // RST_38
+
+            // rst instructions
+            // opcode: 0b11ttt111 -> ttt -> (0x0, 0x8, 0x10, 0x18, 0x20, 0x30, 0x38)
+            n if (n & 0b11000111 == 0b11000000) => {
+                let rst_addr = n & 0x38;
+                instruction_set::rst(clock, memory, pc_state, rst_addr);
+            }
         
             _ => {panic!("Opcode not implemented: {:x}", op_code); }
 
@@ -611,28 +609,28 @@ impl Instruction {
             0x67 => { extended_instruction_set::rrd(clock, memory, pc_state);}
             0x6f => { extended_instruction_set::rld(clock, memory, pc_state);}
 
+            // IN r (C) 0xED, 01rrr000
+            n if (n & 0b11000111 == 0b01000000) && ((n >> 3) & 0b111 != 0b110) => {
+                    let reg_index = (n >> 3) & 0x7;
+                    let dst_fn = get_8_bit_register_set_function(reg_index);
+                    extended_instruction_set::in_r(clock, pc_state.get_c(), pc_state, dst_fn, ports);
+                }
+
+            // OUT r (C) 0xED, 01rrr001
+            n if (n & 0b11000111 == 0b01000001) && ((n >> 3) & 0b111 != 0b110) => {
+                    let reg_index = (n >> 3) & 0x7;
+                    extended_instruction_set::out_r(clock, pc_state.get_c(), pc_state, select_8_bit_read_register(pc_state, reg_index), ports);
+                }
+
+            0xA3 => { extended_instruction_set::outi(clock, memory, pc_state, ports);}
+            0xAB => { extended_instruction_set::outd(clock, memory, pc_state, ports);}
+            0x44 => { extended_instruction_set::neg(clock, pc_state);}
+            0x4D => { extended_instruction_set::reti(clock, memory, pc_state);}
+
             _ => {panic!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
 
-//            0x40 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_b);}
-//            0x48 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_c);}
-//            0x50 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_d);}
-//            0x58 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_e);}
-//            0x60 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_h);}
-//            0x68 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_l);}
-//            0x78 => { extended_instruction_set::IN_r_C(clock, memory, pc_state, ports, self._reg_wrapper_a);}
-//
-//            0x41 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_b);}
-//            0x49 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_c);}
-//            0x51 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_d);}
-//            0x59 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_e);}
-//            0x61 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_h);}
-//            0x69 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_l);}
-//            0x79 => { extended_instruction_set::OUT_C_r(clock, memory, pc_state, ports, self._reg_wrapper_a);}
-//
 //            0x42 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
-//            0x44 => { extended_instruction_set::NEG(clock, memory, pc_state);}
 //            0x4A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
-//            0x4D => { extended_instruction_set::RETI(clock, memory, pc_state);}
 //            0x52 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
 //            0x56 => { extended_instruction_set::IM_1(clock, memory, pc_state);}
 //            0x5A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
@@ -643,8 +641,6 @@ impl Instruction {
 //            0xA0 => { extended_instruction_set::LDI(clock, memory, pc_state);}
 //            0xA1 => { extended_instruction_set::CPI(clock, memory, pc_state);}
 //            0xA2 => { extended_instruction_set::INI(clock, memory, pc_state, ports);}
-//            0xA3 => { extended_instruction_set::OUTI(clock, memory, pc_state, ports);}
-//            0xAB => { extended_instruction_set::OUTD(clock, memory, pc_state, ports);}
 //            0xB0 => { extended_instruction_set::LDIR(clock, memory, pc_state);}
 //            0xB1 => { extended_instruction_set::CPIR(clock, memory, pc_state);}
 //            0xB3 => { extended_instruction_set::OTIR(clock, memory, pc_state, ports);}

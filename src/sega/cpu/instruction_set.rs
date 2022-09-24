@@ -20,6 +20,17 @@ pub fn in_a_n<M>(clock: &mut clocks::Clock, memory: &mut M,
     clock.increment(11);
 }
 
+//0xD3
+// OUT (N), A
+pub fn out_n_a<M>(clock: &mut clocks::Clock, memory: &mut M, 
+              pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
+
+    ports.port_write(memory.read(pc_state.pc_reg.get() + 1), pc_state.get_a());
+    pc_state.increment_pc(2);
+    clock.increment(11);
+}
+
+
 //0xF3, disable interrupts
 pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     pc_state.set_iff1(false);
@@ -471,6 +482,40 @@ pub fn jump_cc_nn<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut p
     clock.increment(10);
 }
 
+pub fn djnz<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    pc_state.set_b(pc_state.get_b().wrapping_sub(1));
+    if pc_state.get_b() != 0 {
+        pc_state.increment_pc(memory.read(pc_state.pc_reg.get() + 1) as i8);
+        clock.increment(13);
+    } else{
+        clock.increment(8);
+    }
+}
+
+// EXX
+// Exchange shadow registers.
+pub fn exx(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+
+    // Note, could also add '#[derive(Copy, Clone)]' to 'Reg16'
+    fn exchange_reg<R16>(first: &mut R16, second: &mut R16) -> () where R16: pc_state::Reg16RW {
+        let tmp_high = first.get_high();
+        let tmp_low  = first.get_low();
+        first.set_high(second.get_high());
+        first.set_low(second.get_low());
+        second.set_low(tmp_low);
+        second.set_high(tmp_high);
+    }
+
+    exchange_reg(&mut pc_state.bc_reg, &mut pc_state.shadow_bc_reg);
+    exchange_reg(&mut pc_state.de_reg, &mut pc_state.shadow_de_reg);
+    exchange_reg(&mut pc_state.hl_reg, &mut pc_state.shadow_hl_reg);
+
+    pc_state.increment_pc(1);
+    clock.increment(4);
+}
+
+
 // Call on condition
 // CALL cc, nn
 pub fn call_cc_nn<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, condition:bool) -> () where M: memory::MemoryRW {
@@ -493,6 +538,24 @@ pub fn call_nn<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_s
     // Call is the same as a conditional call that's always true.
     call_cc_nn(clock, memory, pc_state, true);
 }
+
+// RST (0x0, 0x8, 0x10, 0x18, 0x20, 0x30, 0x38)
+pub fn rst<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, rst_addr: u8) -> () where M: memory::MemoryRW {
+
+    pc_state.increment_pc(1);
+    pc_state.increment_sp(-1);
+    memory.write(pc_state.sp_reg.get(), pc_state.get_pc_high());
+    pc_state.increment_sp(-1);
+    memory.write(pc_state.sp_reg.get(), pc_state.get_pc_low());
+    
+    pc_state.set_pc(rst_addr as u16);
+    
+    clock.increment(11);
+}
+
+/**********************************************************/
+/* INC/DEC                                                */
+/**********************************************************/
 
 // DEC r
 // Decrement register and set status flags.
@@ -763,6 +826,64 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
     clock.increment(4);
 }
 
+// RET
+pub fn ret<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+    pc_state.set_pc_low(memory.read(pc_state.sp_reg.get()));
+    pc_state.increment_sp(1);
+    pc_state.set_pc_high(memory.read(pc_state.sp_reg.get()));
+    pc_state.increment_sp(1);
+
+    clock.increment(10);
+}
+
+// RET cc,  Return conditionally.
+pub fn ret_cc<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, condition: bool) -> () where M: memory::MemoryRW {
+
+    if condition {
+        pc_state.set_pc_low(memory.read(pc_state.sp_reg.get()));
+        pc_state.increment_sp(1);
+        pc_state.set_pc_high(memory.read(pc_state.sp_reg.get()));
+        pc_state.increment_sp(1);
+        clock.increment(11);
+    }
+    else
+    {
+        pc_state.increment_pc(1);
+        clock.increment(5);
+    }
+}
+
+// POP qq 
+// Pop 2 bytes off the stack into a 16-bit register.
+pub fn pop<M, R1, R2>(clock: &mut clocks::Clock, memory: &mut M, pc_reg : &mut R1, sp_reg : &mut R1, dst_reg : &mut R2) -> ()
+    where M: memory::MemoryRW,
+          R1: pc_state::Reg16RW,
+          R2: pc_state::Reg16RW,
+{
+    dst_reg.set_low(memory.read(sp_reg.get()));
+    pc_state::PcState::increment_reg(sp_reg, 1);
+    dst_reg.set_high(memory.read(sp_reg.get()));
+    pc_state::PcState::increment_reg(sp_reg, 1);
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(10);
+}
+
+// PUSH qq 
+// Pop 2 bytes onto the stack into a 16-bit register.
+pub fn push<M, R1, R2>(clock: &mut clocks::Clock, memory: &mut M, pc_reg : &mut R1, sp_reg : &mut R1, src_reg : &R2) -> ()
+    where M: memory::MemoryRW,
+          R1: pc_state::Reg16RW,
+          R2: pc_state::Reg16RW, // Flag register is implemented as a different type, so need more than 1 type.
+{
+    pc_state::PcState::increment_reg(sp_reg, -1);
+   memory.write(sp_reg.get(), src_reg.get_high());
+    pc_state::PcState::increment_reg(sp_reg, -1);
+    memory.write(sp_reg.get(), src_reg.get_low());
+
+    pc_state::PcState::increment_reg(pc_reg, 1);
+    clock.increment(11);
+}
+
 
 
 ////////////////////////////////////////////////////
@@ -796,61 +917,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusAnd(self.pc_state.A);
 //     
 //         return 7;
-// 
-// class EXX(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         tmp16 = self.pc_state.BC;
-//         self.pc_state.BC = self.pc_state.BC_;
-//         self.pc_state.BC_ = tmp16;
-//     
-//         tmp16 = self.pc_state.DE;
-//         self.pc_state.DE = self.pc_state.DE_;
-//         self.pc_state.DE_ = tmp16;
-//     
-//         tmp16 = self.pc_state.HL;
-//         self.pc_state.HL = self.pc_state.HL_;
-//         self.pc_state.HL_ = tmp16;
-//     
-//         self.pc_state.PC += 1
-//     
-//         return 4;
-// 
-// class DJNZ(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     # DJNZ n
-//     def execute(self):
-//         cycles = 8;
-//     
-//         self.pc_state.B -= 1;
-//         if (self.pc_state.B != 0):
-// 
-//             self.pc_state.PC += signed_char_to_int(self.memory.read(self.pc_state.PC + 1))
-//             cycles += 5
-//     
-//         self.pc_state.PC += 2
-//     
-//         return cycles
-//     
-// 
-// class RET(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PCLow  = self.memory.read(self.pc_state.SP)
-//         self.pc_state.SP += 1
-//         self.pc_state.PCHigh = self.memory.read(self.pc_state.SP)
-//         self.pc_state.SP += 1
-//     
-//         return 10;
 // 
 // ################ NEW INSTRUCTIONS ##################
 // 
@@ -1021,42 +1087,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 // 
 //         return  7;
 // 
-// # RET NZ
-// class RET_NZ(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.Z == 0):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
-// 
-// # PUSH 
-// class PUSH(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.reg.get_high());
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.reg.get_low());
-//         self.pc_state.PC += 1
-// 
-//         return 11;
-// 
 // # self.pc_state.ADD n
 // class ADD_n(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1070,44 +1100,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.PC+=2;
 //         return 7;
 // 
-// # RST
-// class RST(Instruction):
-//     def __init__(self, memory, pc_state, rst_addr):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.rst_addr = rst_addr
-// 
-//     def execute(self):
-//         self.pc_state.PC += 1
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.pc_state.PCHigh);
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.pc_state.PCLow);
-// 
-//         self.pc_state.PC = self.rst_addr
-// 
-//         return  11;
-// 
-// # RET Z
-// class RST_Z(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.Z == 1):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
-// 
 // # self.pc_state.ADC nn
 // class ADC_nn(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1119,41 +1111,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.A = add8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 4;
-// 
-// # RET NC
-// class RET_NC(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.C == 0):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
-// 
-// # POP self.pc_state.DE
-// class POP(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//         self.reg.set_low(self.memory.read(self.pc_state.SP))
-//         self.pc_state.SP += 1
-//         self.reg.set_high(self.memory.read(self.pc_state.SP));
-//         self.pc_state.SP += 1
-//         self.pc_state.PC += 1
-//         return  10;
 // 
 // # SUB n
 // class SUB_n(Instruction):
@@ -1168,26 +1125,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.PC += 2;
 //         return  7;
 // 
-// # RET C
-// class RET_C(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.C == 1):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles+=5;
-//         return cycles
-// 
 // # SBC n 
 // class SBC_n(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1199,27 +1136,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.A = sub8c(self.pc_state, self.pc_state.A, self.memory.read(self.pc_state.PC + 1), self.pc_state.F.Fstatus.C);
 //         self.pc_state.PC+=2;
 //         return 7;
-// 
-// # RET PO  
-// class RET_PO(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.PV == 0):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
-// 
 // 
 // # EX (self.pc_state.SP), self.pc_state.HL
 // class EX_SP_HL(Instruction):
@@ -1236,26 +1152,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.H = tmp8;
 //         self.pc_state.PC += 1
 //         return  19;
-// 
-// # RET PE  
-// class RET_PE(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.PV == 1):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
 // 
 // # EX self.pc_state.DE, self.pc_state.HL
 // class EX_DE_HL(Instruction):
@@ -1283,86 +1179,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.PC+=2;
 //         return 7;
 // 
-// # RET P, if Positive
-// class RET_P(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.S == 0):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
-// 
-// # POP self.pc_state.AF
-// class POP_AF(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.F.value = self.memory.read(self.pc_state.SP);
-//         self.pc_state.SP += 1
-//         self.pc_state.A = self.memory.read(self.pc_state.SP);
-//         self.pc_state.SP += 1
-// 
-//         self.pc_state.PC += 1
-// 
-//         return 10;
-// 
-// # Disable interupts
-// # DI
-// class DI(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.IFF1 = 0;
-//         self.pc_state.IFF2 = 0;
-//         self.pc_state.PC += 1
-// 
-//         return 4;
-// 
-// # PUSH self.pc_state.AF
-// class PUSH_AF(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.SP -= 1
-//         self.memory.write(self.pc_state.SP, self.pc_state.A);
-//         self.pc_state.SP -= 1
-//              ************* FLAGS *****************
-//         self.memory.write(self.pc_state.SP, self.pc_state.F.value);
-//         self.pc_state.PC += 1
-// 
-//         return 11;
-// 
-//     def get_cached_execute(self):
-//         ps = self.pc_state
-//         w = self.memory.write
-//         def _get_cached_execute(self):
-//             ps.SP -= 1
-//             w(ps.SP, ps.A);
-//             ps.SP -= 1
-//              ************* FLAGS *****************
-//             w(ps.SP, ps.F.value);
-//             ps.PC += 1
-// 
-//             return 11;
-//         return _get_cached_execute
-// 
 // # OR n
 // class OR_n(Instruction):
 //     def __init__(self, memory, pc_state):
@@ -1375,26 +1191,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock,
 //         self.pc_state.F.value = flagtables.FlagTables.getStatusOr(self.pc_state.A);
 //         self.pc_state.PC += 2;
 //         return 7;
-// 
-// # RET M  if Negative
-// class RET_M(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//              ************* FLAGS *****************
-//         if (self.pc_state.F.Fstatus.S == 1):
-//             self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//             self.pc_state.SP += 1
-//             cycles += 11;
-//         else:
-//             self.pc_state.PC += 1
-//             cycles +=5;
-//         return cycles
 // 
 // # Enable interupts
 // # EI

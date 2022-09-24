@@ -14,6 +14,7 @@ use super::super::memory::memory;
 use super::super::clocks;
 use super::status_flags;
 use super::instruction_set;
+use super::super::ports;
 
 /*************************************************************************************/
 /* Utility functions                                                                 */
@@ -25,7 +26,7 @@ fn get_i8_displacement_as_u8<M, R16>(memory: &mut M, pc_reg: &R16) -> u16 where 
 }
 
 // 'pc_reg' and 'i16_reg' need the same trait, but can be different types.
-fn get_i_d_address<M, R1, R2>(memory: &mut M, pc_reg: &R1, i16_reg: &R2) -> u16 where M: memory::MemoryRW, R1: pc_state::Reg16RW , R2: pc_state::Reg16RW {
+fn get_i_d_address<M, R16>(memory: &mut M, pc_reg: &R16, i16_reg: &R16) -> u16 where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     let address = i16_reg.get().wrapping_add(get_i8_displacement_as_u8(memory, pc_reg));
     address
 }
@@ -307,6 +308,19 @@ pub fn cp_i_d<M>(clock: &mut clocks::Clock, memory: &mut M, i16_value: u16, pc_s
 
     pc_state.increment_pc(3);
     clock.increment(19);
+}
+
+// RTI
+// Fself.pc_state.IXME, should check, since there is only one
+// interupting device, this is the same as normal ret
+// RETI
+pub fn reti<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+    pc_state.set_pc_low(memory.read(pc_state.sp_reg.get()));
+    pc_state.increment_sp(1);
+    pc_state.set_pc_high(memory.read(pc_state.sp_reg.get()));
+    pc_state.increment_sp(1);
+
+    clock.increment(14);
 }
 
 ////////////////////////////////////////////////////
@@ -730,35 +744,74 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     clock.increment(18);
 }
 
+// IN r, (C)
+pub fn in_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::PcState, mut dst_fn :F, ports: &mut ports::Ports) -> () {
+    dst_fn(pc_state, ports.port_read(src_val));
+    pc_state.increment_pc(2);
+    clock.increment(12);
+}
+
+// OUT r, (C)
+pub fn out_r(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::PcState, out: u8, ports: &mut ports::Ports) -> () {
+    ports.port_write(src_val, out);
+    pc_state.increment_pc(2);
+    clock.increment(12);
+}
+
+// OUTI
+pub fn outi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
+    pc_state.set_b(pc_state.get_b().wrapping_sub(1));
+    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+
+    let mut f_status = pc_state.get_f();
+    if pc_state.get_b() == 0 {
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+    f_status.set_n(1);
+    pc_state.set_f(f_status);
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+// OUTD
+pub fn outd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
+    pc_state.set_b(pc_state.get_b().wrapping_sub(1));
+    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+
+    let mut f_status = pc_state.get_f();
+    if pc_state.get_b() == 0 {
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+    f_status.set_n(1);
+    pc_state.set_f(f_status);
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+/*************************************************************************************/
+/* General purpose arithmetic and CPU control                                        */
+/*************************************************************************************/
+
+pub fn neg(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
+
+    let result = instruction_set::sub8(0, pc_state.get_a(), &mut pc_state.af_reg);
+    pc_state.set_a(result);
+
+    pc_state.increment_pc(2);
+    clock.increment(8);
+}
 
 
 // # Addition instructions
 // 
-// # IN r, (C)
-// class IN_r_C(Instruction):
-//     def __init__(self, memory, pc_state, ports, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.reg.set(self.ports.portRead(self.pc_state.C))
-//         self.pc_state.PC += 2;
-//         return 12;
-//     
-// # OUT (C), r
-// class OUT_C_r(Instruction):
-//     def __init__(self, memory, pc_state, ports, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.ports.portWrite(self.pc_state.C, self.reg.get());
-//         self.pc_state.PC += 2;
-//         return 3;
 //     
 // # SBC_HL_r16
 // class SBC_HL_r16(Instruction):
@@ -774,37 +827,6 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 //         self.pc_state.PC += 2;
 //         return  15;
 //     
-//     
-// # NEG
-// class NEG(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(0,self.pc_state.A);
-//         self.pc_state.A = -self.pc_state.A;
-//         self.pc_state.PC += 2;
-//         return 8;
-//     
-// # Fself.pc_state.IXME, should check, since there is only one
-// # interupting device, this is the same as normal ret
-// # RETI
-// class RETI(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.pc_state.PCLow  = self.memory.read(self.pc_state.SP);
-//         self.pc_state.SP += 1
-//         self.pc_state.PCHigh = self.memory.read(self.pc_state.SP);
-//         self.pc_state.SP += 1
-//     
-//         return  14;
-//                 
-// # Fself.pc_state.IXME, can't find existance of this instruction
 //     
 // # self.pc_state.ADC self.pc_state.HL, self.pc_state.r16
 // class ADC_HL_r16(Instruction):
@@ -877,46 +899,6 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 //         else:
 //             self.pc_state.F.Fstatus.Z = 0;
 //     
-//         self.pc_state.PC += 2;
-//         return  16;
-//     
-// # OUTI
-// class OUTI(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.pc_state.B -= 1
-//         self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
-//         self.pc_state.HL += 1
-//         if (self.pc_state.B == 0):
-//              ************* FLAGS *****************
-//             self.pc_state.F.Fstatus.Z = 1
-//         else:
-//             self.pc_state.F.Fstatus.Z = 0
-//         self.pc_state.F.Fstatus.N = 1;
-//         self.pc_state.PC += 2;
-//         return  16;
-//     
-// # OUTD
-// class OUTD(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.pc_state.B -= 1
-//         self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
-//         self.pc_state.HL -= 1
-//         if (self.pc_state.B == 0):
-//              ************* FLAGS *****************
-//             self.pc_state.F.Fstatus.Z = 1
-//         else:
-//             self.pc_state.F.Fstatus.Z = 0
-//         self.pc_state.F.Fstatus.N = 1;
 //         self.pc_state.PC += 2;
 //         return  16;
 //     

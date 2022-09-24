@@ -32,6 +32,8 @@ impl fmt::Display for PcStatusFlagFields {
     }
 }
 
+// Copy, Clone is used to simplify the 'exx' operation.
+//#[derive(Copy, Clone)]
 pub struct Reg16 {
     pub high: u8,
     pub low: u8,
@@ -56,10 +58,10 @@ pub struct PcState {
         pub iy_reg: Reg16,
 
         // Shadow registers
-        shadow_bc_reg: Reg16,
-        shadow_de_reg: Reg16,
-        shadow_hl_reg: Reg16,
-        shadow_af_reg: FlagReg16,
+        pub shadow_bc_reg: Reg16,
+        pub shadow_de_reg: Reg16,
+        pub shadow_hl_reg: Reg16,
+        pub shadow_af_reg: FlagReg16,
 
         r: u8, // Memory refresh register, lower 7 bits increment after each instruction fetch. 8-th bit only set by LD R,A
         i: u8, // Interrupt register
