@@ -188,7 +188,7 @@ pub fn lddr<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     pc_state::PcState::increment_reg(&mut pc_state.de_reg, -1);
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
     pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
-    if pc_state.get_b() == 0 {
+    if pc_state.bc_reg.get() == 0 {
         let mut f_status = pc_state.get_f();
         f_status.set_h(0);
         f_status.set_n(0);
@@ -215,7 +215,7 @@ pub fn ldir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     let mut f_status = pc_state.get_f();
     f_status.set_h(0);
     f_status.set_pv(0);
-    if pc_state.get_b() == 0 {
+    if pc_state.bc_reg.get() == 0 {
         f_status.set_n(0);
         pc_state::PcState::increment_reg(&mut pc_state.pc_reg, 2);
         clock.increment(16);
@@ -444,7 +444,7 @@ pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
     let mut f_status = pc_state.get_f();
     f_status.set_c(original_carry);
-    if (pc_state.bc_reg.get() == 0) || f_status.get_z() == 0 {
+    if (pc_state.bc_reg.get() == 0) || f_status.get_z() == 1 {
         f_status.set_pv(0);
         pc_state.increment_pc(2);
         clock.increment(16);
