@@ -506,7 +506,7 @@ impl Instruction {
 
             0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.ix_reg);}
             0x21 => { extended_instruction_set::ld_i_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
-            0xBE => { extended_instruction_set::cp_i_d(clock, memory, pc_state.ix_reg.get(), pc_state);}
+            0xBE => { extended_instruction_set::cp_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.ix_reg, &mut pc_state.af_reg);}
 
             n if (n & 0b11001111 == 0b00001001) => {
                 let ss = (n >> 4) & 0x3;
@@ -560,7 +560,7 @@ impl Instruction {
 
             0xE9 => { extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.iy_reg);}
             0x21 => { extended_instruction_set::ld_i_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
-            0xBE => { extended_instruction_set::cp_i_d(clock, memory, pc_state.ix_reg.get(), pc_state);}
+            0xBE => { extended_instruction_set::cp_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.iy_reg, &mut pc_state.af_reg);}
             n if (n & 0b11001111 == 0b00001001) => {
                 let ss = (n >> 4) & 0x3;
                 extended_instruction_set::add16(clock, select_16_bit_read_register(pc_state, ss), 
@@ -595,7 +595,6 @@ impl Instruction {
 
         match op_code {
             0x00 => { instruction_set::noop(clock, pc_state);} 
-            0x56 => { instruction_set::im_1(clock, pc_state);} 
 
             // 0b00dd0001 -> BC 00, DE 01, HL 10, SP 11
             n if (n & 0b11001111 == 0b00000001) => {
@@ -635,24 +634,30 @@ impl Instruction {
             0x44 => { extended_instruction_set::neg(clock, pc_state);}
             0x4D => { extended_instruction_set::reti(clock, memory, pc_state);}
 
-            _ => {panic!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
+            0xB3 => { extended_instruction_set::otir(clock, memory, pc_state, ports);}
+            0xB8 => { extended_instruction_set::lddr(clock, memory, pc_state);}
+            0xB0 => { extended_instruction_set::ldir(clock, memory, pc_state);}
+            0xA2 => { extended_instruction_set::ini(clock, memory, pc_state, ports);}
+            0xA1 => { extended_instruction_set::cpi(clock, memory, pc_state);}
+            0xB1 => { extended_instruction_set::cpir(clock, memory, pc_state);}
+            0xA0 => { extended_instruction_set::ldi(clock, memory, pc_state);}
+            0x56 => { extended_instruction_set::im_1(clock, pc_state);}
 
-//            0x42 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
-//            0x4A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_bc);}
-//            0x52 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
-//            0x56 => { extended_instruction_set::IM_1(clock, memory, pc_state);}
-//            0x5A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_de);}
-//            0x62 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
-//            0x6A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_hl);}
-//            0x72 => { extended_instruction_set::SBC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
-//            0x7A => { extended_instruction_set::ADC_HL_r16(clock, memory, pc_state, self._reg_wrapper_sp);}
-//            0xA0 => { extended_instruction_set::LDI(clock, memory, pc_state);}
-//            0xA1 => { extended_instruction_set::CPI(clock, memory, pc_state);}
-//            0xA2 => { extended_instruction_set::INI(clock, memory, pc_state, ports);}
-//            0xB0 => { extended_instruction_set::LDIR(clock, memory, pc_state);}
-//            0xB1 => { extended_instruction_set::CPIR(clock, memory, pc_state);}
-//            0xB3 => { extended_instruction_set::OTIR(clock, memory, pc_state, ports);}
-//            0xB8 => { extended_instruction_set::LDDR(clock, memory, pc_state);}
+            // ADC HL, ss
+            // 0b01ss1010
+            n if (n & 0b11001010 == 0b01001010) =>  {
+                let ss = (n >> 4) & 0x3;
+                extended_instruction_set::adc_hl_r16(clock, select_16_bit_read_register(pc_state, ss), &mut pc_state.pc_reg, &mut pc_state.hl_reg, &mut pc_state.af_reg);
+            }
+
+            // SBC HL, ss
+            // 0b01ss0010
+            n if (n & 0b11001010 == 0b01000010) =>  {
+                let ss = (n >> 4) & 0x3;
+                extended_instruction_set::sbc_hl_r16(clock, select_16_bit_read_register(pc_state, ss), &mut pc_state.pc_reg, &mut pc_state.hl_reg, &mut pc_state.af_reg);
+            }
+
+            _ => {panic!("Extended(0xED) Opcode not implemented: {:x}", op_code); }
         }
     } 
 }

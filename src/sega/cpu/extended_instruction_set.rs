@@ -181,6 +181,80 @@ pub fn push_i<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R1
     clock.increment(15);
 }
 
+// LDDR
+pub fn lddr<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
+    pc_state::PcState::increment_reg(&mut pc_state.de_reg, -1);
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    if pc_state.get_b() == 0 {
+        let mut f_status = pc_state.get_f();
+        f_status.set_h(0);
+        f_status.set_n(0);
+        f_status.set_pv(0);
+        pc_state.set_f(f_status);
+
+        pc_state::PcState::increment_reg(&mut pc_state.pc_reg, 2);
+
+        clock.increment(16);
+    } else {
+        // This branch is longer because the PC is actually 'decremented' by two
+        clock.increment(21);
+    }
+}
+
+// LDIR
+pub fn ldir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
+    pc_state::PcState::increment_reg(&mut pc_state.de_reg, 1);
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+
+    let mut f_status = pc_state.get_f();
+    f_status.set_h(0);
+    f_status.set_pv(0);
+    if pc_state.get_b() == 0 {
+        f_status.set_n(0);
+        pc_state::PcState::increment_reg(&mut pc_state.pc_reg, 2);
+        clock.increment(16);
+    } else {
+        // This branch is longer because the PC is actually 'decremented' by two
+        f_status.set_n(1); // Not sure.
+        clock.increment(21);
+    }
+    pc_state.set_f(f_status);
+}
+
+// OTIR
+// Flags match emulator, not z80 document
+pub fn otir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
+
+    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
+
+    pc_state.set_b(pc_state.get_b() - 1);
+    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+
+    let mut f_status = pc_state.get_f();
+    // ??? status.set_c(0)
+    f_status.set_s(0);  // Unknown
+    f_status.set_h(0);  // Unknown
+    f_status.set_pv(0); // Unknown
+    f_status.set_n(1);
+    if pc_state.get_b() == 0 {
+        f_status.set_z(1);
+        pc_state.increment_pc(2);
+        clock.increment(17);
+    } else {
+        f_status.set_z(0);
+        clock.increment(21);
+    }
+
+    pc_state.set_f(f_status);
+}
+
 // EX SP I
 pub fn ex_sp_i<M, R16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &mut R16) -> () where M: memory::MemoryRW, R16: pc_state::Reg16RW {
     let mut tmp8 = memory.read(sp_reg.get());
@@ -301,14 +375,89 @@ pub fn jp_i<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, i16_reg: &R16) -> 
 
 // CP n
 // Compare accumulator with 'n' to set status flags (but don't change accumulator)
-pub fn cp_i_d<M>(clock: &mut clocks::Clock, memory: &mut M, i16_value: u16, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
-
+//pub fn cp_i_d<M>(clock: &mut clocks::Clock, memory: &mut M, i16_value: u16, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+pub fn cp_i_d<M, R16, AF>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &mut R16, af_reg: &mut AF) -> () 
+    where M: memory::MemoryRW,
+          R16: pc_state::Reg16RW,
+          AF: pc_state::FlagReg + pc_state::AfRegister,
+{
     // This function sets the 'pc_state.f'
-    instruction_set::cp_flags(pc_state.get_a(),  memory.read(i16_value.wrapping_add((memory.read(pc_state.get_pc()+2) as i8) as u16)), &mut pc_state.af_reg);
+    let address = get_i_d_address(memory, pc_reg, i16_reg);
+    instruction_set::cp_flags(af_reg.get_a(), memory.read(address), af_reg);
 
-    pc_state.increment_pc(3);
+    pc_state::PcState::increment_reg(pc_reg, 3);
     clock.increment(19);
 }
+
+// CPI
+// Compare accumulator with contents of memory address HL
+pub fn cpi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    // This function sets the 'pc_state.f'
+    instruction_set::cp_flags(pc_state.get_a(), memory.read(pc_state.hl_reg.get()),  &mut pc_state.af_reg);
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    let mut f_status = pc_state.get_f();
+    if pc_state.bc_reg.get() == 0 {
+        f_status.set_pv(1);
+    }
+    else {
+        f_status.set_pv(0);
+    }
+
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+// LDI
+// Load, increment HL, DE, decrement BC.
+pub fn ldi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    pc_state::PcState::increment_reg(&mut pc_state.de_reg, 1);
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    let mut f_status = pc_state.get_f();
+    if pc_state.bc_reg.get() == 0 {
+        f_status.set_pv(1);
+    }
+    else {
+        f_status.set_pv(0);
+    }
+    f_status.set_h(0);
+    f_status.set_n(0);
+
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+// CPIR
+// Compare and repeat,  A with the contents of memory in HL, increment HL, decrement BC.
+pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+
+    // This function sets the 'pc_state.f'
+    let original_carry = pc_state.get_f().get_c();
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    instruction_set::cp_flags(pc_state.get_a(), memory.read(pc_state.hl_reg.get()),  &mut pc_state.af_reg);
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    let mut f_status = pc_state.get_f();
+    f_status.set_c(original_carry);
+    if (pc_state.bc_reg.get() == 0) || f_status.get_z() == 0 {
+        f_status.set_pv(0);
+        pc_state.increment_pc(2);
+        clock.increment(16);
+    }
+    else {
+        f_status.set_pv(1);
+        clock.increment(21);
+    }
+
+}
+
+
+
 
 // RTI
 // Fself.pc_state.IXME, should check, since there is only one
@@ -762,6 +911,7 @@ pub fn out_r(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::P
 pub fn outi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
 
     let mut f_status = pc_state.get_f();
     if pc_state.get_b() == 0 {
@@ -772,10 +922,29 @@ pub fn outi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_sta
     f_status.set_n(1);
     pc_state.set_f(f_status);
 
-    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
     pc_state.increment_pc(2);
     clock.increment(16);
 }
+
+// INI
+pub fn ini<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
+    pc_state.set_b(pc_state.get_b().wrapping_sub(1));
+    memory.write(pc_state.hl_reg.get(), ports.port_read(pc_state.get_c()));
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+
+    let mut f_status = pc_state.get_f();
+    if pc_state.get_b() == 0 {
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+    f_status.set_n(1);
+    pc_state.set_f(f_status);
+
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
 
 // OUTD
 pub fn outd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
@@ -809,211 +978,29 @@ pub fn neg(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     clock.increment(8);
 }
 
+pub fn im_1(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 
-// # Addition instructions
-// 
-//     
-// # SBC_HL_r16
-// class SBC_HL_r16(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.HL = sub16c(self.pc_state, self.pc_state.HL, int(self.reg), self.pc_state.F.Fstatus.C);
-//     
-//         self.pc_state.PC += 2;
-//         return  15;
-//     
-//     
-// # self.pc_state.ADC self.pc_state.HL, self.pc_state.r16
-// class ADC_HL_r16(Instruction):
-//     def __init__(self, memory, pc_state, reg):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.reg = reg
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.HL = add16c(self.pc_state, self.pc_state.HL, int(self.reg), self.pc_state.F.Fstatus.C);
-//         self.pc_state.PC+=2;
-//         return 15;
-//     
-// # LDI
-// class LDI(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         self.memory.write(self.pc_state.DE, self.memory.read(self.pc_state.HL));
-//         self.pc_state.DE += 1
-//         self.pc_state.HL += 1
-//         self.pc_state.BC -= 1
-//         if (self.pc_state.BC == 0):
-//              ************* FLAGS *****************
-//             self.pc_state.F.Fstatus.PV = 1
-//         else:
-//             self.pc_state.F.Fstatus.PV = 0
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.N = 0;
-//         self.pc_state.PC += 2;
-//     
-//         return  16;
-//     
-// # CPI
-// class CPI(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//              ************* FLAGS *****************
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
-//         self.pc_state.HL += 1
-//         self.pc_state.BC -= 1
-//         if (self.pc_state.BC == 0):
-//             self.pc_state.F.Fstatus.PV = 1
-//         else:
-//             self.pc_state.F.Fstatus.PV = 0
-//         self.pc_state.PC += 2;
-//         return  16;
-//     
-// # INI
-// class INI(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports = ports
-// 
-//     def execute(self):
-//         self.pc_state.B -= 1
-//         self.memory.write(self.pc_state.HL, self.ports.portRead(self.pc_state.C));
-//         self.pc_state.HL += 1
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.N = 1;
-//         if (self.pc_state.B == 0):
-//             self.pc_state.F.Fstatus.Z = 1;
-//         else:
-//             self.pc_state.F.Fstatus.Z = 0;
-//     
-//         self.pc_state.PC += 2;
-//         return  16;
-//     
-// # LDIR
-// class LDIR(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         if (self.pc_state.BC >= 4):
-//             self.memory.writeMulti(self.pc_state.DE, self.pc_state.HL, 4);
-//             self.pc_state.DE += 4;
-//             self.pc_state.HL += 4;
-//             self.pc_state.BC -= 4;
-//             cycles += 84;
-//         else:
-//             self.pc_state.BC -= 1
-//             self.memory.write(self.pc_state.DE, self.memory.read(self.pc_state.HL));
-//             self.pc_state.DE += 1
-//             self.pc_state.HL += 1
-//             cycles += 21;
-//     
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.H = 0;
-//         self.pc_state.F.Fstatus.PV = 0;
-//         self.pc_state.F.Fstatus.N = 1; # hmmm, not sure
-//         if (self.pc_state.BC == 0):
-//             self.pc_state.F.Fstatus.N = 0;
-//             self.pc_state.PC += 2;
-//             cycles -=5;
-// 
-//         return cycles
-//     
-// # CPIR
-// class CPIR(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.pc_state.BC -= 1
-//              ************* FLAGS *****************
-//         tmp8 = self.pc_state.F.Fstatus.C;
-//         self.pc_state.F.value = flagtables.FlagTables.getStatusSub(self.pc_state.A,self.memory.read(self.pc_state.HL));
-//         self.pc_state.HL += 1
-//         self.pc_state.F.Fstatus.C = tmp8; 
-//     
-//         if ((self.pc_state.BC == 0)or(self.pc_state.F.Fstatus.Z == 1)):
-//             self.pc_state.F.Fstatus.PV = 0; 
-//             self.pc_state.PC += 2;
-//             cycles += 16;
-//         else:
-//             self.pc_state.F.Fstatus.PV = 1; 
-//             cycles += 21;
-// 
-//         return cycles
-//     
-// # Should speed this function up a bit
-// # Flags match emulator, not z80 document
-// # OTIR (port)
-// class OTIR(Instruction):
-//     def __init__(self, memory, pc_state, ports):
-//         self.memory = memory
-//         self.pc_state = pc_state
-//         self.ports = ports
-// 
-//     def execute(self):
-//         cycles = 0
-//         if (self.pc_state.B >= 8):
-//             self.pc_state.B -= 8;
-//             self.ports.portMultiWrite(self.pc_state.C, self.memory.readArray(self.pc_state.HL,8), 8);
-//             self.pc_state.HL+= 8;
-//             cycles += 168;
-//         else:
-//             self.pc_state.B -= 1
-//             self.ports.portWrite(self.pc_state.C, self.memory.read(self.pc_state.HL));
-//             self.pc_state.HL += 1
-//             cycles += 21;
-//              ************* FLAGS *****************
-//         self.pc_state.F.Fstatus.S = 0; # Unknown
-//         self.pc_state.F.Fstatus.H = 0; # Unknown
-//         self.pc_state.F.Fstatus.PV = 0; # Unknown
-//         self.pc_state.F.Fstatus.N = 1;
-//         self.pc_state.F.Fstatus.Z = 0;
-//         if (self.pc_state.B == 0):
-//             self.pc_state.F.Fstatus.Z = 1;
-//             self.pc_state.PC += 2;
-//             cycles -= 5;
-//         return cycles
-//     
-// # LDDR
-// class LDDR(Instruction):
-//     def __init__(self, memory, pc_state):
-//         self.memory = memory
-//         self.pc_state = pc_state
-// 
-//     def execute(self):
-//         cycles = 0
-//         self.memory.write(self.pc_state.DE, self.memory.read(self.pc_state.HL));
-//         self.pc_state.DE -= 1
-//         self.pc_state.HL -= 1
-//         self.pc_state.BC -= 1
-//         if (self.pc_state.BC == 0):
-//             self.pc_state.PC += 2;
-//             cycles += 16;
-//              ************* FLAGS *****************
-//             self.pc_state.F.Fstatus.N = 0;
-//             self.pc_state.F.Fstatus.H = 0;
-//             self.pc_state.F.Fstatus.PV = 0;
-//         else:
-//             cycles += 21;
-// 
-//         return cycles
-// 
-// 
+    pc_state.set_im(1);
+    pc_state.increment_pc(2);
+    clock.increment(8);
+}
+
+pub fn sbc_hl_r16<R16, F16>(clock: &mut clocks::Clock, src_value: u16, 
+              pc_reg: &mut R16, hl_reg: &mut R16, af_reg: &mut F16) -> () 
+    where R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg ,
+{
+    hl_reg.set(instruction_set::sub16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}
+
+pub fn adc_hl_r16<R16, F16>(clock: &mut clocks::Clock, src_value: u16, 
+              pc_reg: &mut R16, hl_reg: &mut R16, af_reg: &mut F16) -> () 
+    where R16: pc_state::Reg16RW,
+          F16: pc_state::FlagReg ,
+{
+    hl_reg.set(instruction_set::add16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(15);
+}

@@ -50,14 +50,6 @@ pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
     clock.increment(4);
 }
 
-// # self.pc_state.IM 1
-pub fn im_1(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
-    pc_state.increment_pc(2);
-    pc_state.set_im(1);
-
-    clock.increment(2);
-}
-
 pub fn signed_char_to_int(v: i8) -> i16 {
     return v as i16;
 }
@@ -190,7 +182,7 @@ pub fn add16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
     result
 }
 
-fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
+pub fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
     where F16: pc_state::FlagReg {
 
     let mut f_status = af_reg.get_flags();

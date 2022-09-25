@@ -110,6 +110,11 @@ pub trait FlagReg {
     fn set_flags(&mut self, flags: &PcStatusFlagFields) -> ();
 }
 
+pub trait AfRegister {
+    fn get_a(&self) -> u8;
+    fn get_f(&self) -> u8;
+}
+
 impl Reg16RW for Reg16 {
     fn get(&self) -> u16 {
         self.get()
@@ -150,6 +155,16 @@ impl FlagReg for FlagReg16{
 
     fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
         self.reg16.low = flags.0;
+    }
+}
+
+impl AfRegister for FlagReg16{
+    fn get_a(&self) -> u8 {
+        self.reg16.high
+    }
+
+    fn get_f(&self) -> u8 {
+        self.reg16.low
     }
 }
 
