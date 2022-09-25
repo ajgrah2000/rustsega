@@ -65,11 +65,15 @@ impl<M: memory::MemoryRW> Core<M> {
 
 #[test]
 fn test_core_creation() {
+    use super::super::graphics::vdp;
+
     let clock = clocks::Clock::new();
     let memory = memory::MemoryAbsolute::new();
     let pc_state = pc_state::PcState::new();
-    let ports = ports::Ports::new();
+    let vdp = vdp::VDP::new();
+    let mut ports = ports::Ports::new();
     let interruptor = interruptor::Interruptor::new();
+    ports.add_device(Box::new(vdp));
     let mut core = Core::new(clock, memory, pc_state, ports, interruptor);
 
     core.step(true);

@@ -36,15 +36,19 @@ fn main() {
         let clock = sega::clocks::Clock::new();
         let mut memory = sega::memory::memory::MemoryAbsolute::new();
         let pc_state = sega::cpu::pc_state::PcState::new();
-        let ports = sega::ports::Ports::new();
+        let vdp = sega::graphics::vdp::VDP::new();
+        let mut ports = sega::ports::Ports::new();
         let interruptor = sega::interruptor::Interruptor::new();
+
+        // Add the graphics device to the list of ports.
+        ports.add_device(Box::new(vdp));
 
         memory.set_cartridge(cartridge);
         let mut core = sega::cpu::core::Core::new(clock, memory, pc_state, ports, interruptor);
 
         let debug = true;
 
-        for _i in 0..100 {
+        for _i in 0..1000 {
             core.step(debug);
         }
 
