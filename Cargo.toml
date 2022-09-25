@@ -7,3 +7,5 @@ edition = "2021"
 
 [dependencies]
 bitfield = "0.14.0"
+argparse = "0.2.2"
+sdl2 = "0.35"
