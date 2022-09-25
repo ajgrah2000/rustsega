@@ -676,7 +676,6 @@ pub fn add_ix_d<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_
 
     let address = get_i_d_address(memory, &pc_state.pc_reg, &pc_state.ix_reg);
 
-    let carry = pc_state.get_f().get_c();
     let new_value = instruction_set::add8(pc_state.get_a(), memory.read(address), &mut pc_state.af_reg);
     pc_state.set_a(new_value);
 

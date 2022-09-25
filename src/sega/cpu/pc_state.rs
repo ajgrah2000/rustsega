@@ -70,7 +70,6 @@ pub struct PcState {
 
 impl fmt::Display for PcState {
     fn fmt(&self, dest: &mut fmt::Formatter) -> fmt::Result {
-        let flags = self.get_f();
         write!(dest, "A:{:x} SP:{:x} B:{:x} C:{:x} D:{:x} E:{:x} H:{:x} L:{:x} F:{:x} PCHigh:{:x} PCLow:{:x} SPHigh:{:x} SPLow:{:x} IXHigh:{:x} IXLow:{:x} IYHigh:{:x} IYLow:{:x} {}", self.get_a(), self.get_sp(), self.get_b(), self.get_c(),self.get_d(),self.get_e(),self.get_h(),self.get_l(),self.get_f().0,self.get_pc_high(),self.get_pc_low(),self.get_sp_high(),self.get_sp_low(),self.get_ix_high(),self.get_ix_low(),self.get_iy_high(),self.get_iy_low(), self.get_f())
     }
 
@@ -228,14 +227,6 @@ impl PcState {
     pub fn get_h(&self) -> u8 {self.hl_reg.high}
     pub fn get_l(&self) -> u8 {self.hl_reg.low}
 
-    pub fn get_b_ref(&mut self) -> &mut u8 {&mut self.bc_reg.high}
-    pub fn get_c_ref(&mut self) -> &mut u8 {&mut self.bc_reg.low}
-    pub fn get_d_ref(&mut self) -> &mut u8 {&mut self.de_reg.high}
-    pub fn get_e_ref(&mut self) -> &mut u8 {&mut self.de_reg.low}
-    pub fn get_a_ref(&mut self) -> &mut u8 {&mut self.af_reg.reg16.high}
-    pub fn get_h_ref(&mut self) -> &mut u8 {&mut self.hl_reg.high}
-    pub fn get_l_ref(&mut self) -> &mut u8 {&mut self.hl_reg.low}
-
     pub fn get_bc(&self) -> u16 {self.bc_reg.get()}
     pub fn get_de(&self) -> u16 {self.de_reg.get()}
     pub fn get_af(&self) -> u16 {self.af_reg.reg16.get()}
@@ -252,11 +243,6 @@ impl PcState {
 
     pub fn get_pc(&self) -> u16 {self.pc_reg.get()}
     pub fn get_sp(&self) -> u16 {self.sp_reg.get()}
-    pub fn get_ix(&self) -> u16 {self.ix_reg.get()}
-    pub fn get_iy(&self) -> u16 {self.iy_reg.get()}
-
-    pub fn get_pc_ref(&mut self) -> &mut Reg16 {&mut self.pc_reg}
-    pub fn get_af_ref(&mut self) -> &mut FlagReg16 {&mut self.af_reg}
 
     pub fn get_r   (&self) -> u8 {self.r}
     pub fn get_i   (&self) -> u8 {self.i}
@@ -282,12 +268,6 @@ impl PcState {
 
     pub fn set_pc_high(&mut self, input: u8) -> () {self.pc_reg.high = input;}
     pub fn set_pc_low (&mut self, input: u8) -> () {self.pc_reg.low  = input;}
-    pub fn set_sp_high(&mut self, input: u8) -> () {self.sp_reg.high = input;}
-    pub fn set_sp_low (&mut self, input: u8) -> () {self.sp_reg.low  = input;}
-    pub fn set_ix_high(&mut self, input: u8) -> () {self.ix_reg.high = input;}
-    pub fn set_ix_low (&mut self, input: u8) -> () {self.ix_reg.low  = input;}
-    pub fn set_iy_high(&mut self, input: u8) -> () {self.iy_reg.high = input;}
-    pub fn set_iy_low (&mut self, input: u8) -> () {self.iy_reg.low  = input;}
 
     pub fn set_pc(&mut self, input: u16) -> () {self.pc_reg.set(input);}
     pub fn set_sp(&mut self, input: u16) -> () {self.sp_reg.set(input);}

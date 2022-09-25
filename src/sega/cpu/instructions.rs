@@ -89,16 +89,16 @@ impl Instruction {
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW{
         match op_code {
             // Extended op codes, not executed directly
-            0xcb => { Self::execute_cb(clock, memory, pc_state, ports, interruptor);}
-            0xdd => { Self::execute_dd(clock, memory, pc_state, ports, interruptor);}
+            0xcb => { Self::execute_cb(clock, memory, pc_state, interruptor);}
+            0xdd => { Self::execute_dd(clock, memory, pc_state, interruptor);}
             0xed => { Self::execute_ed(clock, memory, pc_state, ports, interruptor);}
-            0xfd => { Self::execute_fd(clock, memory, pc_state, ports, interruptor);}
+            0xfd => { Self::execute_fd(clock, memory, pc_state, interruptor);}
 
             0xfb => { 
                 pc_state.increment_pc(1);
                 // Perform a 'step' before enabling interrupts.
-                let net_op_code = memory.read(pc_state.get_pc());
-                Self::execute(op_code, clock, memory, pc_state, ports, interruptor);
+                let next_op_code = memory.read(pc_state.get_pc());
+                Self::execute(next_op_code, clock, memory, pc_state, ports, interruptor);
 
                 instruction_set::ei(clock, pc_state);
                 // TODO: Actually do the polling call
@@ -205,7 +205,7 @@ impl Instruction {
             // opcode: 0b10111rrr 
             n if (n & 0b11111000 == 0b10111000) && (n != 0b11111110) => {
                     let reg_index = n & 0x7;
-                    instruction_set::cp_r(clock, memory, 
+                    instruction_set::cp_r(clock,
                             select_8_bit_read_register(pc_state, reg_index), // gets the appropriate register getter fromt the supplied op-code
                             pc_state); // CP r
                 }
@@ -349,7 +349,6 @@ impl Instruction {
     pub fn execute_cb<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           ports: &mut ports::Ports, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
@@ -481,7 +480,6 @@ impl Instruction {
     pub fn execute_dd<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           ports: &mut ports::Ports, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
@@ -535,7 +533,6 @@ impl Instruction {
     pub fn execute_fd<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           ports: &mut ports::Ports, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 

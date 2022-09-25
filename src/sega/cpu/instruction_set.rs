@@ -398,7 +398,7 @@ pub fn cp_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 
 // CP r
 // Compare accumulator with register r to set status flags (but don't change accumulator)
-pub fn cp_r<M>(clock: &mut clocks::Clock, memory: &mut M, r: u8, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW {
+pub fn cp_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) -> () {
     // This function sets the 'pc_state.f'
     cp_flags(pc_state.get_a(),  r, &mut pc_state.af_reg);
 
