@@ -101,9 +101,7 @@ impl Instruction {
                 Self::execute(next_op_code, clock, memory, pc_state, ports, interruptor);
 
                 instruction_set::ei(clock, pc_state);
-                // TODO: Actually do the polling call
-                //  if (self.poll_interupts(self.clocks.cycles) == True):
-                      interruptor::Interruptor::interrupt(pc_state, memory);
+                // TODO: Add polling as part of ei. Currently leaving it to outside of this call.
             }
 
             0x00 => { instruction_set::noop(clock, pc_state);
@@ -174,8 +172,8 @@ impl Instruction {
             }
 
             // SUB r
-            // op code: 0b10011rrr
-            n if (n & 0b11111000 == 0b10011000) && (n  & 0b111 != 0b110) => {
+            // op code: 0b10010rrr
+            n if (n & 0b11111000 == 0b10010000) && (n  & 0b111 != 0b110) => {
                     let reg_index = n & 0x7;
                     instruction_set::sub_r(clock, select_8_bit_read_register(pc_state, reg_index), pc_state);
             }

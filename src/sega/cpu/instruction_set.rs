@@ -38,7 +38,6 @@ pub fn ei(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 
     pc_state.set_iff1(true);
     pc_state.set_iff2(true);
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -494,6 +493,8 @@ pub fn djnz<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     } else{
         clock.increment(8);
     }
+
+    pc_state.increment_pc(2);
 }
 
 // Note, could also add '#[derive(Copy, Clone)]' to 'Reg16'
