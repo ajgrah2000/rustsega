@@ -55,7 +55,6 @@ impl<M: memory::MemoryRW> Core<M> {
         let op_code = self.memory.read(self.pc_state.get_pc());
 
         if debug {
-            println!("{} {}", self.clock.cycles, self.pc_state.get_pc());
             print!("{} {:x} {:x} ({:x}) ", self.clock.cycles, op_code, self.pc_state.get_pc(), op_code);
             println!("{}", self.pc_state);
         }

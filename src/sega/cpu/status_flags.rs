@@ -104,6 +104,7 @@ pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFiel
 }
 
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
+    status.set_n(1);
     if (new_value & 0xF) == 0xF { // Half borrow
       status.set_h(1);
     } else {

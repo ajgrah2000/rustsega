@@ -586,7 +586,6 @@ impl Instruction {
            ports: &mut ports::Ports, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
-        println!("clock: {}, op_code: {:x}, pc: {}", clock.cycles, op_code, pc_state.get_pc());
 
         match op_code {
             0x00 => { instruction_set::noop(clock, pc_state);} 

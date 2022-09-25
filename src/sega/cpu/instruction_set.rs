@@ -593,7 +593,6 @@ pub fn rst<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state
 // Slowest dec function ever, why didn't Zilog come up with simpler instruction.
 pub fn dec_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState, mut dst_fn: F, src: u8) -> () {
     let new_value =  src.wrapping_sub(1);
-    println!("Old: {}, New: {}, h: {}", src, new_value,pc_state.get_h());
     dst_fn(pc_state, new_value);
 
     let mut f_value = pc_state.get_f();

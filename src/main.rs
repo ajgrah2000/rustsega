@@ -12,15 +12,6 @@ fn usage() {
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    let x = 5;
-    let a;
-    let b;
-
-    a = x;
-    b = x;
-    println!("{} {}", a, b);
-
-
     if args.len() <= 1 {
         usage();
     } else{
@@ -48,7 +39,7 @@ fn main() {
 
         let debug = true;
 
-        for _i in 0..100000 {
+        for _i in 0..1500000 {
             core.step(debug);
         }
 
