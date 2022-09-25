@@ -1,5 +1,97 @@
 use super::super::ports;
 
+pub struct Constants {
+}
+
+impl Constants {
+    const RAMSIZE:u16  = 0x4000;
+    const CRAMSIZE:u8  = 0x20;
+    // 3Mhz CPU, 50Hz refresh ~= 60000 ticks
+    const VSYNCCYCLETIME:u32 = 65232;
+    const BLANKTIME:u16      = ((Constants::VSYNCCYCLETIME as u32 * 72)/262) as u16;
+    const VFRAMETIME:u16     = ((Constants::VSYNCCYCLETIME as u32 * 192)/262) as u16;
+    const HSYNCCYCLETIME:u16 = 216;
+
+    const REGISTERMASK:u8  = 0x0F;
+    const REGISTERUPDATEMASK:u8  = 0xF0;
+    const REGISTERUPDATEVALUE:u8 = 0x80;
+    const NUMVDPREGISTERS:u8 = 16;
+
+    // VDP status register
+    const VSYNCFLAG:u8   = 0x80;
+
+    // VDP register 0
+    const MODE_CONTROL_NO_1:u8 = 0x0;
+    const VDP0DISVSCROLL:u8    = 0x80;
+    const VDP0DISHSCROLL:u8    = 0x40;
+    const VDP0COL0OVERSCAN:u8  = 0x20;
+    const VDP0LINEINTENABLE:u8 = 0x10;
+    const VDP0SHIFTSPRITES:u8  = 0x08;
+    const VDP0M4:u8            = 0x04;
+    const VDP0M2:u8            = 0x02;
+    const VDP0NOSYNC:u8        = 0x01;
+
+    // VDP register 1
+    const MODE_CONTROL_NO_2:u8 = 0x1;
+    const VDP1BIT7:u8          = 0x80;
+    const VDP1ENABLEDISPLAY:u8 = 0x40;
+    const VDP1VSYNC:u8         = 0x20;
+    const VDP1M1:u8            = 0x10;
+    const VDP1M3:u8            = 0x08;
+    const VDP1BIGSPRITES:u8    = 0x02;
+    const VDP1DOUBLESPRITES:u8 = 0x01;
+
+    const NAMETABLEPRIORITY:u8 = 0x10;
+    const NUMSPRITES:u8 = 64;
+
+    const DMM4:u8 = 0x8;
+    const DMM3:u8 = 0x4;
+    const DMM2:u8 = 0x2;
+    const DMM1:u8 = 0x1;
+
+    const PALETTE_ADDRESS:u16  = 0xC000;
+
+    const SMS_WIDTH:u16  = 256;
+    const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
+    const SMS_COLOR_DEPTH:u8 = 16;
+
+    const MAXPATTERNS:u16 = 512;
+    const PATTERNWIDTH:u8  = 8;
+    const PATTERNHEIGHT:u8 = 8;
+    const PATTERNSIZE:u8 = 64;
+
+    const MAXPALETTES:u8 = 2;
+
+    const NUMTILEATTRIBUTES:u16 = 0x700;
+    const TILEATTRIBUTEMASK:u16     = 0x7FF;
+    const TILEATTRIBUTESADDRESSMASK:u16 = 0x3800;
+    const TILEATTRIBUTESTILEMASK:u16 = 0x07FE;
+    const TILESHIFT:u8 = 1;
+    const TILEATTRIBUTESHMASK:u16    = 0x0001;
+    const TILEPRIORITYSHIFT:u8 = 4;
+    const TILEPALETTESHIFT:u8 = 3;
+    const TILEVFLIPSHIFT:u8 = 2;
+    const TILEHFLIPSHIFT:u8 = 1;
+
+    const YTILES:u8 = 28;
+    const XTILES:u8 = 32;
+    const NUMTILES:u16 = Constants::XTILES as u16 * Constants::YTILES as u16 ;
+
+    const SPRITEATTRIBUTESADDRESSMASK:u16 = 0x3F00;
+    const SPRITEATTRIBUTESMASK:u16 = 0x00FF;
+    const NUMSPRITEATTRIBUTES:u16 = 0x00FF;
+
+    const SPRITETILEMASK:u16 = 0x0001;
+
+    const LASTSPRITETOKEN:u16 = 0xD0;
+    const SPRITEXNMASK:u16 = 0x0080;
+    const MAXSPRITES:u8 = 64;
+    const NOSPRITE:u8 = Constants::MAXSPRITES;
+    const MAXSPRITESPERSCANLINE:u8 = 8;
+
+    const PATTERNADDRESSLIMIT:u16 = 0x4000;
+}
+
 // Create a dummy VDP, to try out hooking into ports.
 pub struct VDP {
     ram: Vec<u8>,
@@ -10,8 +102,8 @@ impl VDP {
     const SMS_WIDTH:u16  = 256;
     const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
 
-    const FRAME_WIDTH:u16  = VDP::SMS_WIDTH;
-    const FRAME_HEIGHT:u16 = VDP::SMS_HEIGHT;
+    const FRAME_WIDTH:u16  = Constants::SMS_WIDTH;
+    const FRAME_HEIGHT:u16 = Constants::SMS_HEIGHT;
     const PIXEL_WIDTH:u16  = 2;
     const PIXEL_HEIGHT:u16 = 2;
 
@@ -105,7 +197,7 @@ mod tests {
                     match event {
                         event::Event::Quit { .. } => break 'running,
                             event::Event::KeyDown { keycode: Some(keyboard::Keycode::Q), repeat: false, .. } => break 'running,
-                            event::Event::KeyDown { ..  } => 
+                            event::Event::KeyDown { ..  } =>
                             {
                                 points.fill_with(|| rect::Point::new(rng.gen_range(0..w as i32), rng.gen_range(0..h as i32)));
                                 canvas.draw_points(points.as_slice()).unwrap();
@@ -126,6 +218,13 @@ mod tests {
         let mut vdp = vdp::VDP::new();
 
         vdp.driver_open_display();
+    }
+
+    #[test]
+    fn test_check_constants() {
+        assert_eq!(vdp::Constants::NUMTILES, 896);
+        assert_eq!(vdp::Constants::BLANKTIME, 17926);
+        assert_eq!(vdp::Constants::VFRAMETIME, 47803);
     }
 
 }
