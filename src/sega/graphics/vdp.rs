@@ -1,5 +1,6 @@
 use super::super::ports;
 use super::super::clocks;
+use super::super::interruptor;
 
 pub struct Constants {
 }
@@ -8,7 +9,7 @@ impl Constants {
     const RAMSIZE:u16  = 0x4000;
     const CRAMSIZE:u8  = 0x20;
     // 3Mhz CPU, 50Hz refresh ~= 60000 ticks
-    const VSYNCCYCLETIME:u32 = 65232;
+    const VSYNCCYCLETIME:u16 = 65232;
     const BLANKTIME:u16      = ((Constants::VSYNCCYCLETIME as u32 * 72)/262) as u16;
     const VFRAMETIME:u16     = ((Constants::VSYNCCYCLETIME as u32 * 192)/262) as u16;
     const HSYNCCYCLETIME:u16 = 216;
@@ -99,8 +100,23 @@ pub struct VDP {
     current_address: u32,
 
     address_latch: bool,
-    last_v_sync: clocks::Clock,
+    last_v_sync_clock: clocks::Clock,
     current_y_pos: u16,
+    
+    interrupt_handler: VDPInterrupts,
+}
+
+pub struct VDPInterrupts {
+        v_sync: u16,
+        last_v_sync_clock: clocks::Clock,
+        line_int_time:u16,
+        line_interrupt:u16,
+        line_interrupt_latch:u16,
+
+        h_int_pending:bool,
+        v_int_pending:bool,
+        v_sync_interrupt_enabled:bool,
+        h_sync_interrupt_enabled:bool,
 }
 
 impl VDP {
@@ -122,8 +138,9 @@ impl VDP {
             current_address: 0,
 
             address_latch: false,
-            last_v_sync: clocks::Clock::new(),
+            last_v_sync_clock: clocks::Clock::new(),
             current_y_pos: 0,
+            interrupt_handler: VDPInterrupts::new(),
         }
     }
 
@@ -137,8 +154,8 @@ impl VDP {
     pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
         self.address_latch = false;  // Address is unlatched during port read
     
-        let v_counter:u8 = ((clock.cycles-self.last_v_sync.cycles)/Constants::HSYNCCYCLETIME as u32) as u8;
-        self.current_y_pos = (((clock.cycles-self.last_v_sync.cycles)/Constants::HSYNCCYCLETIME as u32)+1) as u16;
+        let v_counter:u8 = ((clock.cycles-self.last_v_sync_clock.cycles)/Constants::HSYNCCYCLETIME as u32) as u8;
+        self.current_y_pos = (((clock.cycles-self.last_v_sync_clock.cycles)/Constants::HSYNCCYCLETIME as u32)+1) as u16;
     
         // I can't think of an ellegant solution, so this is as good as it gets
         // for now (fudge factor and all)
@@ -194,8 +211,61 @@ impl ports::Device for VDP {
             _ => {}
         }
     }
+
+    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool {
+        self.interrupt_handler.poll_interrupts(clock)
+    }
 }
 
+impl VDPInterrupts {
+    pub fn new() -> Self {
+        Self {
+            v_sync: 0,
+            last_v_sync_clock: clocks::Clock::new(),
+            line_int_time: 0,
+            line_interrupt: 0,
+            line_interrupt_latch: 0,
+            h_int_pending: false,
+            v_int_pending: false,
+            v_sync_interrupt_enabled: true,
+            h_sync_interrupt_enabled: true,
+        }
+    }
+}
+
+
+impl VDPInterrupts {
+    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool {
+        self.v_sync = (clock.cycles - self.last_v_sync_clock.cycles) as u16;
+    
+        if (self.line_int_time < Constants::VFRAMETIME) &&
+            (self.v_sync >= self.line_int_time) {
+            self.line_interrupt_latch = self.line_interrupt + 1;
+            self.line_int_time += self.line_interrupt_latch * Constants::HSYNCCYCLETIME;
+    
+            self.h_int_pending = true;
+        }
+    
+        if self.v_sync >= Constants::VFRAMETIME {
+            self.v_int_pending = true;
+        }
+    
+        if self.v_sync >= Constants::VSYNCCYCLETIME {
+            self.last_v_sync_clock.cycles = clock.cycles;
+            self.v_sync = 0;
+    
+            self.line_interrupt_latch = self.line_interrupt;
+            self.line_int_time = self.line_interrupt_latch * Constants::HSYNCCYCLETIME;
+        }
+    
+        if (self.v_sync_interrupt_enabled && self.v_int_pending) ||
+            (self.h_sync_interrupt_enabled && self.h_int_pending) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -265,5 +335,4 @@ mod tests {
         assert_eq!(vdp::Constants::BLANKTIME, 17926);
         assert_eq!(vdp::Constants::VFRAMETIME, 47803);
     }
-
 }

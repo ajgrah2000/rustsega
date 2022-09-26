@@ -200,8 +200,9 @@ pub fn or_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
 
 // Add two 8 bit ints plus the carry bit, and set flags accordingly
 pub fn set_bit_test_flags(r: u8, bit_pos: u8, f_status: &mut pc_state::PcStatusFlagFields) -> () {
-    f_status.set_z((r >> (bit_pos & 7)) ^ 0x1);
-    f_status.set_pv(calculate_parity(r) as u8); // Documented as 'unknown', not sure if/where this is needed.
+    let bit = (r >> (bit_pos & 7)) & 0x1;
+    f_status.set_z(bit ^ 0x1);
+    f_status.set_pv(calculate_parity(bit) as u8); // Documented as 'unknown', not sure if/where this is needed.
     f_status.set_h(1);
     f_status.set_n(0);
     f_status.set_s(0);

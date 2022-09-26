@@ -533,6 +533,7 @@ impl Instruction {
            pc_state: &mut pc_state::PcState, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
+        println!("Extended FD: {:x}", op_code);
 
         match op_code {
             0xcb => { extended_instruction_set::bit_res_set_b_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.iy_reg);}

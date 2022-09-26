@@ -20,7 +20,8 @@ impl<M: memory::MemoryRW> Core<M> {
            memory: M, 
            pc_state: pc_state::PcState, 
            ports: ports::Ports,
-           interruptor: interruptor::Interruptor) -> Self where M: memory::MemoryRW {
+           interruptor: interruptor::Interruptor) -> Self where M: memory::MemoryRW 
+    {
     
         Self {
             clock: clock,
@@ -30,6 +31,7 @@ impl<M: memory::MemoryRW> Core<M> {
             interruptor: interruptor,
         }
     }
+
     fn interupt(&mut self) -> () {
         if self.pc_state.get_iff1() {
             if self.pc_state.get_im() == 1 {
@@ -50,6 +52,7 @@ impl<M: memory::MemoryRW> Core<M> {
 
     pub fn step(&mut self, debug: bool) -> (){
         // Start with 'expanded' version of step
+
         self.interruptor.set_cycle(self.clock.cycles);
 
         let op_code = self.memory.read(self.pc_state.get_pc());
@@ -59,6 +62,10 @@ impl<M: memory::MemoryRW> Core<M> {
             println!("{}", self.pc_state);
         }
         instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interruptor);
+        if self.ports.poll_interrupts(&self.clock) {
+            self.interupt();
+        }
+
     }
 }
 

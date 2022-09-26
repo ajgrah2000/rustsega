@@ -1,4 +1,5 @@
 use super::clocks;
+use super::interruptor;
 
 struct NullPort {
 }
@@ -19,6 +20,7 @@ pub trait Port {
 }
 
 pub trait Device {
+    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool;
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> ();
     fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8;
 }
@@ -76,6 +78,16 @@ impl Ports {
             // TODO: Replace with something useful.
             self.devices[i].port_write(clock, port_address, value);
         }
+    }
+
+    pub fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool
+    {
+        let mut interrupt = false;
+        for i in 0..self.devices.len() {
+            interrupt |= self.devices[i].poll_interrupts(clock);
+        }
+
+        interrupt
     }
 }
 
