@@ -1,3 +1,5 @@
+use super::clocks;
+
 struct NullPort {
 }
 
@@ -12,21 +14,21 @@ enum PortEnum {
 }
 
 pub trait Port {
-    fn write(&mut self, value: u8) -> (); 
-    fn read(&mut self) -> u8; 
+    fn write(&mut self, clock: &clocks::Clock, value: u8) -> (); 
+    fn read(&mut self, clock: &clocks::Clock) -> u8; 
 }
 
 pub trait Device {
-    fn port_write(&mut self, port_address: u8, value:u8) -> ();
-    fn port_read(&mut self, port_address: u8) -> u8;
+    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> ();
+    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8;
 }
 
 impl Port for NullPort {
-    fn write(&mut self, value: u8) -> () {
+    fn write(&mut self, clock: &clocks::Clock, value: u8) -> () {
         println!("null write value = {}", value);
     }
 
-    fn read(&mut self) -> u8 {
+    fn read(&mut self, clock: &clocks::Clock) -> u8 {
         0
     }
 }
@@ -58,21 +60,21 @@ impl Ports {
         self.ports[port_address as usize] = port;
     }
 
-    pub fn port_read(&mut self, port_address: u8) -> u8 {
-//        self.ports[port_address as usize].read();
+    pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
+//        self.ports[port_address as usize].read(clock);
         let last_value = 0;
         // TODO: Replace with something useful, use a map or lookup, or hook up ports directly.
         for i in 0..self.devices.len() {
-            return self.devices[i].port_read(port_address)
+            return self.devices[i].port_read(clock, port_address)
         }
         last_value
     }
 
-    pub fn port_write(&mut self, port_address: u8, value:u8) -> () {
-//        self.ports[port_address as usize].write(value);
+    pub fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> () {
+//        self.ports[port_address as usize].write(clock, value);
         for i in 0..self.devices.len() {
             // TODO: Replace with something useful.
-            self.devices[i].port_write(port_address, value);
+            self.devices[i].port_write(clock, port_address, value);
         }
     }
 }

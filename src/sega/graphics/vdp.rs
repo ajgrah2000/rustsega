@@ -1,4 +1,5 @@
 use super::super::ports;
+use super::super::clocks;
 
 pub struct Constants {
 }
@@ -96,6 +97,10 @@ impl Constants {
 pub struct VDP {
     ram: Vec<u8>,
     current_address: u32,
+
+    address_latch: bool,
+    last_v_sync: clocks::Clock,
+    current_y_pos: u16,
 }
 
 impl VDP {
@@ -107,10 +112,18 @@ impl VDP {
     const PIXEL_WIDTH:u16  = 2;
     const PIXEL_HEIGHT:u16 = 2;
 
+    const START_DRAW_Y:u16 = 0;
+    const END_DRAW_Y:u16   = VDP::FRAME_HEIGHT ;
+
+
     pub fn new() -> Self {
         Self {
             ram: Vec::new(),
             current_address: 0,
+
+            address_latch: false,
+            last_v_sync: clocks::Clock::new(),
+            current_y_pos: 0,
         }
     }
 
@@ -121,37 +134,63 @@ impl VDP {
         self.current_address
     }
 
-    pub fn write_port_be(&mut self, data: u8) -> () {
-        self.current_address = self.current_address + 1;
+    pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
+        self.address_latch = false;  // Address is unlatched during port read
+    
+        let v_counter:u8 = ((clock.cycles-self.last_v_sync.cycles)/Constants::HSYNCCYCLETIME as u32) as u8;
+        self.current_y_pos = (((clock.cycles-self.last_v_sync.cycles)/Constants::HSYNCCYCLETIME as u32)+1) as u16;
+    
+        // I can't think of an ellegant solution, so this is as good as it gets
+        // for now (fudge factor and all)
+// TODO: Add joystick (light gun)        self.inputs.joystick.setYpos(vCounter+10)
+        v_counter
     }
 
-    pub fn read_port_be(&mut self) -> u8 {
+    pub fn read_port_7f(&mut self, clock: &clocks::Clock) -> u8 {
+        self.address_latch = false;  // Address is unlatched during port read
+    
+        // TODO: Add/fix joystick (light gun)
+        // I can't think of an ellegant solution, so this is as good as it gets
+        // for now (fudge factor and all)
+        // hCounter = ((self.inputs.joystick.getXpos() + 0x28)/2 & 0x7F)
+        0
+    }
+
+    pub fn read_port_be(&mut self, clock: &clocks::Clock) -> u8 {
         self.current_address = self.current_address + 1;
         self.current_address as u8
     }
 
-    pub fn write_port_bf(&mut self, data: u8) -> () {
+    pub fn write_port_be(&mut self, clock: &clocks::Clock, data: u8) -> () {
         self.current_address = self.current_address + 1;
     }
 
-    pub fn read_port_bf(&mut self) -> u8 {
+    pub fn write_port_bf(&mut self, clock: &clocks::Clock, data: u8) -> () {
+        self.current_address = self.current_address + 1;
+    }
+
+    pub fn read_port_bf(&mut self, clock: &clocks::Clock) -> u8 {
         self.current_address = self.current_address + 1;
         self.current_address as u8
     }
 }
 
 impl ports::Device for VDP {
-    fn port_read(&mut self, port_address: u8) -> u8 {
-        match port_address & 0x1 {
-            0x0 => {self.read_port_be()}
-            0x1 => {self.read_port_bf()}
+    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
+        match port_address {
+            0xbe => {self.read_port_be(clock)}
+            0xbf => {self.read_port_bf(clock)}
+            // Add the vdp to port `7F' plus all the mirror ports, vdp h_counter
+            n if (n & 0xC1 == 0x41) => {self.read_port_7e(clock)}
+            // Add the vdp to port `7E' plus all the mirror ports, vdp v_counter
+            n if (n & 0xC1 == 0x40) => {self.read_port_7e(clock)}
             _ => {0 /* Unhandled, just return 0 for now */}
         }
     }
-    fn port_write(&mut self, port_address: u8, value:u8) -> () {
+    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> () {
         match port_address & 0x1 {
-            0x0 => {self.write_port_be(value);}
-            0x1 => {self.write_port_bf(value);}
+            0x0 => {self.write_port_be(clock, value);}
+            0x1 => {self.write_port_bf(clock, value);}
             _ => {}
         }
     }

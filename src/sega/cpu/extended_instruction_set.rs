@@ -234,7 +234,7 @@ pub fn otir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
 
     pc_state.set_b(pc_state.get_b() - 1);
-    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+    ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
 
     let mut f_status = pc_state.get_f();
@@ -894,14 +894,14 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 
 // IN r, (C)
 pub fn in_r<F: FnMut(&mut pc_state::PcState, u8)-> ()>(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::PcState, mut dst_fn :F, ports: &mut ports::Ports) -> () {
-    dst_fn(pc_state, ports.port_read(src_val));
+    dst_fn(pc_state, ports.port_read(clock, src_val));
     pc_state.increment_pc(2);
     clock.increment(12);
 }
 
 // OUT r, (C)
 pub fn out_r(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::PcState, out: u8, ports: &mut ports::Ports) -> () {
-    ports.port_write(src_val, out);
+    ports.port_write(clock, src_val, out);
     pc_state.increment_pc(2);
     clock.increment(12);
 }
@@ -909,7 +909,7 @@ pub fn out_r(clock: &mut clocks::Clock, src_val :u8, pc_state : &mut pc_state::P
 // OUTI
 pub fn outi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
-    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+    ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
 
     let mut f_status = pc_state.get_f();
@@ -928,7 +928,7 @@ pub fn outi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_sta
 // INI
 pub fn ini<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
-    memory.write(pc_state.hl_reg.get(), ports.port_read(pc_state.get_c()));
+    memory.write(pc_state.hl_reg.get(), ports.port_read(clock, pc_state.get_c()));
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
 
     let mut f_status = pc_state.get_f();
@@ -948,7 +948,7 @@ pub fn ini<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_stat
 // OUTD
 pub fn outd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state : &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
-    ports.port_write(pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
+    ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
 
     let mut f_status = pc_state.get_f();
     if pc_state.get_b() == 0 {

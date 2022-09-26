@@ -15,7 +15,7 @@ pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) -> () {
 pub fn in_a_n<M>(clock: &mut clocks::Clock, memory: &mut M, 
               pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
 
-    pc_state.set_a(ports.port_read(memory.read(pc_state.get_pc() + 1)));
+    pc_state.set_a(ports.port_read(clock, memory.read(pc_state.get_pc() + 1)));
     pc_state.increment_pc(2);
     clock.increment(11);
 }
@@ -25,7 +25,7 @@ pub fn in_a_n<M>(clock: &mut clocks::Clock, memory: &mut M,
 pub fn out_n_a<M>(clock: &mut clocks::Clock, memory: &mut M, 
               pc_state: &mut pc_state::PcState, ports: &mut ports::Ports) -> () where M: memory::MemoryRW {
 
-    ports.port_write(memory.read(pc_state.pc_reg.get() + 1), pc_state.get_a());
+    ports.port_write(clock, memory.read(pc_state.pc_reg.get() + 1), pc_state.get_a());
     pc_state.increment_pc(2);
     clock.increment(11);
 }

@@ -1,6 +1,8 @@
+type ClockType = u32;
 
+//#[derive(Copy)]
 pub struct Clock {
-    pub cycles: u32
+    pub cycles: ClockType
 }
 
 impl Clock {
