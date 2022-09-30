@@ -3,15 +3,15 @@ use sdl2::render;
 use sdl2::video;
 use sdl2::rect;
 
-pub struct SDL_Utility
+pub struct SDLUtility
 {
 }
 
-impl SDL_Utility {
-    pub fn create_canvas(sdl_context: &mut sdl2::Sdl, frame_width:u16, frame_height:u16) -> render::Canvas<video::Window> {
+impl SDLUtility {
+    pub fn create_canvas(sdl_context: &mut sdl2::Sdl, name: &str, frame_width:u16, frame_height:u16) -> render::Canvas<video::Window> {
         let video_subsystem = sdl_context.video().unwrap();
         let window = video_subsystem
-            .window("rust-sdl2 demo: Video", frame_width as u32, frame_height as u32)
+            .window(name, frame_width as u32, frame_height as u32)
             .position_centered()
             .opengl()
             .build()
@@ -74,14 +74,16 @@ impl SDLDisplay {
 
     pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, mut generate_display: F, iterations:u32) -> () {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
-        let texture_creator = SDL_Utility::texture_creator(canvas);
-        let mut texture = SDL_Utility::create_texture(canvas, &texture_creator, frame_width, frame_height);
+        let texture_creator = SDLUtility::texture_creator(canvas);
+        let mut texture = SDLUtility::create_texture(canvas, &texture_creator, frame_width, frame_height);
 
         for k in 0..iterations {
-            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {generate_display(buffer, pitch)}); 
+            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {generate_display(buffer, pitch)})
+                         .map_err(|e| e.to_string()).unwrap();
 
             canvas.clear();
-            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)));
+            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)))
+                         .map_err(|e| e.to_string()).unwrap();
             canvas.present();
         }
 
@@ -90,7 +92,7 @@ impl SDLDisplay {
     // Main entry point, intention is to call 'once'. 
     pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut DisplayGenerator) -> () {
         let mut sdl_context = sdl2::init().unwrap();
-        let mut canvas = SDL_Utility::create_canvas(&mut sdl_context, frame_width, frame_height);
+        let mut canvas = SDLUtility::create_canvas(&mut sdl_context, "rust-sdl2 demo: Video", frame_width, frame_height);
 
         // First loop.
         self.draw_loop(&mut canvas, frame_width, frame_height, pixel_width, pixel_height, generator.get_generate_display_closure(), 500);
