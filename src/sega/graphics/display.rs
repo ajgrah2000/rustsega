@@ -2,6 +2,8 @@ use sdl2::pixels;
 use sdl2::render;
 use sdl2::video;
 use sdl2::rect;
+use sdl2::event;
+use sdl2::keyboard;
 
 pub struct SDLUtility
 {
@@ -44,7 +46,7 @@ impl DisplayGenerator {
 
     pub fn new_generate_display(&mut self, buffer: &mut [u8], pitch: usize) -> () {
         // Clear the buffer
-        buffer.iter_mut().for_each(|x| *x = 0);
+//        buffer.iter_mut().for_each(|x| *x = 0);
 
         // Draw the display
         for i in 0..0xFF {
@@ -82,8 +84,7 @@ impl SDLDisplay {
                          .map_err(|e| e.to_string()).unwrap();
 
             canvas.clear();
-            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)))
-                         .map_err(|e| e.to_string()).unwrap();
+            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32))) .map_err(|e| e.to_string()).unwrap();
             canvas.present();
         }
 
@@ -92,13 +93,23 @@ impl SDLDisplay {
     // Main entry point, intention is to call 'once'. 
     pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut DisplayGenerator) -> () {
         let mut sdl_context = sdl2::init().unwrap();
+
         let mut canvas = SDLUtility::create_canvas(&mut sdl_context, "rust-sdl2 demo: Video", frame_width, frame_height);
 
-        // First loop.
-        self.draw_loop(&mut canvas, frame_width, frame_height, pixel_width, pixel_height, generator.get_generate_display_closure(), 500);
+        let mut event_pump = sdl_context.event_pump().unwrap();
 
-        // Continue running it again.
-        self.draw_loop(&mut canvas, frame_width, frame_height, pixel_width, pixel_height, generator.get_generate_display_closure(), 500);
+        'running: loop {
+            for event in event_pump.poll_iter() {
+                match event {
+                    event::Event::Quit { .. } | event::Event::KeyDown { keycode: Some(keyboard::Keycode::Escape), ..}
+                     => break 'running,
+                    _ => {}
+                }
+            }
+
+            // First loop, draw 30 frames at a time.
+            self.draw_loop(&mut canvas, frame_width, frame_height, pixel_width, pixel_height, generator.get_generate_display_closure(), 30);
+        }
     }
 }
 
