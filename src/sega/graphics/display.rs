@@ -11,7 +11,8 @@ use std::io::BufRead;
 
 type ColourType = Vec<u8>;
 
-struct Colour {
+#[derive(Clone)]
+pub struct Colour {
     // Simple RGB store and conversion at a per colour level.
     r: u8, 
     g: u8, 
@@ -19,7 +20,7 @@ struct Colour {
 }
 
 impl Colour {
-    pub fn new(pixel_format: pixels::PixelFormatEnum, r: u8, g: u8, b: u8) -> Self  {
+    pub fn new(r: u8, g: u8, b: u8) -> Self  {
         Self {
             r: r, 
             g: g, 
@@ -71,7 +72,7 @@ impl Colours {
                              let g = values[1].parse::<u8>().unwrap();
                              let b = values[2].parse::<u8>().unwrap();
                              // Ignore additional split (likely comment)
-                             self.colour_lookup.push(Colour::new(pixel_format, r, g, b));},
+                             self.colour_lookup.push(Colour::new(r, g, b));},
                 Err(why) => panic!("parsing {}: {}", filename, why),
             }
         }
