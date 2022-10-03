@@ -11,7 +11,7 @@ use std::io::BufRead;
 
 type ColourType = Vec<u8>;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Colour {
     // Simple RGB store and conversion at a per colour level.
     r: u8, 
