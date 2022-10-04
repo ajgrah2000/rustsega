@@ -67,6 +67,13 @@ impl<M: memory::MemoryRW> Core<M> {
         }
 
     }
+
+    pub fn generate_display(&mut self, buffer: &mut [u8], pitch: usize) -> () {
+        for i in 0..1000 {
+            buffer[i] = 0xFF;
+        }
+    }
+
 }
 
 #[test]

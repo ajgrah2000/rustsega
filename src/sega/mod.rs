@@ -4,3 +4,4 @@ pub mod clocks;
 pub mod interruptor;
 pub mod ports;
 pub mod graphics;
+pub mod sega;
