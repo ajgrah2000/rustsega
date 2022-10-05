@@ -1,5 +1,9 @@
 use super::pc_state;
 
+pub fn signed_char_to_int(v: i8) -> i16 {
+    return v as i16;
+}
+
 // Calculate the parity.  Check if the the number of bits is odd or even.
 // Even number of '1's -> return 'true' (P=1)
 // Odd number of '1's -> return 'false' (P=0)
@@ -49,6 +53,53 @@ pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
     zero_and_sign_flags(f_status, r);
     
     return r;
+}
+
+// calculate the 'sub c' flags (although carry isn't used), this matches a
+// previous implementation (to make comparisons easier). 
+// TODO: Once other issues are sorted out, revisit setting of these flags.
+pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
+
+    let mut r  = ((signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16) & 0xFFFF;
+    let rc = (signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) & 0xFF;
+    let hr  = ((signed_char_to_int(a as i8) & 0xF) - (signed_char_to_int(b as i8) & 0xF)) as u8;
+
+    if 0 != (rc & 0x80) {
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+
+    if r == 0 {    // result zero
+        f_status.set_z(1);    // result zero
+    } else {
+        f_status.set_z(0);    // result zero
+    }
+    if 0 != (hr & 0x10) {
+        f_status.set_h(1);
+    } else {
+        f_status.set_h(0);
+    }
+
+    // overflow
+    r = ((signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16) & 0xFFF;
+    if ((r & 0x180) != 0) && 
+       ((r & 0x180) != 0x180) { // Overflow
+        f_status.set_pv(1);
+    } else {
+        f_status.set_pv(0);
+    }
+
+    f_status.set_n(1);
+
+    r  = (((a as i16) & 0xFF) - ((b as i16) & 0xFF)) as u16;
+    if 0 != (r & 0x100) { // cpu_state->Borrow (?) 
+        f_status.set_c(1); // cpu_state->Borrow (?) 
+    } else {
+        f_status.set_c(0); // cpu_state->Borrow (?) 
+    }
+
+    r as u8
 }
 
 pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {

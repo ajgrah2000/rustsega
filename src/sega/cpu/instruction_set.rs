@@ -157,13 +157,26 @@ pub fn cp_flags<F16>(a:u8, b:u8, af_reg: &mut F16) -> ()
     sub8c(a, b, false, af_reg);
 }
 
+//// Subtract two 8 bit ints and the carry bit, set flags accordingly
+//fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
+//    where F16: pc_state::FlagReg {
+//
+//    let mut f_status = af_reg.get_flags();
+//    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
+//    let result = status_flags::u8_carry(a, !b, !c, &mut f_status);
+//    f_status.set_n(1); // Set N to indicate subtract
+//    af_reg.set_flags(&f_status);
+//
+//    result
+//}
+
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
 fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
     where F16: pc_state::FlagReg {
 
     let mut f_status = af_reg.get_flags();
     // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    let result = status_flags::u8_carry(a, !b, !c, &mut f_status);
+    let result = status_flags::i8_carry(a, b, c, &mut f_status);
     f_status.set_n(1); // Set N to indicate subtract
     af_reg.set_flags(&f_status);
 

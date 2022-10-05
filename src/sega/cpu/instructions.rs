@@ -533,7 +533,6 @@ impl Instruction {
            pc_state: &mut pc_state::PcState, 
            interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
-        println!("Extended FD: {:x}", op_code);
 
         match op_code {
             0xcb => { extended_instruction_set::bit_res_set_b_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.iy_reg);}
@@ -591,8 +590,8 @@ impl Instruction {
         match op_code {
             0x00 => { instruction_set::noop(clock, pc_state);} 
 
-            // 0b00dd0001 -> BC 00, DE 01, HL 10, SP 11
-            n if (n & 0b11001111 == 0b00000001) => {
+            // 0b01dd1011 -> BC 00, DE 01, HL 10, SP 11
+            n if (n & 0b11001111 == 0b01001011) => {
                 let dd = (n >> 4) & 0x3;
                 extended_instruction_set::ld_dd_mem_nn(clock, memory, get_16_bit_ss_set_function(dd), pc_state);
             }
@@ -640,14 +639,14 @@ impl Instruction {
 
             // ADC HL, ss
             // 0b01ss1010
-            n if (n & 0b11001010 == 0b01001010) =>  {
+            n if (n & 0b11001111 == 0b01001010) =>  {
                 let ss = (n >> 4) & 0x3;
                 extended_instruction_set::adc_hl_r16(clock, select_16_bit_read_register(pc_state, ss), &mut pc_state.pc_reg, &mut pc_state.hl_reg, &mut pc_state.af_reg);
             }
 
             // SBC HL, ss
             // 0b01ss0010
-            n if (n & 0b11001010 == 0b01000010) =>  {
+            n if (n & 0b11001111 == 0b01000010) =>  {
                 let ss = (n >> 4) & 0x3;
                 extended_instruction_set::sbc_hl_r16(clock, select_16_bit_read_register(pc_state, ss), &mut pc_state.pc_reg, &mut pc_state.hl_reg, &mut pc_state.af_reg);
             }

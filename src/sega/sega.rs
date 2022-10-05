@@ -14,6 +14,7 @@ use super::interruptor;
 
 pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
+    debug: bool,
 }
 
 impl Sega {
@@ -55,6 +56,7 @@ impl Sega {
         let core = Self::build_sega(debug, cartridge_name);
         Self {
             core: core,
+            debug: debug,
         }
     }
 
@@ -65,13 +67,13 @@ impl Sega {
 
         for k in 0..iterations {
 
-            self.core.step(false);
+            // Clock the CPU lots per display update.
+            for j in 0..1000 {
+                self.core.step(self.debug);
+            }
 
             texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {self.core.generate_display(buffer, pitch)})
                          .map_err(|e| e.to_string()).unwrap();
-
-//            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {generate_display(buffer, pitch)})
-//                         .map_err(|e| e.to_string()).unwrap();
 
             canvas.clear();
             canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32))) .map_err(|e| e.to_string()).unwrap();
@@ -84,7 +86,7 @@ impl Sega {
     pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut graphics::display::DisplayGenerator) -> () {
         let mut sdl_context = sdl2::init().unwrap();
 
-        let mut canvas = graphics::display::SDLUtility::create_canvas(&mut sdl_context, "rust-sdl2 demo: Video", frame_width, frame_height);
+        let mut canvas = graphics::display::SDLUtility::create_canvas(&mut sdl_context, "rust-sega emulator", frame_width, frame_height);
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 

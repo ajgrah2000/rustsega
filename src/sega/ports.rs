@@ -63,6 +63,10 @@ impl Ports {
     }
 
     pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
+        // TODO: Fix dummy joystick return values.
+        if port_address == 0xdc { return 0xff;}
+        if port_address == 0xdd { return 0xff;}
+
         let last_value = 0;
         // TODO: Replace with something useful, use a map or lookup, or hook up ports directly.
         for i in 0..self.devices.len() {

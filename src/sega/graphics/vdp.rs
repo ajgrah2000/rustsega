@@ -1047,7 +1047,7 @@ impl VDP {
         self.draw_background();
         self.draw_sprites();
 
-//        self.draw_patterns() // For debuging purposes
+        self.draw_patterns() // For debuging purposes
     }
 
     fn update_screen_pattern(&mut self, pattern_number:u16) -> () {

@@ -61,7 +61,7 @@ impl<M: memory::MemoryRW> Core<M> {
         let op_code = self.memory.read(self.pc_state.get_pc());
 
         if debug {
-            print!("{} {:x} {:x} ({:x}) ", self.clock.cycles, op_code, self.pc_state.get_pc(), op_code);
+            print!("{} {:x} {:x} ({:x} {:x}) ", self.clock.cycles, op_code, self.pc_state.get_pc(), op_code, self.memory.read(self.pc_state.get_pc() + 1));
             println!("{}", self.pc_state);
         }
         instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interruptor);

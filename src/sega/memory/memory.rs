@@ -241,12 +241,12 @@ impl MemoryAbsolute {
             if address >= MemoryBase::MEMREGISTERS {
                 // Should make these conditiona, 
                 if address == MemoryBase::PAGE0_BANK_SELECT_REGISTER {
-                    self.upper_mappings[0] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + (MemoryBase::BANK_SIZE * data as BankSizeType) as AbsoluteAddressType;
-                    self.upper_mappings[1] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE * data as BankSizeType) as AbsoluteAddressType + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+                    self.upper_mappings[0] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
+                    self.upper_mappings[1] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
                 }
                 else if address == MemoryBase::PAGE1_BANK_SELECT_REGISTER {
-                    self.upper_mappings[2] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE * data as BankSizeType) as AbsoluteAddressType;
-                    self.upper_mappings[3] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE * data as BankSizeType) as AbsoluteAddressType + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+                    self.upper_mappings[2] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
+                    self.upper_mappings[3] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
                 }
                 else if (address == MemoryBase::RAM_SELECT_REGISTER) || (address == MemoryBase::PAGE2_BANK_SELECT_REGISTER) {
 
@@ -269,8 +269,8 @@ impl MemoryAbsolute {
                       }
                     }
                     else {
-                        self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE * self.page_2 as BankSizeType) as AbsoluteAddressType;
-                        self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE * self.page_2 as BankSizeType) as AbsoluteAddressType + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+                        self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType);
+                        self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
                     }
                 }
             }
