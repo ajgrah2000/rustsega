@@ -582,7 +582,7 @@ impl VDP {
             // Rough optimisation for palette `rotate' graphics 
             for i in 0..Constants::MAXPATTERNS as usize {
                 if self.pattern_info[i].colour_check == false {
-                    self.check_pattern_colors(i as u16);
+                    self.check_pattern_colours(i as u16);
                 }
     
                 if 0 != self.pattern_info[i].colours & (1<<(addr & 0xF)) {
@@ -593,7 +593,7 @@ impl VDP {
         }
     }
 
-    pub fn check_pattern_colors(&mut self, pattern: u16) -> () {
+    pub fn check_pattern_colours(&mut self, pattern: u16) -> () {
         self.pattern_info[pattern as usize].colours = 0;
         for i in 0..Constants::PATTERNSIZE as u16 {
             self.pattern_info[pattern as usize].colours |= 1 << self.patterns4[(pattern << 6 | i) as usize];
@@ -709,12 +709,56 @@ impl VDP {
         }
     }
 
-    pub fn add_sprite_to_scan_lines(&mut self, y: u16, sprite_num: u8) -> () {
-        panic!("add_sprite_to_scan_lines not implemented");
+    pub fn add_sprite_to_scan_lines(&mut self, scan_line_number: u16, sprite_number: u8) -> () {
+        let scan_line_number = scan_line_number & 0xFF;
+
+        if scan_line_number < self.interrupt_handler.y_end {
+            assert!(self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites != Constants::MAXSPRITES as u16);
+    
+            if self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites != Constants::MAXSPRITES as u16 {
+                let mut i = self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
+                self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites += 1;
+                while i > 0  {
+                    if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i-1) as usize] < sprite_number {
+//                        self.display_buffers.sprite_scan_lines[scan_line_number as usize].line_changed = true;
+                        self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = sprite_number;
+                        return;
+                    }
+    
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i - 1) as usize];
+                    i -= 1;
+                }
+    
+                self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[0 as usize] = sprite_number;
+//                self.display_buffers.sprite_scan_lines[scan_line_number as usize].line_changed = true;
+            } else {
+                panic!("Max sprite limit reached.");
+            }
+        }
     }
 
-    pub fn remove_sprite_to_scan_lines(&mut self, y: u16, sprite_num: u8) -> () {
-        panic!("remove_sprite_to_scan_lines not implemented");
+    pub fn remove_sprite_to_scan_lines(&mut self, scan_line_number: u16, sprite_number: u8) -> () {
+        let scan_line_number = scan_line_number & 0xFF;
+
+        let mut shift = 0;
+    
+        if scan_line_number < self.interrupt_handler.y_end {
+            let num_sprites = self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
+    
+            for i in 0..(num_sprites - shift) {
+                if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] == sprite_number {
+                    shift +=1;
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites -=1;
+//                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].line_changed = true;
+                }
+    
+                if i + shift < Constants::MAXSPRITES as u16 {
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i + shift) as usize];
+                } else {
+                    panic!("Index exceeds range of MAXSPRITES");
+                }
+            }
+        }
     }
 
     pub fn update_horizontal_scroll_info(&mut self) -> () {
@@ -1006,8 +1050,21 @@ impl VDP {
 //        self.draw_patterns() // For debuging purposes
     }
 
-    fn update_screen_pattern(&mut self, tile_number:u16) -> () {
-        panic!("update_screen_pattern not implemented");
+    fn update_screen_pattern(&mut self, pattern_number:u16) -> () {
+
+        let mut index = pattern_number << 6;
+    
+        for py in 0..Constants::PATTERNHEIGHT {
+            for px in 0..Constants::PATTERNWIDTH {
+                let pixel4 = self.patterns4[index as usize] ;
+    
+                self.patterns16[0][index as usize] = self.screen_palette[pixel4 as usize];
+                self.patterns16[1][index as usize] = self.screen_palette[(pixel4 | (1 << 4)) as usize];
+                index += 1;
+            }
+        }
+
+        self.pattern_info[pattern_number as usize].screen_version_cached = true;
     }
 
     fn draw_background(&mut self) -> () {
@@ -1388,35 +1445,11 @@ mod tests {
     // get_colour
     // setCycle
     // pollInterupts
-    // readPortBE -> read_port_be
-    // readPortBF -> read_port_bf
-    // writePortBF -> write_port_bf
-    // writePortBE -> write_port_be
-    // updateSpriteAttributes -> update_sprite_attributes
-    // drawSprites -> draw_sprites
-    // removeSpriteFromScanlines -> remove_sprite_to_scan_lines
-    // addSpriteToScanlines -> add_sprite_to_scan_lines
-    // updatePattern -> update_pattern
-    // updateScreenPattern -> update_screen_pattern
-    // updateHorizontalScrollInfo -> update_horizontal_scroll_info
-    // updateVerticalScrollInfo -> update_vertical_scroll_info
-    // updateTileAttributes -> update_tile_attributes
-    // writeRegister -> write_register
 
     // _populateMode1Control
     // _populateMode2Control
     // setInterupt -> set_interrupt
     // getNextInterupt -> get_next_interrupt
     // openDisplay -> open_display
-    // setPalette -> set_palette
-    // checkPatternColors -> check_pattern_colours
-    // drawBuffer -> draw_buffer
-    // drawBackground -> draw_background
-    // clearDisplay -> clear_display
-    // updateDisplay -> update_display
-    // single_scan -> single_scan
-
-
-    // drawPatterns -> draw_patterns
     // printSpriteInformation -> print_sprite_information
     // printNameTable -> print_name_table
