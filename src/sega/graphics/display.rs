@@ -39,6 +39,12 @@ impl Colour {
             _ => panic!("unrecognised pixel format"),
         }
     }
+
+    pub fn convert_rgb23(&self, dst: &mut [u8]) -> () {
+        dst[0] = self.r;
+        dst[1] = self.g;
+        dst[2] = self.b;
+    }
 }
 
 struct Colours {

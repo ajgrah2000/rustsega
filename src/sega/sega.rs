@@ -43,12 +43,12 @@ impl Sega {
     pub fn power_sega(&mut self) -> () {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
-        const window_width:u16  = 800;
-        const window_height:u16 = 600; // MAX HEIGHT
+        const scale_x:u8 = 2;
+        const scale_y:u8 = 2;
     
-        let mut display_generator = graphics::display::DisplayGenerator::new(window_width, window_height, pixels::PixelFormatEnum::RGB24); 
+        let mut display_generator = graphics::display::DisplayGenerator::new(SMS_WIDTH, SMS_HEIGHT, pixels::PixelFormatEnum::RGB24); 
     
-        self.main_loop(window_width, window_height, 2, 2, &mut display_generator);
+        self.main_loop(SMS_WIDTH, SMS_HEIGHT, scale_x, scale_y, &mut display_generator);
     }
 
     pub fn new(debug: bool, cartridge_name: String) -> Self {
@@ -58,7 +58,7 @@ impl Sega {
         }
     }
 
-    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, mut generate_display: F, iterations:u32) -> () {
+    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generate_display: F, iterations:u32) -> () {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
         let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
         let mut texture = graphics::display::SDLUtility::create_texture(&texture_creator, pixel_format, frame_width, frame_height);

@@ -3,7 +3,7 @@ use super::super::clocks;
 use super::super::interruptor;
 use super::display;
 
-#[derive(Clone)]
+#[derive(Clone,Copy)]
 pub struct TileAttribute {
     priority_cleared:bool,
     priority:u8,
@@ -264,8 +264,9 @@ impl Constants {
 
     const PALETTE_ADDRESS:u16  = 0xC000;
 
-    const SMS_WIDTH:u16  = 256;
-    const SMS_HEIGHT:u16 = 192; // MAX HEIGHT, TODO: Consider changing to 'u8'.
+    pub const BYTES_PER_PIXEL:u16  = 3; // TODO: Get the bytes per pixel from the display setup.
+    pub const SMS_WIDTH:u16  = 256;
+    pub const SMS_HEIGHT:u16 = 192; // MAX HEIGHT, TODO: Consider changing to 'u8'.
     const SMS_COLOR_DEPTH:u8 = 16;
 
     const MAXPATTERNS:u16 = 512;
@@ -288,7 +289,7 @@ impl Constants {
 
     const YTILES:u8 = 28;
     const XTILES:u8 = 32;
-    const NUMTILES:u16 = Constants::XTILES as u16 * Constants::YTILES as u16 ;
+    const NUMTILES:u16 = Constants::XTILES as u16 * Constants::YTILES as u16;
 
     const SPRITEATTRIBUTESADDRESSMASK:u16 = 0x3F00;
     const SPRITEATTRIBUTESMASK:u16 = 0x00FF;
@@ -331,6 +332,19 @@ impl SpriteScanLines {
             scan_line: vec![0;width as usize],
             num_sprites: 0,
             sprites: vec![0; Constants::MAXSPRITES as usize],
+        }
+    }
+}
+
+#[derive(Clone)]
+pub struct BackgroundScanLines {
+    scan_line: Vec<u8>,
+}
+
+impl BackgroundScanLines {
+    pub fn new(width: u16) -> Self {
+        Self {
+            scan_line: vec![0;width as usize],
         }
     }
 }
@@ -387,6 +401,7 @@ pub struct VDP {
     display_buffers: DisplayBuffers,
 
     patterns4: Vec<u8>,
+    patterns16: Vec<Vec<display::Colour>>,
     tile_attributes: Vec<TileAttribute>,
     sprites: Vec<Sprite>,
 
@@ -449,7 +464,7 @@ impl VDP {
     const PIXEL_HEIGHT:u16 = 2;
 
     const START_DRAW_Y:u16 = 0;
-    const END_DRAW_Y:u16   = VDP::FRAME_HEIGHT ;
+    const END_DRAW_Y:u16   = VDP::FRAME_HEIGHT;
 
 
     pub fn new() -> Self {
@@ -469,6 +484,7 @@ impl VDP {
             screen_palette: vec![display::Colour::new(0,0,0);Constants::CRAMSIZE as usize],
             display_buffers: DisplayBuffers::new(),
             patterns4: vec![0;(Constants::MAXPATTERNS*(Constants::PATTERNSIZE as u16)) as usize],
+            patterns16: vec![vec![display::Colour::new(0,0,0);(Constants::MAXPATTERNS*(Constants::PATTERNSIZE as u16)) as usize]; Constants::MAXPALETTES as usize],
             tile_attributes: vec![TileAttribute::default();Constants::NUMTILEATTRIBUTES as usize],
             sprites: vec![Sprite::default();Constants::MAXSPRITES as usize],
 
@@ -578,9 +594,9 @@ impl VDP {
     }
 
     pub fn check_pattern_colors(&mut self, pattern: u16) -> () {
-        self.pattern_info[pattern as usize].colours = 0 ;
+        self.pattern_info[pattern as usize].colours = 0;
         for i in 0..Constants::PATTERNSIZE as u16 {
-            self.pattern_info[pattern as usize].colours |= 1 << self.patterns4[(pattern << 6 | i) as usize] ;
+            self.pattern_info[pattern as usize].colours |= 1 << self.patterns4[(pattern << 6 | i) as usize];
         }
     
         self.pattern_info[pattern as usize].colour_check = true;
@@ -939,7 +955,7 @@ impl VDP {
 
                         for x in std::cmp::max(x_start, x_wrap_around)..x_end {
                             if (sprite_scan_y.scan_line[x as usize] != 0) && (forground_scan_y.scan_line[(x+x_offset - Constants::SMS_WIDTH) as usize] == false) {
-                                scan_y_lines[x as usize] = self.screen_palette[(sprite_scan_y.scan_line[x as usize] | 0x10) as usize] ;
+                                scan_y_lines[x as usize] = self.screen_palette[(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
                             }
                         }
                     }
@@ -961,20 +977,26 @@ impl VDP {
         }
     }
 
-    fn update_display(&mut self) -> () {
+    fn update_display(&mut self, raw_display:&mut Vec<u8>) -> () {
         for y in 0..self.interrupt_handler.y_end {
             self.single_scan(y);
         }
 
-        self.driver_update_display();
+        self.driver_update_display(raw_display);
     }
 
-    fn clear_display(&mut self) -> () {
-        self.driver_update_display();
+    fn clear_display(&mut self, raw_display:&mut Vec<u8>) -> () {
+        self.driver_update_display(raw_display);
     }
 
-    fn driver_update_display(&mut self) -> () {
-        panic!("driver_update_display not implemented");
+    fn driver_update_display(&mut self, raw_display:&mut Vec<u8>) -> () {
+        let mut index = 0;
+        for y in &self.display_buffers.scan_lines {
+            for x in &y.scan_line {
+                x.convert_rgb23(&mut raw_display[index..(index+3)]);
+                index += 3; // TODO: Change to 'pitch'
+            }
+        } 
     }
 
     fn draw_buffer(&mut self) -> () {
@@ -984,12 +1006,175 @@ impl VDP {
 //        self.draw_patterns() // For debuging purposes
     }
 
+    fn update_screen_pattern(&mut self, tile_number:u16) -> () {
+        panic!("update_screen_pattern not implemented");
+    }
+
     fn draw_background(&mut self) -> () {
-        panic!("draw_background not implemented");
+        let mut tile = 0;
+
+        for y in 0..(Constants::YTILES*Constants::PATTERNHEIGHT) {
+            self.display_buffers.forground_scan_lines[y as usize].has_priority = false;
+        }
+    
+        for y in (0..(Constants::YTILES*Constants::PATTERNHEIGHT) as u16).step_by(Constants::PATTERNHEIGHT as usize) {
+            for x in (0..(Constants::XTILES as u16)*(Constants::PATTERNWIDTH as u16)).step_by(Constants::PATTERNWIDTH as usize) {
+
+                let mut tile_attribute = self.tile_attributes[tile as usize];
+                let patterns16_palette = self.patterns16[tile_attribute.palette_select as usize].to_vec();
+
+                if (self.display_buffers.forground_scan_lines[y as usize].has_priority == false) && (tile_attribute.priority != 0) {
+                    for py in y..(y+ (Constants::PATTERNHEIGHT as u16)) {
+                        self.display_buffers.forground_scan_lines[py as usize].has_priority = true;
+                    }
+                }
+    
+                if tile_attribute.changed || self.pattern_info[tile_attribute.tile_number as usize].changed {
+                    if false == self.pattern_info[tile_attribute.tile_number as usize].screen_version_cached {
+                        self.update_screen_pattern(tile_attribute.tile_number);
+                    }
+    
+                    let mut patterns16_offset:i16 = (tile_attribute.tile_number as i16) << 6;
+                    let mut pattern_y_delta:i16 = 0;
+                    let mut pattern_x_delta:i16 = 1;
+    
+                    if tile_attribute.horizontal_flip {
+                        patterns16_offset += (Constants::PATTERNWIDTH as i16)-1;
+                        pattern_x_delta = -1;
+                        pattern_y_delta = (Constants::PATTERNWIDTH as i16) * 2;
+                    }
+    
+                    if tile_attribute.vertical_flip {
+                        patterns16_offset = patterns16_offset  + (((Constants::PATTERNHEIGHT as i16)-1) << 3);
+                        pattern_y_delta -= 2 * Constants::PATTERNWIDTH as i16;
+                    }
+    
+                    if tile_attribute.priority != 0 {
+                        let mut pattern4_offset:i16 = (tile_attribute.tile_number as i16) << 6;
+    
+                        if tile_attribute.horizontal_flip {
+                            pattern4_offset = pattern4_offset +  (Constants::PATTERNWIDTH as i16 -1);
+                        }
+    
+                        if tile_attribute.vertical_flip {
+                            pattern4_offset = pattern4_offset + ((Constants::PATTERNHEIGHT as i16 -1) << 3);
+                        }
+    
+                        for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
+                            let background_y_line = &mut self.display_buffers.background_scan_lines[py as usize];
+                            let forground_y_line = &mut self.display_buffers.forground_scan_lines[py as usize];
+                            for px in x..(x + (Constants::PATTERNWIDTH as u16)) {
+                                background_y_line.scan_line[px as usize] = patterns16_palette[patterns16_offset as usize];
+    
+                                // Indicate a forground pixel if the value is
+                                // non-zero and it is set as a forground pixel...
+                                // well tile
+                                forground_y_line.scan_line[px as usize] = false;
+    
+                                // 'priority' is always true in this branch
+                                if self.patterns4[pattern4_offset as usize] != 0x0 {
+                                    forground_y_line.scan_line[px as usize] = true;
+                                }
+    
+                                patterns16_offset += pattern_x_delta;
+                                pattern4_offset += pattern_x_delta;
+                            }
+                            patterns16_offset +=  pattern_y_delta;
+                            pattern4_offset   +=  pattern_y_delta;
+    
+//                            background_y_line.line_changed = true;
+                        }
+                    } else {
+                        if tile_attribute.priority_cleared {
+                            for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
+                                let forground_y_line = &mut self.display_buffers.forground_scan_lines[py as usize];
+                                for px in x..(x + (Constants::PATTERNWIDTH as u16)) {
+                                    forground_y_line.scan_line[px as usize] = false;
+                                }
+                            }
+                            tile_attribute.priority_cleared = false;
+                        }
+    
+                        for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
+                            let background_y_line = &mut self.display_buffers.background_scan_lines[py as usize];
+                            if pattern_x_delta == 1 {
+                                for i in 0..(Constants::PATTERNWIDTH as u16) {
+                                    background_y_line.scan_line[(x + i) as usize] = patterns16_palette[(patterns16_offset as u16 + i as u16) as usize];
+                                }
+                                patterns16_offset += Constants::PATTERNWIDTH as i16;
+                            }
+                            else {
+                                for px in 0..(Constants::PATTERNWIDTH as u16) {
+                                    background_y_line.scan_line[(x+px) as usize]  = patterns16_palette[patterns16_offset as usize];
+                                    patterns16_offset += pattern_x_delta;
+                                }
+                            }
+                            patterns16_offset += pattern_y_delta;
+    
+//                            background_y_line.line_changed = true;
+                        }
+                    }
+                    tile_attribute.changed = false;
+                }
+
+                self.tile_attributes[tile as usize] = tile_attribute;
+
+                tile += 1;
+            }
+        }
     }
 
     fn draw_sprites(&mut self) -> () {
-        panic!("draw_sprites not implemented");
+        // Check for any sprite alterations
+        for i in 0..self.total_sprites {
+            if self.pattern_info[self.sprites[i as usize].tile_number as usize].changed {
+                self.sprites[i as usize].changed = true;
+            }
+    
+            if self.sprites[i as usize].changed {
+                let mut y = self.sprites[i as usize].y;
+                while (y < self.sprites[i as usize].y + (self.mode_2_control.sprite_height as u16)) && (y < Constants::SMS_HEIGHT) {
+                    y += 1;
+                }
+    
+                self.sprites[i as usize].changed = false; // Sprite changes noted
+            }
+        }
+    
+        for y in 0..self.interrupt_handler.y_end {
+            // Only need to draw lines that have changed
+//            if self.display_buffers.sprite_scan_lines[y as usize].line_changed {
+            if true {
+                for i in 0..Constants::SMS_WIDTH {
+                    self.display_buffers.sprite_scan_lines[y as usize].scan_line[i as usize] = 0;
+                }
+    
+                let mut i = 0;
+                while (i < self.display_buffers.sprite_scan_lines[y as usize].num_sprites) && (i < Constants::MAXSPRITESPERSCANLINE as u16) {
+                    let sprite_num = self.display_buffers.sprite_scan_lines[y as usize].sprites[i as usize];
+    
+                    // FIXME, loosing motivation, this is better but still
+                    // not quite right
+                    let tiley;
+                    if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
+                        tiley = y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT;
+                    } else {
+                        tiley = y - self.sprites[sprite_num as usize].y;
+                    }
+    
+                    let tile_addr = (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
+                    for x in 0..self.mode_2_control.sprite_width {
+                        // If the line is clear
+                        if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH) && 
+                            (self.display_buffers.sprite_scan_lines[y as usize].scan_line[(self.sprites[sprite_num as usize].x + x as u16) as usize]==0) {
+                            self.display_buffers.sprite_scan_lines[y as usize].scan_line[(self.sprites[sprite_num as usize].x + x as u16) as usize] = self.patterns4[(tile_addr | x as u16) as usize];
+                        }
+                    }
+    
+                    i += 1;
+                }
+            }
+        }
     }
 
     fn print_debug_info(&mut self) -> () {
@@ -997,15 +1182,15 @@ impl VDP {
     }
 
     // Draw the background tiles
-    fn drawPatterns(&mut self) -> () {
-        let mut pattern = 0;
+    fn draw_patterns(&mut self) -> () {
+        let mut pattern:u16 = 0;
         let palette_select = 1;
     
         for y in 0..16 {
             for x in 0..Constants::XTILES {
                 for py in 0..Constants::PATTERNHEIGHT {
                     for px in 0..Constants::PATTERNWIDTH {
-                        let pixel4 = self.patterns4[((pattern << 6) | (py << 3 )| px) as usize] | (palette_select << 4);
+                        let pixel4 = self.patterns4[((pattern << 6) | ((py as u16) << 3 )| (px as u16)) as usize] | (palette_select << 4);
                         self.display_buffers.background_scan_lines[(Constants::PATTERNHEIGHT * y + py) as usize].scan_line[(Constants::PATTERNWIDTH *x+px) as usize] = self.screen_palette[pixel4 as usize];
                         self.display_buffers.scan_lines[(Constants::PATTERNHEIGHT * y + py) as usize].scan_line[(Constants::PATTERNWIDTH *x + px) as usize] = self.screen_palette[pixel4 as usize];
                     }
@@ -1037,23 +1222,23 @@ impl ports::Device for VDP {
         }
     }
 
-    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool {
+    fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool {
         self.interrupt_handler.update_in_frame_timing(clock);
 
         self.interrupt_handler.update_post_frame_timing(clock);
 
         if self.interrupt_handler.v_sync >= Constants::VFRAMETIME {
             if self.mode_2_control.enable_display == true {
-                self.update_display();
+                self.update_display(raw_display);
             } else {
-                self.clear_display();
+                self.clear_display(raw_display);
             }
         }
 
         self.interrupt_handler.update_vsync_timing(clock);
 
         // If v-sync has finished, then draw the buffer and update scroll info
-        if self.interrupt_handler.v_sync >= Constants::VSYNCCYCLETIME {
+        if self.interrupt_handler.v_sync == 0 {
             self.draw_buffer();
             self.update_horizontal_scroll_info();
             self.update_vertical_scroll_info();

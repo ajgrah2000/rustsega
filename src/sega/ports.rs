@@ -20,7 +20,7 @@ pub trait Port {
 }
 
 pub trait Device {
-    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool;
+    fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool;
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> ();
     fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8;
 }
@@ -63,7 +63,6 @@ impl Ports {
     }
 
     pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
-//        self.ports[port_address as usize].read(clock);
         let last_value = 0;
         // TODO: Replace with something useful, use a map or lookup, or hook up ports directly.
         for i in 0..self.devices.len() {
@@ -73,18 +72,17 @@ impl Ports {
     }
 
     pub fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) -> () {
-//        self.ports[port_address as usize].write(clock, value);
         for i in 0..self.devices.len() {
             // TODO: Replace with something useful.
             self.devices[i].port_write(clock, port_address, value);
         }
     }
 
-    pub fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool
+    pub fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool
     {
         let mut interrupt = false;
         for i in 0..self.devices.len() {
-            interrupt |= self.devices[i].poll_interrupts(clock);
+            interrupt |= self.devices[i].poll_interrupts(raw_display, clock);
         }
 
         interrupt

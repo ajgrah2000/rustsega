@@ -3,6 +3,7 @@ use super::super::memory::memory;
 use super::super::clocks;
 use super::super::interruptor;
 use super::super::ports;
+use super::super::graphics;
 use super::instructions;
 
 pub struct Core<M> {
@@ -11,6 +12,7 @@ pub struct Core<M> {
     pc_state:   pc_state::PcState,
     ports:      ports::Ports,
     interruptor: interruptor::Interruptor,
+    raw_display: Vec<u8>,
 }
 
 impl<M: memory::MemoryRW> Core<M> {
@@ -29,6 +31,7 @@ impl<M: memory::MemoryRW> Core<M> {
             pc_state: pc_state,
             ports: ports,
             interruptor: interruptor,
+            raw_display: vec![0;(graphics::vdp::Constants::SMS_WIDTH as usize) * (graphics::vdp::Constants::SMS_HEIGHT as usize) * (graphics::vdp::Constants::BYTES_PER_PIXEL as usize)],
         }
     }
 
@@ -62,16 +65,15 @@ impl<M: memory::MemoryRW> Core<M> {
             println!("{}", self.pc_state);
         }
         instructions::Instruction::execute(op_code, &mut self.clock, &mut self.memory, &mut self.pc_state, &mut self.ports, &mut self.interruptor);
-        if self.ports.poll_interrupts(&self.clock) {
+        if self.ports.poll_interrupts(&mut self.raw_display, &self.clock) {
             self.interupt();
         }
 
     }
 
     pub fn generate_display(&mut self, buffer: &mut [u8], pitch: usize) -> () {
-        for i in 0..1000 {
-            buffer[i] = 0xFF;
-        }
+        // Function to populate the display buffer drawn to the 2D texture/canvas/window.
+        buffer.clone_from_slice(self.raw_display.as_slice());
     }
 
 }
