@@ -246,7 +246,7 @@ pub fn otir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     if pc_state.get_b() == 0 {
         f_status.set_z(1);
         pc_state.increment_pc(2);
-        clock.increment(17);
+        clock.increment(16);
     } else {
         f_status.set_z(0);
         clock.increment(21);
@@ -406,6 +406,8 @@ pub fn cpi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state
         f_status.set_pv(0);
     }
 
+    pc_state.set_f(f_status);
+
     pc_state.increment_pc(2);
     clock.increment(16);
 }
@@ -428,6 +430,8 @@ pub fn ldi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state
     }
     f_status.set_h(0);
     f_status.set_n(0);
+
+    pc_state.set_f(f_status);
 
     pc_state.increment_pc(2);
     clock.increment(16);
@@ -454,6 +458,7 @@ pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
         clock.increment(21);
     }
 
+    pc_state.set_f(f_status);
 }
 
 
@@ -915,6 +920,8 @@ pub fn rrd<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
     let mut f_value = pc_state.get_f();
     status_flags::rotate_decimal_flags(&mut f_value, new_value);
 
+    pc_state.set_f(f_value);
+
     pc_state.increment_pc(2);
     clock.increment(18);
 }
@@ -934,6 +941,7 @@ pub fn rld<M> (clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 
     let mut f_value = pc_state.get_f();
     status_flags::rotate_decimal_flags(&mut f_value, new_value);
+    pc_state.set_f(f_value);
 
     pc_state.increment_pc(2);
     clock.increment(18);

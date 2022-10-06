@@ -745,9 +745,6 @@ pub fn adc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_st
 pub fn add_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
 
     let result = add8(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), &mut pc_state.af_reg);
-    let mut f_status = pc_state.get_f();
-    status_flags::and_flags(&mut f_status, result); 
-    pc_state.set_f(f_status);
     pc_state.set_a(result);
 
     pc_state.increment_pc(2);
@@ -758,9 +755,6 @@ pub fn adc_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_sta
 
     let carry = pc_state.get_f().get_c();
     let result = add8c(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), carry == 1, &mut pc_state.af_reg);
-    let mut f_status = pc_state.get_f();
-    status_flags::and_flags(&mut f_status, result); 
-    pc_state.set_f(f_status);
     pc_state.set_a(result);
 
     pc_state.increment_pc(2);
@@ -810,9 +804,6 @@ pub fn sbc_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_st
 pub fn sub_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState) -> () where M: memory::MemoryRW  {
 
     let result = sub8(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), &mut pc_state.af_reg);
-    let mut f_status = pc_state.get_f();
-    status_flags::and_flags(&mut f_status, result); 
-    pc_state.set_f(f_status);
     pc_state.set_a(result);
 
     pc_state.increment_pc(2);
@@ -823,9 +814,6 @@ pub fn sbc_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_sta
 
     let carry = pc_state.get_f().get_c();
     let result = sub8c(pc_state.get_a(), memory.read(pc_state.pc_reg.get()+1), carry == 1, &mut pc_state.af_reg);
-    let mut f_status = pc_state.get_f();
-    status_flags::and_flags(&mut f_status, result); 
-    pc_state.set_f(f_status);
     pc_state.set_a(result);
 
     pc_state.increment_pc(2);

@@ -451,6 +451,8 @@ pub struct VDPInterrupts {
     v_int_pending:bool,
     v_sync_interrupt_enabled:bool,
     h_sync_interrupt_enabled:bool,
+
+    frame_updated:bool,
 }
 
 impl VDP {
@@ -1046,7 +1048,7 @@ impl VDP {
         self.draw_background();
         self.draw_sprites();
 
-//        self.draw_patterns() // For debuging purposes
+        self.draw_patterns() // For debuging purposes
     }
 
     fn update_screen_pattern(&mut self, pattern_number:u16) -> () {
@@ -1319,6 +1321,8 @@ impl VDPInterrupts {
             v_int_pending: false,
             v_sync_interrupt_enabled: true,
             h_sync_interrupt_enabled: true,
+
+            frame_updated:false,
         }
     }
 }
@@ -1337,20 +1341,24 @@ impl VDPInterrupts {
             self.line_int_time += (self.line_interrupt_latch * Constants::HSYNCCYCLETIME) as u32;
     
             self.h_int_pending = true;
+            println!("h_int_pending"); 
         }
     }
 
     fn update_post_frame_timing(&mut self, clock: &clocks::Clock) -> () {
-        if self.v_sync >= Constants::VFRAMETIME {
+        if false == self.frame_updated && self.v_sync >= Constants::VFRAMETIME {
+            self.frame_updated = true;
             self.v_int_pending = true;
             self.current_y_pos = self.y_end;
 
             self.vdp_status_register |= Constants::VSYNCFLAG;
+            println!("v_int_pending"); 
         }
     }
 
     fn update_vsync_timing(&mut self, clock: &clocks::Clock) -> () {
         if self.v_sync >= Constants::VSYNCCYCLETIME {
+            self.frame_updated = false;
             self.last_v_sync_clock.cycles = clock.cycles;
             self.v_sync = 0;
             self.current_y_pos = self.y_end;
