@@ -323,7 +323,7 @@ impl Instruction {
             0xe3 => { instruction_set::ex_sp_hl(clock, memory, pc_state);}
             0xe5 => { instruction_set::push(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &pc_state.hl_reg);}
             0xe9 => { instruction_set::jp_hl(clock, &pc_state.hl_reg, &mut pc_state.pc_reg);}
-            0xeb => { instruction_set::ex(clock, &mut pc_state.pc_reg, &mut pc_state.de_reg, &mut pc_state.shadow_hl_reg);}
+            0xeb => { instruction_set::ex(clock, &mut pc_state.pc_reg, &mut pc_state.de_reg, &mut pc_state.hl_reg);}
             0xee => { instruction_set::xor_n(clock, memory, pc_state);}
             0xf1 => { instruction_set::pop(clock, memory, &mut pc_state.pc_reg, &mut pc_state.sp_reg, &mut pc_state.af_reg);}
             0xf3 => { instruction_set::di(clock, pc_state);}
@@ -333,7 +333,7 @@ impl Instruction {
 
             // rst instructions
             // opcode: 0b11ttt111 -> ttt -> (0x0, 0x8, 0x10, 0x18, 0x20, 0x30, 0x38)
-            n if (n & 0b11000111 == 0b11000000) => {
+            n if (n & 0b11000111 == 0b11000111) => {
                 let rst_addr = n & 0x38;
                 instruction_set::rst(clock, memory, pc_state, rst_addr);
             }

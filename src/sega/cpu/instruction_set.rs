@@ -194,18 +194,6 @@ pub fn add16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
     result
 }
 
-pub fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
-    where F16: pc_state::FlagReg {
-
-    let mut f_status = af_reg.get_flags();
-    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-    let result = status_flags::u16_carry(a, !b, !c, &mut f_status);
-    f_status.set_n(1);
-    af_reg.set_flags(&f_status);
-
-    result
-}
-
 // Calculate the result of the DAA functio
 fn calculate_daa_add(pc_state: &mut pc_state::PcState) -> () {
     let upper = (pc_state.get_a() >> 4) & 0xF;
@@ -963,7 +951,10 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     where R16: pc_state::Reg16RW, 
           F16: pc_state::FlagReg {
 
-    hl_reg.set(add16c(hl_reg.get(), src_value, false, af_reg));
+    let mut f_status = af_reg.get_flags();
+    hl_reg.set(status_flags::u16_no_carry(hl_reg.get(), src_value, &mut f_status));
+    f_status.set_n(0);
+    af_reg.set_flags(&f_status);
 
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(11);

@@ -1,7 +1,6 @@
 // While in progress, allow dead hode (at least until it's all hooked up)
 #![allow(dead_code)]
 #![allow(unused_variables)]
-use std::env;
 
 use argparse;
 

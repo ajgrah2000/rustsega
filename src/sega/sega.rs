@@ -44,12 +44,12 @@ impl Sega {
     pub fn power_sega(&mut self) -> () {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
-        const scale_x:u8 = 2;
-        const scale_y:u8 = 2;
+        const SCALE_X:u8 = 2;
+        const SCALE_Y:u8 = 2;
     
         let mut display_generator = graphics::display::DisplayGenerator::new(SMS_WIDTH, SMS_HEIGHT, pixels::PixelFormatEnum::RGB24); 
     
-        self.main_loop(SMS_WIDTH, SMS_HEIGHT, scale_x, scale_y, &mut display_generator);
+        self.main_loop(SMS_WIDTH, SMS_HEIGHT, SCALE_X, SCALE_Y, &mut display_generator);
     }
 
     pub fn new(debug: bool, cartridge_name: String) -> Self {

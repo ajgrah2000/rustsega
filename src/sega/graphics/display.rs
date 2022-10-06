@@ -4,7 +4,6 @@ use sdl2::video;
 use sdl2::rect;
 use sdl2::event;
 use sdl2::keyboard;
-use std::iter::FromIterator;
 use std::fs::File;
 use std::io::BufReader;
 use std::io::BufRead;

@@ -154,6 +154,27 @@ pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFiel
     return r;
 }
 
+pub fn u16_no_carry(a:u16, b:u16, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {
+    // Perform a u16-bit add with carry, setting the flags (except N, which is
+    // left to add/sub)
+    let r = a.wrapping_add(b);
+
+    f_status.set_h(0);
+    if (((a & 0xFFF) + (b & 0xFFF)) & 0x1000) == 0x1000 { // Half carry
+        f_status.set_h(1);
+    } else {
+        f_status.set_h(0);
+    }
+ 
+    if a >= 0xFFFF - b {
+        f_status.set_c(1);
+    } else {
+        f_status.set_c(0);
+    }
+ 
+    return r;
+}
+
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
     status.set_n(1);
     if (new_value & 0xF) == 0xF { // Half borrow
@@ -167,6 +188,8 @@ pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     } else {
       status.set_pv(0);
     }
+
+    status.set_n(1);
     zero_and_sign_flags(status, new_value);
 }
 
@@ -182,6 +205,8 @@ pub fn calculate_inc_flags(status: &mut pc_state::PcStatusFlagFields, new_value:
     } else {
       status.set_pv(0);
     }
+
+    status.set_n(0);
     zero_and_sign_flags(status, new_value);
 }
 

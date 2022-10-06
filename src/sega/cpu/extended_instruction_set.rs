@@ -486,6 +486,53 @@ pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     clock.increment(15);
 }
 
+pub fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
+    where F16: pc_state::FlagReg {
+
+    let mut f_status = af_reg.get_flags();
+
+    let mut r = a.wrapping_sub(b).wrapping_sub(c as u16) as u32;
+    if 0 != (r & 0x8000) { // Negative
+        f_status.set_s(1);
+    } else {
+        f_status.set_s(0);
+    }
+
+    if r == 0 { // Zero
+        f_status.set_z(1);
+    } else {
+        f_status.set_z(0);
+    }
+
+    if ((r & 0x18000) != 0) && 
+        (r & 0x18000) != 0x18000 { // Overflow
+        f_status.set_pv(1);
+    }else {
+        f_status.set_pv(0);
+    }
+
+    r = (((a & 0xFFF) as i16) - ((b & 0xFFF) as i16) - (c as i16)) as u32;
+    if 0 != (r & 0x1000) { // Half carry
+        f_status.set_h(1);
+    } else {
+        f_status.set_h(0);
+    }
+
+    f_status.set_n(1);
+
+    r = ((a as i16) as u32).wrapping_sub(b as u32).wrapping_sub(c as u32) as u32;
+    if 0 != (r & 0x10000) { // Carry
+        f_status.set_c(1);
+    } else {
+        f_status.set_c(0);
+    }
+
+    af_reg.set_flags(&f_status);
+
+    return a.wrapping_sub(b).wrapping_sub(c as u16);
+}
+
+
 // INC I
 pub fn inc_16<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, reg16: &mut R16) -> () where R16: pc_state::Reg16RW {
     reg16.set(reg16.get().wrapping_add(1));
@@ -989,7 +1036,7 @@ pub fn sbc_hl_r16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     where R16: pc_state::Reg16RW,
           F16: pc_state::FlagReg ,
 {
-    hl_reg.set(instruction_set::sub16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
+    hl_reg.set(sub16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
     pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(15);
 }

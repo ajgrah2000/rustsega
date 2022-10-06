@@ -1,5 +1,4 @@
 use super::clocks;
-use super::interruptor;
 
 struct NullPort {
 }

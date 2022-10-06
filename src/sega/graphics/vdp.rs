@@ -1,6 +1,5 @@
 use super::super::ports;
 use super::super::clocks;
-use super::super::interruptor;
 use super::display;
 
 #[derive(Clone,Copy)]
@@ -1047,7 +1046,7 @@ impl VDP {
         self.draw_background();
         self.draw_sprites();
 
-        self.draw_patterns() // For debuging purposes
+//        self.draw_patterns() // For debuging purposes
     }
 
     fn update_screen_pattern(&mut self, pattern_number:u16) -> () {
