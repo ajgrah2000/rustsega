@@ -136,7 +136,7 @@ impl MemoryAbsolute {
         // TODO: Improve auto increment the offsets
         let mut index = 0;
         fn new_segment(index: &mut u32) -> u32 {
-            *index = *index + 1;
+            *index += 1;
             MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE * *index)
         }
 
@@ -182,7 +182,7 @@ impl MemoryAbsolute {
         result
      }
 
-     pub fn write_multi(&mut self, dest: AddressType, src: AddressType, length: AddressType) -> () {
+     pub fn write_multi(&mut self, dest: AddressType, src: AddressType, length: AddressType) {
         // write multiple bytes to memory.
 
          match (src.checked_add(length), dest.checked_add(length)) {
@@ -196,16 +196,16 @@ impl MemoryAbsolute {
          }
      }
 
-     pub fn write(&mut self, address: AddressType, data: u8) -> () {
+     pub fn write(&mut self, address: AddressType, data: u8) {
         // TODO: Should check inputs, see which instructions/condition can overflow
-        self.private_write(address, data & 0xFF)
+        self.private_write(address, data)
      }
 
-     pub fn set_cartridge(&mut self, cartridge: cartridge::Cartridge) -> () {
+     pub fn set_cartridge(&mut self, cartridge: cartridge::Cartridge) {
         self.initialise_read(cartridge);
      }
 
-     fn initialise_read(&mut self, cartridge: cartridge::Cartridge) -> () {
+     fn initialise_read(&mut self, cartridge: cartridge::Cartridge) {
         // Un-optimised address translation, uses paging registers. 
 
         self.populate_absolute_memory_map(cartridge);
@@ -215,7 +215,7 @@ impl MemoryAbsolute {
         self.write(0xFFFF, 2);
      }
 
-     fn populate_absolute_memory_map(&mut self, mut cartridge: cartridge::Cartridge) -> () {
+     fn populate_absolute_memory_map(&mut self, mut cartridge: cartridge::Cartridge) {
         for bank in 0..cartridge.num_banks as NumBanksType {
             // Page '0'/'1' lookup
             for address in 0..MemoryBase::PAGE0 as BankSizeType {
@@ -234,47 +234,44 @@ impl MemoryAbsolute {
         }
      }
 
-     fn private_write(&mut self, address: AddressType, data: u8) -> () {
+     fn private_write(&mut self, address: AddressType, data: u8) {
         let address = address & MemoryBase::ADDRESS_MASK; // ADDRESS_MASK;
 
-        if address >= MemoryBase::RAM_OFFSET {
-            if address >= MemoryBase::MEMREGISTERS {
-                // Should make these conditiona, 
-                if address == MemoryBase::PAGE0_BANK_SELECT_REGISTER {
-                    self.upper_mappings[0] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
-                    self.upper_mappings[1] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
-                }
-                else if address == MemoryBase::PAGE1_BANK_SELECT_REGISTER {
-                    self.upper_mappings[2] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
-                    self.upper_mappings[3] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
-                }
-                else if (address == MemoryBase::RAM_SELECT_REGISTER) || (address == MemoryBase::PAGE2_BANK_SELECT_REGISTER) {
+        if address >= MemoryBase::RAM_OFFSET && address >= MemoryBase::MEMREGISTERS {
+            // Should make these conditiona, 
+            if address == MemoryBase::PAGE0_BANK_SELECT_REGISTER {
+                self.upper_mappings[0] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
+                self.upper_mappings[1] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+            }
+            else if address == MemoryBase::PAGE1_BANK_SELECT_REGISTER {
+                self.upper_mappings[2] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType);
+                self.upper_mappings[3] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * data as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+            }
+            else if (address == MemoryBase::RAM_SELECT_REGISTER) || (address == MemoryBase::PAGE2_BANK_SELECT_REGISTER) {
 
-                    if address == MemoryBase::RAM_SELECT_REGISTER {
-                        self.ram_select = data;
-                    }
-                    else if address == MemoryBase::PAGE2_BANK_SELECT_REGISTER {
-                        self.page_2     = data;
-                    }
+                if address == MemoryBase::RAM_SELECT_REGISTER {
+                    self.ram_select = data;
+                }
+                else if address == MemoryBase::PAGE2_BANK_SELECT_REGISTER {
+                    self.page_2     = data;
+                }
 
-                    if 0 != self.ram_select & MemoryBase::MAPCARTRAM { // page2_is_cartridge_ram
-                      // Cart RAM select.
-                      if 0 != self.ram_select & MemoryBase::PAGEOFRAM {
-                        self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + (MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE * 2);
-                        self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + (MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE * 3);
-                      }
-                      else {
-                        self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET;
-                        self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
-                      }
-                    }
-                    else {
-                        self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType);
-                        self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
-                    }
+                if 0 != self.ram_select & MemoryBase::MAPCARTRAM { // page2_is_cartridge_ram
+                  // Cart RAM select.
+                  if 0 != self.ram_select & MemoryBase::PAGEOFRAM {
+                    self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + (MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE * 2);
+                    self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + (MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE * 3);
+                  }
+                  else {
+                    self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET;
+                    self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
+                  }
+                }
+                else {
+                    self.upper_mappings[4] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType);
+                    self.upper_mappings[5] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_X_ROM_OFFSET + (MemoryBase::BANK_SIZE as AbsoluteAddressType * self.page_2 as AbsoluteAddressType) + MemoryAbsoluteConstants::ABSOLUTE_SEGMENT_SIZE;
                 }
             }
-    
         }
         let absolute_address = self.get_absolute_address(address);
         if absolute_address >= std::cmp::min(MemoryAbsoluteConstants::ABSOLUTE_CART_RAM_OFFSET, MemoryAbsoluteConstants::ABSOLUTE_SYS_RAM_OFFSET) {
@@ -311,7 +308,7 @@ impl_common_memoryrw!(MemoryAbsolute);
 pub trait MemoryRW {
      fn read(&self, address: AddressType) -> u8;
      fn read16(&self, address: AddressType) -> u16;
-     fn write(&mut self, address: AddressType, data: u8) -> ();
+     fn write(&mut self, address: AddressType, data: u8);
 }
 
 #[cfg(test)]

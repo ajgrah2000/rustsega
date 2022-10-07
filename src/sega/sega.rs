@@ -37,11 +37,11 @@ impl Sega {
         ports.add_device(Box::new(vdp));
     
         memory.set_cartridge(cartridge);
-        let core = cpu::core::Core::new(clock, memory, pc_state, ports, interruptor);
-        core
+        
+        cpu::core::Core::new(clock, memory, pc_state, ports, interruptor)
     }
 
-    pub fn power_sega(&mut self) -> () {
+    pub fn power_sega(&mut self) {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
         const SCALE_X:u8 = 3;
@@ -57,12 +57,12 @@ impl Sega {
     pub fn new(debug: bool, cartridge_name: String) -> Self {
         let core = Self::build_sega(debug, cartridge_name);
         Self {
-            core: core,
-            debug: debug,
+            core,
+            debug,
         }
     }
 
-    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generate_display: F, iterations:u32) -> () {
+    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize) >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generate_display: F, iterations:u32) {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
         let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
         let mut texture = graphics::display::SDLUtility::create_texture(&texture_creator, pixel_format, frame_width/(pixel_width as u16), frame_height/(pixel_height as u16));
@@ -74,11 +74,10 @@ impl Sega {
                 self.core.step(self.debug);
             }
 
-            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {self.core.generate_display(buffer, pitch)})
-                         .map_err(|e| e.to_string()).unwrap();
+            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {self.core.generate_display(buffer, pitch)}).unwrap();
 
             canvas.clear();
-            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, (frame_width/(pixel_width as u16)) as u32, (frame_height/(pixel_width as u16)) as u32))) .map_err(|e| e.to_string()).unwrap();
+            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, (frame_width/(pixel_width as u16)) as u32, (frame_height/(pixel_width as u16)) as u32))).unwrap();
             match canvas.copy_ex(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)), 0.0, None, false, false) {
                 Ok(()) => {}
                 _ => {println!("Error translating texture.");}
@@ -89,7 +88,7 @@ impl Sega {
     }
 
     // Main entry point, intention is to call 'once'. 
-    pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut graphics::display::DisplayGenerator) -> () {
+    pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut graphics::display::DisplayGenerator) {
         let mut sdl_context = sdl2::init().unwrap();
 
         let mut canvas = graphics::display::SDLUtility::create_canvas(&mut sdl_context, "rust-sega emulator", frame_width, frame_height);

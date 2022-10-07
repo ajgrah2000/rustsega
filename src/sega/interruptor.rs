@@ -8,7 +8,7 @@ pub struct Interruptor {
 }
 
 pub trait Interrupt {
-    fn interrupt<M>(pc_state: &mut pc_state::PcState, memory: &mut M) -> () where M: memory::MemoryRW;
+    fn interrupt<M>(pc_state: &mut pc_state::PcState, memory: &mut M) where M: memory::MemoryRW;
 }
 
 pub trait PollForInterrupt {
@@ -16,7 +16,7 @@ pub trait PollForInterrupt {
 }
 
 impl Interruptor {
-    pub fn interrupt<M>(pc_state: &mut pc_state::PcState, memory: &mut M) -> () where M: memory::MemoryRW
+    pub fn interrupt<M>(pc_state: &mut pc_state::PcState, memory: &mut M) where M: memory::MemoryRW
     {
         if pc_state.get_iff1() {
             if pc_state.get_im() == 1 {
@@ -44,7 +44,7 @@ impl Interruptor {
         }
     }
     // TODO: Add the actual interruptor trait/implementation (previously VDU).
-    pub fn set_cycle(&mut self, cycles: u32) -> () {
+    pub fn set_cycle(&mut self, cycles: u32) {
         // TODO: Do something
 
     }

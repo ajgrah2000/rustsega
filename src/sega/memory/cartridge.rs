@@ -43,7 +43,7 @@ impl Cartridge {
     
          self.load_banks(&mut file);
     
-        print(&self);
+        print(self);
     
         Ok(())
     }
@@ -52,15 +52,11 @@ impl Cartridge {
         self.rom = Box::new([Bank{data:[0; BANK_SIZE as usize]}; MAX_BANKS as usize]);
     
         for i in 0..MAX_BANKS {
-            match load_bank(source)
-            {
-                (Some(bank), _n) => {self.rom[i as usize] = bank; self.num_banks = self.num_banks + 1},
-                _ => {}
-            }
+            if let (Some(bank), _n) = load_bank(source) {self.rom[i as usize] = bank; self.num_banks += 1}
         }
     }
 
-    pub fn write(&mut self, page: u8, address: BankSizeType, data: u8) -> () {
+    pub fn write(&mut self, page: u8, address: BankSizeType, data: u8) {
         self.ram[page as usize][address as usize] = data;
     }
 
@@ -69,11 +65,11 @@ impl Cartridge {
     }
 
     pub fn read_ram_page(&mut self, ram_page: u8) -> [u8; BANK_SIZE as usize] {
-        self.ram[ram_page as usize].clone()
+        self.ram[ram_page as usize]
     }
 
     pub fn read_rom_bank(&mut self, rom_bank: u8) -> [u8; BANK_SIZE as usize] {
-        self.rom[rom_bank as usize].data.clone()
+        self.rom[rom_bank as usize].data
     }
 
 }
@@ -109,7 +105,7 @@ mod tests {
             Ok(()) => {println!("Ok");}
             _ => {println!("Error loading cartridge.");}
         }
-        assert_eq!(cartridge.read(0, 0), 139);
+        assert!(cartridge.read(0, 0), 139);
         println!("{}", mem::size_of_val(&cartridge));
     }
 }

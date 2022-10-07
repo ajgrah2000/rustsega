@@ -11,7 +11,8 @@ pub struct Instruction {
 
 // Gets the value from the particular 8-bit register.
 fn select_8_bit_read_register (pc_state: &pc_state::PcState, reg_select: u8) -> u8 {
-    let src = match reg_select & 0x7 {
+    
+    match reg_select & 0x7 {
         0 => {pc_state.get_b()}
         1 => {pc_state.get_c()}
         2 => {pc_state.get_d()}
@@ -20,12 +21,12 @@ fn select_8_bit_read_register (pc_state: &pc_state::PcState, reg_select: u8) -> 
         5 => {pc_state.get_l()}
         7 => {pc_state.get_a()}
         _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
-    };
-    src
+    }
 }
 
 fn get_condition_result(pc_state: &mut pc_state::PcState, condition_select: u8) -> bool {
-    let condition = match condition_select & 0b111 {
+    
+    match condition_select & 0b111 {
         0b000 => {pc_state.get_f().get_z() == 0}  // Non-Zero (NZ)     Z
         0b001 => {pc_state.get_f().get_z() == 1}  // Zero (Z)          Z
         0b010 => {pc_state.get_f().get_c() == 0}  // No Carry (NC)     C
@@ -35,15 +36,15 @@ fn get_condition_result(pc_state: &mut pc_state::PcState, condition_select: u8) 
         0b110 => {pc_state.get_f().get_s() == 0}  // Sign Positive (P) S
         0b111 => {pc_state.get_f().get_s() == 1}  // Sign Negative (M) S
         _ => {panic!("Code path that was thought to be unreachable was reached! {}", condition_select);}
-    };
-    condition
+    }
 }
 
-fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u8) -> () {
+fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u8) {
     // Return a closure here so as to not borrow pc_state more than once to feed to function.
     // Allows register specific 'set' calls to be selected based on op-code.
     // instruction implementation then calls: fn(pc_state, new_value) to set the register value.
-    let dst = move |state: &mut pc_state::PcState, x| match (reg_select) & 0x7 {
+     
+    move |state: &mut pc_state::PcState, x| match (reg_select) & 0x7 {
             0 => {state.set_b(x)}
             1 => {state.set_c(x)}
             2 => {state.set_d(x)}
@@ -52,32 +53,31 @@ fn get_8_bit_register_set_function (reg_select: u8) -> impl FnMut(&mut pc_state:
             5 => {state.set_l(x)}
             7 => {state.set_a(x)}
             _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
-        }; 
-    dst
+        }
 }
 
 // Gets the value from the particular 8-bit register.
 fn select_16_bit_read_register (pc_state: &pc_state::PcState, reg_select: u8) -> u16 {
-    let src = match reg_select & 0x3 {
+    
+    match reg_select & 0x3 {
         0b00 => {pc_state.get_bc()}
         0b01 => {pc_state.get_de()}
         0b10 => {pc_state.get_hl()}
         0b11 => {pc_state.get_af()}
         _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
-    };
-    src
+    }
 }
 
 // Gets the value from the particular 8-bit register.
-fn get_16_bit_ss_set_function(reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u16) -> () {
-    let reg16 = move |state: &mut pc_state::PcState, x| match (reg_select) & 0x3 {
+fn get_16_bit_ss_set_function(reg_select: u8) -> impl FnMut(&mut pc_state::PcState, u16) {
+    
+    move |state: &mut pc_state::PcState, x| match (reg_select) & 0x3 {
         0b00 => {state.set_bc(x)}
         0b01 => {state.set_de(x)}
         0b10 => {state.set_hl(x)}
         0b11 => {state.set_af(x)}
         _ => {panic!("Code path that was thought to be unreachable was reached! {}", reg_select);}
-    };
-    reg16
+    }
 }
 
 
@@ -86,7 +86,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW{
+           interruptor: &mut interruptor::Interruptor) where M: memory::MemoryRW{
         match op_code {
             // Extended op codes, not executed directly
             0xcb => { Self::execute_cb(clock, memory, pc_state, interruptor);}
@@ -107,8 +107,8 @@ impl Instruction {
             0x00 => { instruction_set::noop(clock, pc_state);
             }
             0x01 => { instruction_set::ld_16_nn(clock, memory, &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD dd, nn : for BC
-            0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.bc_reg);} // LD (BC), A
-            0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &mut pc_state.de_reg);} // LD (DE), A
+            0x02 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &pc_state.bc_reg);} // LD (BC), A
+            0x12 => { instruction_set::ld_mem_r(clock, memory, pc_state.get_a(), &mut pc_state.pc_reg, &pc_state.de_reg);} // LD (DE), A
 
             n if (n & 0b11001111 == 0b00001001) => {
                 let ss = (n >> 4) & 0x3;
@@ -161,7 +161,7 @@ impl Instruction {
                     let reg_index = n & 0x7;
                     instruction_set::ld_mem_r(clock, memory, 
                             select_8_bit_read_register(pc_state, reg_index), // gets the appropriate register getter fromt the supplied op-code
-                            &mut pc_state.pc_reg, &mut pc_state.hl_reg); // LD (HL), r
+                            &mut pc_state.pc_reg, &pc_state.hl_reg); // LD (HL), r
                 }
 
             // ADD r
@@ -248,7 +248,7 @@ impl Instruction {
                 }
 
             // ld_r_r instructions ( 0b01dddsss) 
-            n if ((n & 0b11000000) == 0b01000000) && ((n & 0x07) != 0x6) && ((n & 0x38) != 0x3) => {
+            n if ((n & 0b11000000) == 0b01000000) && ((n & 0x07) != 0x6) && ((n & 0x38) != 0x30) => {
                     // gets the appropriate register getter fromt the supplied op-code
                     let dst_reg_index = (n >> 3) & 0x7;
                     let src_reg_index = n & 0x7;
@@ -347,7 +347,7 @@ impl Instruction {
     pub fn execute_cb<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -478,7 +478,7 @@ impl Instruction {
     pub fn execute_dd<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -512,8 +512,8 @@ impl Instruction {
 
             0x23 => { extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
             0x2B => { extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);}
-            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.ix_reg);}
-            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.ix_reg);}
+            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.ix_reg);}
+            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.ix_reg);}
             0x8E => { extended_instruction_set::adc_ix_d(clock, memory, pc_state);}
             0x96 => { extended_instruction_set::sub_ix_d(clock, memory, pc_state);}
             0xA6 => { extended_instruction_set::and_ix_d(clock, memory, pc_state);}
@@ -531,7 +531,7 @@ impl Instruction {
     pub fn execute_fd<M>(clock: &mut clocks::Clock, 
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
-           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -564,8 +564,8 @@ impl Instruction {
 
             0x23 => { extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
             0x2B => { extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);}
-            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.iy_reg);}
-            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &mut pc_state.iy_reg);}
+            0x34 => { extended_instruction_set::inc_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.iy_reg);}
+            0x35 => { extended_instruction_set::dec_i_d(clock, memory, &mut pc_state.pc_reg, &mut pc_state.af_reg, &pc_state.iy_reg);}
             0x8E => { extended_instruction_set::adc_iy_d(clock, memory, pc_state);}
             0x96 => { extended_instruction_set::sub_iy_d(clock, memory, pc_state);}
             0xA6 => { extended_instruction_set::and_iy_d(clock, memory, pc_state);}
@@ -584,7 +584,7 @@ impl Instruction {
            memory: &mut M, 
            pc_state: &mut pc_state::PcState, 
            ports: &mut ports::Ports, 
-           interruptor: &mut interruptor::Interruptor) -> () where M: memory::MemoryRW {
+           interruptor: &mut interruptor::Interruptor) where M: memory::MemoryRW {
         let op_code = memory.read(pc_state.get_pc() + 1);
 
         match op_code {
@@ -701,7 +701,7 @@ mod tests {
             self.dummy_memory[address as usize]
         }
 
-        fn write(&mut self, address: memory::AddressType, data: u8) -> () {
+        fn write(&mut self, address: memory::AddressType, data: u8) {
             self.dummy_memory[address as usize] = data;
         }
     }
@@ -756,9 +756,9 @@ mod tests {
                 _ => {Ops::Unknown}
             }
         }
-        assert_eq!(check_match(0x72), Ops::Op0x72);
-        assert_eq!(check_match(0x76), Ops::Op0x76);
-        assert_eq!(check_match(0x77), Ops::Op0x77);
+        assert!(check_match(0x72), Ops::Op0x72);
+        assert!(check_match(0x76), Ops::Op0x76);
+        assert!(check_match(0x77), Ops::Op0x77);
     }
 
     #[test]
@@ -770,13 +770,13 @@ mod tests {
         // 010 -> D, 011 -> E, 100 -> H, 
         // 101 -> L
         
-        assert_eq!(test_core.clock.cycles, 0);
-        assert_eq!(test_core.pc_state.get_b(), 0);
+        assert!(test_core.clock.cycles, 0);
+        assert!(test_core.pc_state.get_b(), 0);
 
         test_core.pc_state.set_c(0x42);
         instructions::Instruction::execute(0b01000001, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // LD r,'r  C -> B
-        assert_eq!(test_core.pc_state.get_b(), 0x42);
-        assert_eq!(test_core.clock.cycles, 4);
+        assert!(test_core.pc_state.get_b(), 0x42);
+        assert!(test_core.clock.cycles, 4);
     }
 
     #[test]
@@ -786,7 +786,7 @@ mod tests {
         test_core.pc_state.set_hl(0x4233);
         test_core.pc_state.set_pc(0x2003);
         instructions::Instruction::execute(0xE9, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // JP (HL)
-        assert_eq!(test_core.pc_state.get_pc(), 0x4233);
+        assert!(test_core.pc_state.get_pc(), 0x4233);
     }
 
     #[test]
@@ -798,10 +798,10 @@ mod tests {
         flags.set_c(1);
         test_core.pc_state.set_f(flags);
         instructions::Instruction::execute(0b00100101, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // dec_r, for h
-        assert_eq!(test_core.pc_state.get_h(), 0x7F);
-        assert_eq!(test_core.pc_state.get_f().get_h(), 1);
-        assert_eq!(test_core.pc_state.get_f().get_c(), 1);
-        assert_eq!(test_core.pc_state.get_f().get_s(), 0);
+        assert!(test_core.pc_state.get_h(), 0x7F);
+        assert!(test_core.pc_state.get_f().get_h(), 1);
+        assert!(test_core.pc_state.get_f().get_c(), 1);
+        assert!(test_core.pc_state.get_f().get_s(), 0);
     }
 
     #[test]
@@ -810,8 +810,8 @@ mod tests {
 
         test_core.memory.dummy_memory = vec![0x00];
         instructions::Instruction::execute(0x00, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor); // no-op
-        assert_eq!(test_core.pc_state.get_pc(), 0x1);
-        assert_eq!(test_core.clock.cycles, 4);
+        assert!(test_core.pc_state.get_pc(), 0x1);
+        assert!(test_core.clock.cycles, 4);
 
         // LD dd, nn: for BC
         // Reset the PC counter.
@@ -820,17 +820,17 @@ mod tests {
         let test_op_code = 0x01;
         test_core.memory.dummy_memory = vec![test_op_code, 0x10, 0x33]; // Op-code to test
         instructions::Instruction::execute(test_op_code, &mut test_core.clock, &mut test_core.memory, &mut test_core.pc_state, &mut test_core.ports, &mut test_core.interruptor);
-        assert_eq!(test_core.pc_state.get_pc(), 0x3);
-        assert_eq!(test_core.pc_state.get_bc(), 0x3310);
-        assert_eq!(test_core.clock.cycles, 10);
+        assert!(test_core.pc_state.get_pc(), 0x3);
+        assert!(test_core.pc_state.get_bc(), 0x3310);
+        assert!(test_core.clock.cycles, 10);
     }
 
     #[test]
     fn test_opcode_cycle_times() {
         fn test_op_code_cycle_count(test_core: &mut TestCore, op_code: Vec<u8>, expected_pc: u16, expected_cycles: u32) {
             simple_execute(test_core, op_code);
-            assert_eq!(test_core.pc_state.get_pc(), expected_pc);
-            assert_eq!(test_core.clock.cycles, expected_cycles);
+            assert!(test_core.pc_state.get_pc(), expected_pc);
+            assert!(test_core.clock.cycles, expected_cycles);
         }
 
         let mut test_core = TestCore::new();
@@ -843,8 +843,8 @@ mod tests {
     fn test_rotate_opcode_cycle_times() {
         fn test_op_code_cycle_count(test_core: &mut TestCore, op_code: Vec<u8>, expected_pc: u16, expected_cycles: u32) {
             simple_execute(test_core, op_code);
-            assert_eq!(test_core.pc_state.get_pc(), expected_pc);
-            assert_eq!(test_core.clock.cycles, expected_cycles);
+            assert!(test_core.pc_state.get_pc(), expected_pc);
+            assert!(test_core.clock.cycles, expected_cycles);
         }
 
         let mut test_core = TestCore::new();
@@ -852,22 +852,22 @@ mod tests {
         test_core.pc_state.set_a(0xAB);
         test_core.pc_state.set_hl(0x02);
         test_op_code_cycle_count(&mut test_core, vec![0xED, 0x67, 0xCD], 2, 18); // RRD
-        assert_eq!(test_core.memory.dummy_memory[2], 0xBC);
-        assert_eq!(test_core.pc_state.get_a(), 0xAD);
+        assert!(test_core.memory.dummy_memory[2], 0xBC);
+        assert!(test_core.pc_state.get_a(), 0xAD);
 
         test_core.pc_state.set_a(0xAB);
         test_core.pc_state.set_hl(0x02);
         test_op_code_cycle_count(&mut test_core, vec![0xED, 0x6F, 0xCD], 2, 18); // RLD
-        assert_eq!(test_core.pc_state.get_a(), 0xAC);
-        assert_eq!(test_core.memory.dummy_memory[2], 0xDB);
+        assert!(test_core.pc_state.get_a(), 0xAC);
+        assert!(test_core.memory.dummy_memory[2], 0xDB);
 
         test_core.pc_state.set_ix(0x04);
         test_op_code_cycle_count(&mut test_core, vec![0xDD, 0x34, 0xFF,0x09], 3, 23); // INC (IX+d) (d = -1)
-        assert_eq!(test_core.memory.dummy_memory[3], 0xA);
+        assert!(test_core.memory.dummy_memory[3], 0xA);
 
         test_core.pc_state.set_iy(0x06);
         test_op_code_cycle_count(&mut test_core, vec![0xFD, 0x35, 0xFD,0x09], 3, 23); // DEC (IY+d) (d = -3)
-        assert_eq!(test_core.memory.dummy_memory[3], 0x8);
+        assert!(test_core.memory.dummy_memory[3], 0x8);
 
 
     }

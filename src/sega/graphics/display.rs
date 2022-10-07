@@ -21,25 +21,20 @@ pub struct Colour {
 impl Colour {
     pub fn new(r: u8, g: u8, b: u8) -> Self  {
         Self {
-            r: r, 
-            g: g, 
-            b: b,
+            r, 
+            g, 
+            b,
         }
     }
 
     pub fn convert(&self, pixel_format: pixels::PixelFormatEnum) -> ColourType {
         match pixel_format {
-            pixels::PixelFormatEnum::RGB24 => {let mut v = Vec::new();
-                                               v.push(self.r);
-                                               v.push(self.g);
-                                               v.push(self.b);
-                                               v
-                                               },
+            pixels::PixelFormatEnum::RGB24 => {vec![self.r, self.g, self.b]},
             _ => panic!("unrecognised pixel format"),
         }
     }
 
-    pub fn convert_rgb23(&self, dst: &mut [u8]) -> () {
+    pub fn convert_rgb23(&self, dst: &mut [u8]) {
         dst[0] = self.r;
         dst[1] = self.g;
         dst[2] = self.b;
@@ -63,7 +58,7 @@ impl Colours {
         }
     }
 
-    fn read_palette(&mut self, pixel_format: pixels::PixelFormatEnum, filename: &str) -> ()
+    fn read_palette(&mut self, pixel_format: pixels::PixelFormatEnum, filename: &str)
     {
         let file = match File::open(filename) {
             Err(why) => panic!("couldn't open {}: {}", filename, why),
@@ -131,22 +126,22 @@ impl DisplayGenerator {
                                        _ => {0}};
         Self {
             current_k: 0,
-            pixel_format: pixel_format,
-            pitch: pitch,
-            width: width,
-            height: height,
+            pixel_format,
+            pitch,
+            width,
+            height,
             display: vec![0;((height as u32)*(pitch as u32)) as usize]
         }
     }
 
-    pub fn update_display(&mut self) -> () {
+    pub fn update_display(&mut self) {
         // Clear the buffer
         self.display.iter_mut().for_each(|x| *x = 0);
 
         // Draw the display
         for i in 0..0xFF {
             for j in 0..0xFF {
-                let offset = (i + 100 + (self.current_k as usize %200)) * (self.pitch as usize) + (j + 100 + (self.current_k as usize %200)) * 3 as usize;
+                let offset = (i + 100 + (self.current_k as usize %200)) * (self.pitch as usize) + (j + 100 + (self.current_k as usize %200)) * 3_usize;
                 self.display[offset] = 0xFF * (self.current_k as usize & 0x0) as u8;
                 self.display[offset + 1] = j as u8;
                 self.display[offset + 2] = i as u8;
@@ -155,7 +150,7 @@ impl DisplayGenerator {
         self.current_k += 1;
     }
 
-    pub fn new_generate_display(&mut self, buffer: &mut [u8], pitch: usize) -> () {
+    pub fn new_generate_display(&mut self, buffer: &mut [u8], pitch: usize) {
         assert_eq!(self.pitch as usize, pitch);
         // Update the graphics.
         self.update_display();
@@ -164,7 +159,7 @@ impl DisplayGenerator {
         buffer.clone_from_slice(self.display.as_slice());
     }
 
-    pub fn get_generate_display_closure<'l>(&'l mut self) -> impl FnMut(&mut [u8], usize) -> () + 'l{
+    pub fn get_generate_display_closure<'l>(&'l mut self) -> impl FnMut(&mut [u8], usize) + 'l{
         |buffer, pitch| {self.new_generate_display(buffer, pitch)}
     }
 }
@@ -178,24 +173,23 @@ impl SDLDisplay {
         }
     }
 
-    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, mut generate_display: F, iterations:u32) -> () {
+    pub fn draw_loop<'a, F: FnMut(&mut [u8], usize) >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, mut generate_display: F, iterations:u32) {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
         let texture_creator = SDLUtility::texture_creator(canvas);
         let mut texture = SDLUtility::create_texture(&texture_creator, pixel_format, frame_width, frame_height);
 
         for k in 0..iterations {
-            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {generate_display(buffer, pitch)})
-                         .map_err(|e| e.to_string()).unwrap();
+            texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {generate_display(buffer, pitch)}).unwrap();
 
             canvas.clear();
-            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32))) .map_err(|e| e.to_string()).unwrap();
+            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32))).unwrap();
             canvas.present();
         }
 
     }
 
     // Main entry point, intention is to call 'once'. 
-    pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut DisplayGenerator) -> () {
+    pub fn main_loop<'a>(&'a mut self, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generator: &mut DisplayGenerator) {
         let mut sdl_context = sdl2::init().unwrap();
 
         let mut canvas = SDLUtility::create_canvas(&mut sdl_context, "rust-sdl2 demo: Video", frame_width, frame_height);
@@ -224,7 +218,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_open_display() -> () {
+    fn test_open_display() {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
         const WINDOW_WIDTH:u16  = 800;
@@ -237,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_palette() -> () {
+    fn test_read_palette() {
         let mut colours = Colours::new();
         colours.read_palette(pixels::PixelFormatEnum::RGB24, "palette.ntsc.dat");
     }

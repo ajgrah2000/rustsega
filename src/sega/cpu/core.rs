@@ -26,16 +26,16 @@ impl<M: memory::MemoryRW> Core<M> {
     {
     
         Self {
-            clock: clock,
-            memory: memory,
-            pc_state: pc_state,
-            ports: ports,
-            interruptor: interruptor,
+            clock,
+            memory,
+            pc_state,
+            ports,
+            interruptor,
             raw_display: vec![0;(graphics::vdp::Constants::SMS_WIDTH as usize) * (graphics::vdp::Constants::SMS_HEIGHT as usize) * (graphics::vdp::Constants::BYTES_PER_PIXEL as usize)],
         }
     }
 
-    fn interupt(&mut self) -> () {
+    fn interupt(&mut self) {
         if self.pc_state.get_iff1() {
             if self.pc_state.get_im() == 1 {
                 self.pc_state.increment_sp(-1);
@@ -53,7 +53,7 @@ impl<M: memory::MemoryRW> Core<M> {
         }
     }
 
-    pub fn step(&mut self, debug: bool) -> (){
+    pub fn step(&mut self, debug: bool){
         // Start with 'expanded' version of step
 
         self.interruptor.set_cycle(self.clock.cycles);
@@ -71,7 +71,7 @@ impl<M: memory::MemoryRW> Core<M> {
 
     }
 
-    pub fn generate_display(&mut self, buffer: &mut [u8], pitch: usize) -> () {
+    pub fn generate_display(&mut self, buffer: &mut [u8], pitch: usize) {
         // Function to populate the display buffer drawn to the 2D texture/canvas/window.
         buffer.clone_from_slice(self.raw_display.as_slice());
     }

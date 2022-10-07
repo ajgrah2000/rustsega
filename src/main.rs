@@ -2,11 +2,11 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use argparse;
+
 
 mod sega;
 
-fn parse_args(debug: &mut bool, cartridge_name: &mut String) -> () {
+fn parse_args(debug: &mut bool, cartridge_name: &mut String) {
     // Handle command line arguments.
     let mut ap = argparse::ArgumentParser::new();
     ap.set_description("Rusty Sega Emulator");

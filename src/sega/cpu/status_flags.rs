@@ -1,7 +1,7 @@
 use super::pc_state;
 
 pub fn signed_char_to_int(v: i8) -> i16 {
-    return v as i16;
+    v as i16
 }
 
 // Calculate the parity.  Check if the the number of bits is odd or even.
@@ -42,17 +42,15 @@ pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
         } else {
             f_status.set_c(0);
         }
+    } else if a >= 0xFF - b {
+        f_status.set_c(1);
     } else {
-        if a >= 0xFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
+        f_status.set_c(0);
     }
 
     zero_and_sign_flags(f_status, r);
     
-    return r;
+    r
 }
 
 pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
@@ -103,7 +101,7 @@ pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
 // TODO: Once other issues are sorted out, revisit setting of these flags.
 pub fn i8_no_carry(a:u8, b:u8, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
 
-    let mut r  = ((signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16) & 0xFFFF;
+    let mut r  = (signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16;
     let rc = (signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) & 0xFF;
     let hr  = ((signed_char_to_int(a as i8) & 0xF) - (signed_char_to_int(b as i8) & 0xF)) as u8;
 
@@ -156,7 +154,7 @@ pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFiel
         f_status.set_s(0);
     }
  
-    if (r & 0xFFFF) == 0 { // Zero
+    if r == 0 { // Zero
         f_status.set_z(1);
     } else {
         f_status.set_z(0);
@@ -186,15 +184,13 @@ pub fn u16_carry(a:u16, b:u16, c:bool, f_status: &mut pc_state::PcStatusFlagFiel
         } else {
             f_status.set_c(0);
         }
+    } else if a >= 0xFFFF - b {
+        f_status.set_c(1);
     } else {
-        if a >= 0xFFFF - b {
-            f_status.set_c(1);
-        } else {
-            f_status.set_c(0);
-        }
+        f_status.set_c(0);
     }
  
-    return r;
+    r
 }
 
 pub fn u16_no_carry(a:u16, b:u16, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {
@@ -215,7 +211,7 @@ pub fn u16_no_carry(a:u16, b:u16, f_status: &mut pc_state::PcStatusFlagFields) -
         f_status.set_c(0);
     }
  
-    return r;
+    r
 }
 
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
@@ -280,14 +276,14 @@ pub fn xor_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
 }
 
 // The 'new' value and carry
-pub fn set_rotate_accumulator_flags(carry:bool, status: &mut pc_state::PcStatusFlagFields) -> () {
+pub fn set_rotate_accumulator_flags(carry:bool, status: &mut pc_state::PcStatusFlagFields) {
     status.set_c(carry as u8);
     status.set_h(0);
     status.set_n(0);
 }
 
 // The 'new' value and carry.  The flags set for rotating accumulator vs registers differ.
-pub fn set_shift_register_flags(value: u8, carry:bool, status: &mut pc_state::PcStatusFlagFields) -> () {
+pub fn set_shift_register_flags(value: u8, carry:bool, status: &mut pc_state::PcStatusFlagFields) {
     status.set_c(carry as u8);
     status.set_n(0);
     status.set_h(0);
@@ -318,7 +314,7 @@ pub fn or_flags(status: &mut pc_state::PcStatusFlagFields, value: u8) {
 }
 
 // Add two 8 bit ints plus the carry bit, and set flags accordingly
-pub fn set_bit_test_flags(r: u8, bit_pos: u8, f_status: &mut pc_state::PcStatusFlagFields) -> () {
+pub fn set_bit_test_flags(r: u8, bit_pos: u8, f_status: &mut pc_state::PcStatusFlagFields) {
     let bit = (r >> (bit_pos & 7)) & 0x1;
     f_status.set_z(bit ^ 0x1);
     f_status.set_pv(calculate_parity(bit) as u8); // Documented as 'unknown', not sure if/where this is needed.
@@ -334,19 +330,19 @@ mod tests {
 
     #[test]
     fn test_parity() {
-        assert_eq!(status_flags::calculate_parity(0b11001001), true);
-        assert_eq!(status_flags::calculate_parity(0b00101000), true);
-        assert_eq!(status_flags::calculate_parity(0b10101001), true);
-        assert_eq!(status_flags::calculate_parity(0b00101001), false);
-        assert_eq!(status_flags::calculate_parity(0b00000001), false);
-        assert_eq!(status_flags::calculate_parity(0b10000000), false);
+        assert!(status_flags::calculate_parity(0b11001001), true);
+        assert!(status_flags::calculate_parity(0b00101000), true);
+        assert!(status_flags::calculate_parity(0b10101001), true);
+        assert!(status_flags::calculate_parity(0b00101001), false);
+        assert!(status_flags::calculate_parity(0b00000001), false);
+        assert!(status_flags::calculate_parity(0b10000000), false);
     }
     #[test]
     fn test_bit_set() {
         let mut f_status = pc_state::PcStatusFlagFields(0);
         status_flags::set_bit_test_flags(0x30, 5, &mut f_status);
-        assert_eq!(f_status.get_z(), 0);
+        assert!(f_status.get_z(), 0);
         status_flags::set_bit_test_flags(0x30, 3, &mut f_status);
-        assert_eq!(f_status.get_z(), 1);
+        assert!(f_status.get_z(), 1);
     }
 }

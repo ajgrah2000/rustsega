@@ -12,7 +12,7 @@ impl Clock {
         }
     }
 
-    pub fn increment(&mut self, inc: u32) -> () {
-        self.cycles = self.cycles + inc;
+    pub fn increment(&mut self, inc: u32) {
+        self.cycles += inc;
     }
 }

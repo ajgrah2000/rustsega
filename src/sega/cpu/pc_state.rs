@@ -83,30 +83,30 @@ impl Reg16 {
         }
     }
     // Registers are stored 'big endian' as far as letter order, such that (b=1 as u8, c=0 as u8) -> (0x0100 as u16)
-    pub fn set(&mut self, input: u16) -> () {
+    pub fn set(&mut self, input: u16) {
         self.low  = (input & 0xFF) as u8;
         self.high = ((input >> 8) & 0xFF) as u8;
     }
     
     pub fn get(&self) -> u16 {
-        let result = self.low as u16 + ((self.high as u16) << 8);
-        result
+        
+        self.low as u16 + ((self.high as u16) << 8)
     }
 }
 
 pub trait Reg16RW {
-    fn set(&mut self, input: u16) -> ();
+    fn set(&mut self, input: u16);
     fn get(&self) -> u16;
     // Used by stack pointer
-    fn set_low(&mut self, input: u8) -> ();
-    fn set_high(&mut self, input: u8) -> ();
+    fn set_low(&mut self, input: u8);
+    fn set_high(&mut self, input: u8);
     fn get_low(&self) -> u8;
     fn get_high(&self) -> u8;
 }
 
 pub trait FlagReg {
     fn get_flags(&self) -> PcStatusFlagFields;
-    fn set_flags(&mut self, flags: &PcStatusFlagFields) -> ();
+    fn set_flags(&mut self, flags: &PcStatusFlagFields);
 }
 
 pub trait AfRegister {
@@ -119,13 +119,13 @@ impl Reg16RW for Reg16 {
         self.get()
     }
 
-    fn set(&mut self, input: u16) -> () {
+    fn set(&mut self, input: u16) {
         self.set(input)
     }
-    fn set_low(&mut self, input: u8) -> () {
+    fn set_low(&mut self, input: u8) {
         self.low = input;
     }
-    fn set_high(&mut self, input: u8) -> () {
+    fn set_high(&mut self, input: u8) {
         self.high = input;
     }
 
@@ -152,7 +152,7 @@ impl FlagReg for FlagReg16{
         PcStatusFlagFields(self.reg16.low)
     }
 
-    fn set_flags(&mut self, flags: &PcStatusFlagFields) -> () {
+    fn set_flags(&mut self, flags: &PcStatusFlagFields) {
         self.reg16.low = flags.0;
     }
 }
@@ -168,7 +168,7 @@ impl AfRegister for FlagReg16{
 }
 
 impl Reg16RW for FlagReg16{
-    fn set(&mut self, input: u16) -> () {
+    fn set(&mut self, input: u16) {
         self.reg16.set(input)
     }
     
@@ -176,10 +176,10 @@ impl Reg16RW for FlagReg16{
         self.reg16.get()
     }
 
-    fn set_low(&mut self, input: u8) -> () {
+    fn set_low(&mut self, input: u8) {
         self.reg16.low = input;
     }
-    fn set_high(&mut self, input: u8) -> () {
+    fn set_high(&mut self, input: u8) {
         self.reg16.high = input;
     }
     fn get_low(&self) -> u8 {
@@ -250,44 +250,44 @@ impl PcState {
     pub fn get_iff2(&self) -> bool {self.iff2}
     pub fn get_im  (&self) -> u8 {self.im}
 
-    pub fn set_b(&mut self, input: u8) -> () {self.bc_reg.high = input;}
-    pub fn set_c(&mut self, input: u8) -> () {self.bc_reg.low  = input;}
-    pub fn set_d(&mut self, input: u8) -> () {self.de_reg.high = input;}
-    pub fn set_e(&mut self, input: u8) -> () {self.de_reg.low  = input;}
-    pub fn set_a(&mut self, input: u8) -> () {self.af_reg.reg16.high = input;}
+    pub fn set_b(&mut self, input: u8) {self.bc_reg.high = input;}
+    pub fn set_c(&mut self, input: u8) {self.bc_reg.low  = input;}
+    pub fn set_d(&mut self, input: u8) {self.de_reg.high = input;}
+    pub fn set_e(&mut self, input: u8) {self.de_reg.low  = input;}
+    pub fn set_a(&mut self, input: u8) {self.af_reg.reg16.high = input;}
     // TODO: Improve setting of flags, this probably won't be ideal, but it
     // will ensure 'af' and 'f' are always in sync.
-    pub fn set_f(&mut self, input: PcStatusFlagFields) -> () {self.af_reg.set_flags(&input);}
-    pub fn set_h(&mut self, input: u8) -> () {self.hl_reg.high = input;}
-    pub fn set_l(&mut self, input: u8) -> () {self.hl_reg.low  = input;}
+    pub fn set_f(&mut self, input: PcStatusFlagFields) {self.af_reg.set_flags(&input);}
+    pub fn set_h(&mut self, input: u8) {self.hl_reg.high = input;}
+    pub fn set_l(&mut self, input: u8) {self.hl_reg.low  = input;}
 
-    pub fn set_bc(&mut self, input: u16) -> () {self.bc_reg.set(input);}
-    pub fn set_de(&mut self, input: u16) -> () {self.de_reg.set(input);}
-    pub fn set_af(&mut self, input: u16) -> () {self.af_reg.reg16.set(input);}
-    pub fn set_hl(&mut self, input: u16) -> () {self.hl_reg.set(input);}
+    pub fn set_bc(&mut self, input: u16) {self.bc_reg.set(input);}
+    pub fn set_de(&mut self, input: u16) {self.de_reg.set(input);}
+    pub fn set_af(&mut self, input: u16) {self.af_reg.reg16.set(input);}
+    pub fn set_hl(&mut self, input: u16) {self.hl_reg.set(input);}
 
-    pub fn set_pc_high(&mut self, input: u8) -> () {self.pc_reg.high = input;}
-    pub fn set_pc_low (&mut self, input: u8) -> () {self.pc_reg.low  = input;}
+    pub fn set_pc_high(&mut self, input: u8) {self.pc_reg.high = input;}
+    pub fn set_pc_low (&mut self, input: u8) {self.pc_reg.low  = input;}
 
-    pub fn set_pc(&mut self, input: u16) -> () {self.pc_reg.set(input);}
-    pub fn set_sp(&mut self, input: u16) -> () {self.sp_reg.set(input);}
-    pub fn set_ix(&mut self, input: u16) -> () {self.ix_reg.set(input);}
-    pub fn set_iy(&mut self, input: u16) -> () {self.iy_reg.set(input);}
+    pub fn set_pc(&mut self, input: u16) {self.pc_reg.set(input);}
+    pub fn set_sp(&mut self, input: u16) {self.sp_reg.set(input);}
+    pub fn set_ix(&mut self, input: u16) {self.ix_reg.set(input);}
+    pub fn set_iy(&mut self, input: u16) {self.iy_reg.set(input);}
 
-    pub fn set_r   (&mut self, input: u8) -> () {self.r    = input;}
-    pub fn set_i   (&mut self, input: u8) -> () {self.i    = input;}
-    pub fn set_iff1(&mut self, input: bool) -> () {self.iff1 = input;}
-    pub fn set_iff2(&mut self, input: bool) -> () {self.iff2 = input;}
-    pub fn set_im  (&mut self, input: u8) -> () {self.im   = input;}
+    pub fn set_r   (&mut self, input: u8) {self.r    = input;}
+    pub fn set_i   (&mut self, input: u8) {self.i    = input;}
+    pub fn set_iff1(&mut self, input: bool) {self.iff1 = input;}
+    pub fn set_iff2(&mut self, input: bool) {self.iff2 = input;}
+    pub fn set_im  (&mut self, input: u8) {self.im   = input;}
 
     // Additional utility functions, intended to simplify some of the calls.
-    pub fn increment_reg(register: &mut dyn Reg16RW, increment: i8) -> () {
+    pub fn increment_reg(register: &mut dyn Reg16RW, increment: i8) {
         let update_value = ((register.get() as i16) + (increment as i16)) as u16;
         register.set(update_value);
     }
 
-    pub fn increment_sp(&mut self, increment: i8) -> () {Self::increment_reg(&mut self.sp_reg, increment);}
-    pub fn increment_pc(&mut self, increment: i8) -> () {Self::increment_reg(&mut self.pc_reg, increment);}
+    pub fn increment_sp(&mut self, increment: i8) {Self::increment_reg(&mut self.sp_reg, increment);}
+    pub fn increment_pc(&mut self, increment: i8) {Self::increment_reg(&mut self.pc_reg, increment);}
 }
 
 
@@ -295,9 +295,9 @@ impl PcState {
 fn test_pc_status_flag_fields() {
     let mut pc_status_flags = PcStatusFlagFields(0);
     pc_status_flags.set_c(1);
-    assert_eq!(pc_status_flags.get_c(),1);
+    assert!(pc_status_flags.get_c(),1);
     pc_status_flags.set_n(1);
-    assert_eq!(pc_status_flags.0,3);
+    assert!(pc_status_flags.0,3);
 }
 
 #[test]
@@ -307,39 +307,39 @@ fn test_pc_state_16_changes() {
     let mut value_16:u16 = 0x312;
 
     pc_state.set_b(value_8);
-    assert_eq!(pc_state.get_b(),  7);
-    assert_eq!(pc_state.get_c(),  0);
-    assert_eq!(pc_state.get_bc(), 0x700);
+    assert!(pc_state.get_b(),  7);
+    assert!(pc_state.get_c(),  0);
+    assert!(pc_state.get_bc(), 0x700);
 
     pc_state.set_bc(value_16);
-    assert_eq!(pc_state.get_bc(), 0x312);
-    assert_eq!(pc_state.get_b(),  0x3);
-    assert_eq!(pc_state.get_c(),  0x12);
+    assert!(pc_state.get_bc(), 0x312);
+    assert!(pc_state.get_b(),  0x3);
+    assert!(pc_state.get_c(),  0x12);
 
-    assert_eq!(pc_state.get_af(), 0x0);
+    assert!(pc_state.get_af(), 0x0);
     pc_state.set_af(value_16);
-    assert_eq!(pc_state.get_a(),  0x03);
-    assert_eq!(pc_state.get_f().get_c(),  0x0);
-    assert_eq!(pc_state.get_f().get_n(),  0x1);
-    assert_eq!(pc_state.get_f().get_pv(), 0x0);
-    assert_eq!(pc_state.get_f().get_x1(), 0x0);
-    assert_eq!(pc_state.get_f().get_h(),  0x1);
-    assert_eq!(pc_state.get_f().get_x2(), 0x0);
-    assert_eq!(pc_state.get_f().get_z(),  0x0);
-    assert_eq!(pc_state.get_f().get_s(),  0x0);
+    assert!(pc_state.get_a(),  0x03);
+    assert!(pc_state.get_f().get_c(),  0x0);
+    assert!(pc_state.get_f().get_n(),  0x1);
+    assert!(pc_state.get_f().get_pv(), 0x0);
+    assert!(pc_state.get_f().get_x1(), 0x0);
+    assert!(pc_state.get_f().get_h(),  0x1);
+    assert!(pc_state.get_f().get_x2(), 0x0);
+    assert!(pc_state.get_f().get_z(),  0x0);
+    assert!(pc_state.get_f().get_s(),  0x0);
 
     value_16 = 0x80FE;
     pc_state.set_af(value_16);
-    assert_eq!(pc_state.get_a(),  0x80);
-    assert_eq!(pc_state.get_f().get_c(),  0x0);
-    assert_eq!(pc_state.get_f().get_n(),  0x1);
-    assert_eq!(pc_state.get_f().get_pv(), 0x1);
-    assert_eq!(pc_state.get_f().get_x1(), 0x1);
-    assert_eq!(pc_state.get_f().get_h(),  0x1);
-    assert_eq!(pc_state.get_f().get_x2(), 0x1);
-    assert_eq!(pc_state.get_f().get_z(),  0x1);
-    assert_eq!(pc_state.get_f().get_s(),  0x1);
-    assert_eq!(format!("{}", pc_state), "A:80 SP:0 B:3 C:12 D:0 E:0 H:0 L:0 F:fe PCHigh:0 PCLow:0 SPHigh:0 SPLow:0 IXHigh:0 IXLow:0 IYHigh:0 IYLow:0 (C:0 N:1 PV:1 X1:1 H:1 X2:1 Z:1 S:1)");
+    assert!(pc_state.get_a(),  0x80);
+    assert!(pc_state.get_f().get_c(),  0x0);
+    assert!(pc_state.get_f().get_n(),  0x1);
+    assert!(pc_state.get_f().get_pv(), 0x1);
+    assert!(pc_state.get_f().get_x1(), 0x1);
+    assert!(pc_state.get_f().get_h(),  0x1);
+    assert!(pc_state.get_f().get_x2(), 0x1);
+    assert!(pc_state.get_f().get_z(),  0x1);
+    assert!(pc_state.get_f().get_s(),  0x1);
+    assert!(format!("{}", pc_state), "A:80 SP:0 B:3 C:12 D:0 E:0 H:0 L:0 F:fe PCHigh:0 PCLow:0 SPHigh:0 SPLow:0 IXHigh:0 IXLow:0 IYHigh:0 IYLow:0 (C:0 N:1 PV:1 X1:1 H:1 X2:1 Z:1 S:1)");
 
     value_16 = 0xdffd;
     pc_state.set_sp(value_16);
@@ -347,5 +347,5 @@ fn test_pc_state_16_changes() {
     flags.set_x1(0);
     pc_state.set_f(flags);
     // Use the formatted state to check the output.
-    assert_eq!(format!("{}", pc_state), "A:80 SP:dffd B:3 C:12 D:0 E:0 H:0 L:0 F:f6 PCHigh:0 PCLow:0 SPHigh:df SPLow:fd IXHigh:0 IXLow:0 IYHigh:0 IYLow:0 (C:0 N:1 PV:1 X1:0 H:1 X2:1 Z:1 S:1)")
+    assert!(format!("{}", pc_state), "A:80 SP:dffd B:3 C:12 D:0 E:0 H:0 L:0 F:f6 PCHigh:0 PCLow:0 SPHigh:df SPLow:fd IXHigh:0 IXLow:0 IYHigh:0 IYLow:0 (C:0 N:1 PV:1 X1:0 H:1 X2:1 Z:1 S:1)")
 }
