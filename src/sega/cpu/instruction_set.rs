@@ -135,8 +135,13 @@ pub fn add8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8
 pub fn sub8<F16>(a:u8, b:u8, af_reg: &mut F16) -> u8 
     where F16: pc_state::FlagReg {
 
-    // Just call the sub c function.
-    sub8c(a, b, false, af_reg)
+    // There may be differences between sub8 and subc, using a different flag function.
+    let mut f_status = af_reg.get_flags();
+    let result = status_flags::i8_no_carry(a, b, &mut f_status);
+    f_status.set_n(1); // Set N to indicate subtract
+    af_reg.set_flags(&f_status);
+
+    result
 }
 
 pub fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8 
@@ -152,23 +157,11 @@ pub fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
 
 pub fn cp_flags<F16>(a:u8, b:u8, af_reg: &mut F16) -> ()
     where F16: pc_state::FlagReg {
+    println!("cp flags: {} {}", a, b);
 
     // CP flags calculated set the same as for subtaction, but the result is ignored.
-    sub8c(a, b, false, af_reg);
+    sub8(a, b, af_reg);
 }
-
-//// Subtract two 8 bit ints and the carry bit, set flags accordingly
-//fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
-//    where F16: pc_state::FlagReg {
-//
-//    let mut f_status = af_reg.get_flags();
-//    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
-//    let result = status_flags::u8_carry(a, !b, !c, &mut f_status);
-//    f_status.set_n(1); // Set N to indicate subtract
-//    af_reg.set_flags(&f_status);
-//
-//    result
-//}
 
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
 fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8

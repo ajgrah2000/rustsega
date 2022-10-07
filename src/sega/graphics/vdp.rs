@@ -590,15 +590,18 @@ impl VDP {
     pub fn update_sprite_attributes(&mut self, address: u16, old_data:u8, data:u8) -> () {
         // Only update if need be
         if old_data != data {
+            println!("update sprite attribute");
             let mut sprite_num = (address & Constants::SPRITEATTRIBUTESMASK) as u8;
     
             // See if it's an x, or tile number attributes
             if 0 != (sprite_num & Constants::SPRITEXNMASK as u8) {
                 sprite_num = (sprite_num >> 1) ^ Constants::MAXSPRITES;
                 if 0 != (address & Constants::SPRITETILEMASK) { // Changing tile
+                    println!("tile");
                     self.sprites[sprite_num as usize].tile_number = data as u16 | self.sprite_tile_shift;
                 }
                 else { // Changing x position
+                    println!("x pos");
                     self.sprites[sprite_num as usize].x = data as u16;
                 }
     
@@ -985,7 +988,7 @@ impl VDP {
         self.draw_background();
         self.draw_sprites();
 
-//        self.draw_patterns() // For debuging purposes
+        self.draw_patterns() // For debuging purposes
     }
 
     fn update_screen_pattern(&mut self, pattern_number:u16) -> () {
