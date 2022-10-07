@@ -201,7 +201,7 @@ impl Instruction {
 
             // cp_r instructions
             // opcode: 0b10111rrr 
-            n if (n & 0b11111000 == 0b10111000) && (n != 0b11111110) => {
+            n if (n & 0b11111000 == 0b10111000) && (n != 0b10111110) => {
                     let reg_index = n & 0x7;
                     instruction_set::cp_r(clock,
                             select_8_bit_read_register(pc_state, reg_index), // gets the appropriate register getter fromt the supplied op-code

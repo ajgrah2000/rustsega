@@ -157,7 +157,6 @@ pub fn add8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
 
 pub fn cp_flags<F16>(a:u8, b:u8, af_reg: &mut F16) -> ()
     where F16: pc_state::FlagReg {
-    println!("cp flags: {} {}", a, b);
 
     // CP flags calculated set the same as for subtaction, but the result is ignored.
     sub8(a, b, af_reg);
