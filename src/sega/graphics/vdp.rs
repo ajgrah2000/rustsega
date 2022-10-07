@@ -985,7 +985,7 @@ impl VDP {
         self.draw_background();
         self.draw_sprites();
 
-        self.draw_patterns() // For debuging purposes
+//        self.draw_patterns() // For debuging purposes
     }
 
     fn update_screen_pattern(&mut self, pattern_number:u16) -> () {
@@ -1324,10 +1324,10 @@ mod tests {
             let mut i =0;
             let mut rng = rand::thread_rng();
 
-            canvas.set_draw_colour(pixels::Color::RGB(0, 0, 0));
+            canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
             canvas.clear();
             i = (i + 1) % 255;
-            canvas.set_draw_colour(pixels::Color::RGB(i, 64, 255 - i));
+            canvas.set_draw_color(pixels::Color::RGB(i, 64, 255 - i));
             let (w, h) = canvas.output_size().unwrap();
             let mut points = [rect::Point::new(0, 0); 256];
 

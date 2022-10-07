@@ -79,7 +79,10 @@ impl Sega {
 
             canvas.clear();
             canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, (frame_width/(pixel_width as u16)) as u32, (frame_height/(pixel_width as u16)) as u32))) .map_err(|e| e.to_string()).unwrap();
-            canvas.copy_ex(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)), 0.0, None, false, false);
+            match canvas.copy_ex(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)), 0.0, None, false, false) {
+                Ok(()) => {}
+                _ => {println!("Error translating texture.");}
+            }
             canvas.present();
         }
 

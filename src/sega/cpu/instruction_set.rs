@@ -175,20 +175,8 @@ fn sub8c<F16>(a:u8, b:u8, c:bool, af_reg: &mut F16) -> u8
     where F16: pc_state::FlagReg {
 
     let mut f_status = af_reg.get_flags();
-    // a - b + c -> a + (~b + 1) + c -> a + ~b - c
     let result = status_flags::i8_carry(a, b, c, &mut f_status);
     f_status.set_n(1); // Set N to indicate subtract
-    af_reg.set_flags(&f_status);
-
-    result
-}
-
-pub fn add16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
-    where F16: pc_state::FlagReg {
-
-    let mut f_status = af_reg.get_flags();
-    let result = status_flags::u16_carry(a, b, c, &mut f_status);
-    f_status.set_n(0);
     af_reg.set_flags(&f_status);
 
     result
@@ -1166,18 +1154,7 @@ mod tests {
         assert_eq!(pc_state.get_f().get_n(), 1);
 
         assert_eq!(instruction_set::sub8c(0xFF, 0x2, true, &mut pc_state.af_reg), 0xFC);
-        assert_eq!(pc_state.get_f().get_pv(), 0);
-        assert_eq!(pc_state.get_f().get_c(), 1);
-
-        assert_eq!(instruction_set::add16c( 0xFFFF, 0xFFFF, true, &mut pc_state.af_reg), 0xFFFF);
-        assert_eq!(instruction_set::add16c(0, 0, false, &mut pc_state.af_reg), 0);
-        assert_eq!(pc_state.get_f().get_z(), 1);
-        assert_eq!(pc_state.get_f().get_n(), 0);
-
-        assert_eq!(instruction_set::add16c(0x3FFF, 0x7001, true, &mut pc_state.af_reg), 0xB001);
-        assert_eq!(pc_state.get_f().get_h(), 1);
-
-        assert_eq!(instruction_set::sub16c(0x0000, 0x000F, true, &mut pc_state.af_reg), 0xFFF0);
-        assert_eq!(pc_state.get_f().get_n(), 1);
+        assert_eq!(pc_state.get_f().get_pv(), 1);
+        assert_eq!(pc_state.get_f().get_c(), 0);
     }
 }

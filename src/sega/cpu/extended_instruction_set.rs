@@ -485,11 +485,23 @@ pub fn reti<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 pub fn add16<R16, F16>(clock: &mut clocks::Clock, src_value: u16, 
              pc_reg: &mut R16, dst_reg: &mut R16, af_reg: &mut F16) -> () where R16: pc_state::Reg16RW, F16: pc_state::FlagReg {
 
-    dst_reg.set(instruction_set::add16c(dst_reg.get(), src_value, false, af_reg));
+    dst_reg.set(add16c(dst_reg.get(), src_value, false, af_reg));
 
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(15);
 }
+
+pub fn add16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
+    where F16: pc_state::FlagReg {
+
+    let mut f_status = af_reg.get_flags();
+    let result = status_flags::u16_carry(a, b, c, &mut f_status);
+    f_status.set_n(0);
+    af_reg.set_flags(&f_status);
+
+    result
+}
+
 
 pub fn sub16c<F16>(a:u16, b:u16, c:bool, af_reg: &mut F16) -> u16
     where F16: pc_state::FlagReg {
@@ -1054,7 +1066,29 @@ pub fn adc_hl_r16<R16, F16>(clock: &mut clocks::Clock, src_value: u16,
     where R16: pc_state::Reg16RW,
           F16: pc_state::FlagReg ,
 {
-    hl_reg.set(instruction_set::add16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
+    hl_reg.set(add16c(hl_reg.get(), src_value, af_reg.get_flags().get_c() == 1, af_reg));
     pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(15);
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::sega::cpu::extended_instruction_set;
+    use crate::sega::cpu::pc_state;
+
+    #[test]
+    fn test_add_sub_functions() {
+        let mut pc_state = pc_state::PcState::new();
+
+        assert_eq!(extended_instruction_set::add16c( 0xFFFF, 0xFFFF, true, &mut pc_state.af_reg), 0xFFFF);
+        assert_eq!(extended_instruction_set::add16c(0, 0, false, &mut pc_state.af_reg), 0);
+        assert_eq!(pc_state.get_f().get_z(), 1);
+        assert_eq!(pc_state.get_f().get_n(), 0);
+
+        assert_eq!(extended_instruction_set::add16c(0x3FFF, 0x7001, true, &mut pc_state.af_reg), 0xB001);
+        assert_eq!(pc_state.get_f().get_h(), 1);
+
+        assert_eq!(extended_instruction_set::sub16c(0x0000, 0x000F, true, &mut pc_state.af_reg), 0xFFF0);
+        assert_eq!(pc_state.get_f().get_n(), 1);
+    }
 }

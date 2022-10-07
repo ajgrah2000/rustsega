@@ -60,9 +60,9 @@ pub fn u8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
 // TODO: Once other issues are sorted out, revisit setting of these flags.
 pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
 
-    let mut r  = ((signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16) & 0xFFFF;
-    let rc = (signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) & 0xFF;
-    let hr  = ((signed_char_to_int(a as i8) & 0xF) - (signed_char_to_int(b as i8) & 0xF)) as u8;
+    let mut r = (a as i16).wrapping_sub((b as i8) as i16).wrapping_sub(c as i16) as u16;
+    let rc = (a as i16).wrapping_sub((b as i8) as i16).wrapping_sub(c as i16) as u8;
+    let hr = ((a & 0xF) as u8).wrapping_sub((b & 0xF) as u8).wrapping_sub(c as u8);
 
     if 0 != (rc & 0x80) {
         f_status.set_s(1);
@@ -82,7 +82,7 @@ pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
     }
 
     // overflow
-    r = ((signed_char_to_int(a as i8) - signed_char_to_int(b as i8)) as u16) & 0xFFF;
+    r = ((a as i16).wrapping_sub((b as i8) as i16).wrapping_sub(c as i16) as u16) & 0xFFF;
     if ((r & 0x180) != 0) && 
        ((r & 0x180) != 0x180) { // Overflow
         f_status.set_pv(1);
@@ -92,7 +92,7 @@ pub fn i8_carry(a:u8, b:u8, c:bool, f_status: &mut pc_state::PcStatusFlagFields)
 
     f_status.set_n(1);
 
-    r  = (((a as i16) & 0xFF) - ((b as i16) & 0xFF)) as u16;
+    r =  ((a as i16) & 0xFF).wrapping_sub((b as i8) as i16).wrapping_sub(c as i16) as u16;
     if 0 != (r & 0x100) { // cpu_state->Borrow (?) 
         f_status.set_c(1); // cpu_state->Borrow (?) 
     } else {

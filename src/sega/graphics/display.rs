@@ -227,13 +227,13 @@ mod tests {
     fn test_open_display() -> () {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
-        const window_width:u16  = 800;
-        const window_height:u16 = 600; // MAX HEIGHT
+        const WINDOW_WIDTH:u16  = 800;
+        const WINDOW_HEIGHT:u16 = 600; // MAX HEIGHT
 
-        let mut display_generator = display::DisplayGenerator::new(window_width, window_height, pixels::PixelFormatEnum::RGB24); 
+        let mut display_generator = display::DisplayGenerator::new(WINDOW_WIDTH, WINDOW_HEIGHT, pixels::PixelFormatEnum::RGB24); 
 
         let mut sdl_display = display::SDLDisplay::new();
-        sdl_display.main_loop(window_width, window_height, 2, 2, &mut display_generator);
+        sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, 2, 2, &mut display_generator);
     }
 
     #[test]
