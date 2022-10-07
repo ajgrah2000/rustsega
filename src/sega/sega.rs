@@ -44,12 +44,14 @@ impl Sega {
     pub fn power_sega(&mut self) -> () {
         const SMS_WIDTH:u16  = 256;
         const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
-        const SCALE_X:u8 = 2;
-        const SCALE_Y:u8 = 2;
+        const SCALE_X:u8 = 3;
+        const SCALE_Y:u8 = 3;
+        const FRAME_WIDTH:u16  = SMS_WIDTH  * (SCALE_X as u16);
+        const FRAME_HEIGHT:u16 = SMS_HEIGHT * (SCALE_Y as u16);
     
-        let mut display_generator = graphics::display::DisplayGenerator::new(SMS_WIDTH, SMS_HEIGHT, pixels::PixelFormatEnum::RGB24); 
+        let mut display_generator = graphics::display::DisplayGenerator::new(FRAME_WIDTH, FRAME_HEIGHT, pixels::PixelFormatEnum::RGB24); 
     
-        self.main_loop(SMS_WIDTH, SMS_HEIGHT, SCALE_X, SCALE_Y, &mut display_generator);
+        self.main_loop(FRAME_WIDTH, FRAME_HEIGHT, SCALE_X, SCALE_Y, &mut display_generator);
     }
 
     pub fn new(debug: bool, cartridge_name: String) -> Self {
@@ -63,7 +65,7 @@ impl Sega {
     pub fn draw_loop<'a, F: FnMut(&mut [u8], usize)-> () >(&'a mut self, canvas: &mut render::Canvas<video::Window>, pixel_format: pixels::PixelFormatEnum, frame_width:u16, frame_height:u16, pixel_width:u8, pixel_height:u8, generate_display: F, iterations:u32) -> () {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
         let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
-        let mut texture = graphics::display::SDLUtility::create_texture(&texture_creator, pixel_format, frame_width, frame_height);
+        let mut texture = graphics::display::SDLUtility::create_texture(&texture_creator, pixel_format, frame_width/(pixel_width as u16), frame_height/(pixel_height as u16));
 
         for k in 0..iterations {
 
@@ -76,7 +78,8 @@ impl Sega {
                          .map_err(|e| e.to_string()).unwrap();
 
             canvas.clear();
-            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32))) .map_err(|e| e.to_string()).unwrap();
+            canvas.copy(&texture, None, Some(rect::Rect::new(0, 0, (frame_width/(pixel_width as u16)) as u32, (frame_height/(pixel_width as u16)) as u32))) .map_err(|e| e.to_string()).unwrap();
+            canvas.copy_ex(&texture, None, Some(rect::Rect::new(0, 0, frame_width as u32, frame_height as u32)), 0.0, None, false, false);
             canvas.present();
         }
 
