@@ -1,93 +1,107 @@
-use super::super::ports;
 use super::super::clocks;
+use super::super::ports;
 use super::display;
 
-#[derive(Clone,Copy,Default)]
+#[derive(Clone, Copy, Default)]
 pub struct TileAttribute {
-    priority_cleared:bool,
-    priority:u8,
-    palette_select:bool, 
-    vertical_flip:bool, 
-    horizontal_flip:bool, 
-    tile_number:u16,
+    priority_cleared: bool,
+    priority: u8,
+    palette_select: bool,
+    vertical_flip: bool,
+    horizontal_flip: bool,
+    tile_number: u16,
 }
 
 #[derive(Clone, Default)]
 pub struct HorizontalScroll {
-    column_offset:u8,
-    fine_scroll:u8,
-    x_offset:u16,
+    column_offset: u8,
+    fine_scroll: u8,
+    x_offset: u16,
 }
 
 #[derive(Clone, Default)]
 pub struct Sprite {
-    tile_number:u16,
-    x:u16,
-    y:u16,
+    tile_number: u16,
+    x: u16,
+    y: u16,
 }
 
 #[derive(Clone, Default)]
 pub struct PatternInfo {
-    colours:u16, // TODO: Check, looks as though this should be a u8.
+    colours: u16, // TODO: Check, looks as though this should be a u8.
 }
 
 pub struct Mode1Settings {
-    y_scroll:u8,
-    x_scroll:u16,
-    h_sync_interrupt_enabled:bool,
-    start_x:u8, 
-    display_mode_1:u8,
+    y_scroll: u8,
+    x_scroll: u16,
+    h_sync_interrupt_enabled: bool,
+    start_x: u8,
+    display_mode_1: u8,
 }
 
 impl Mode1Settings {
     pub fn new() -> Self {
         Self {
-            y_scroll:0,
-            x_scroll:0,
-            h_sync_interrupt_enabled:false,
-            start_x:0, 
-            display_mode_1:0,
+            y_scroll: 0,
+            x_scroll: 0,
+            h_sync_interrupt_enabled: false,
+            start_x: 0,
+            display_mode_1: 0,
         }
     }
 
-    pub fn update_mode_1_settings(&mut self, mode_1_input:u8) {
-        Mode1Settings::mode_1_settings(mode_1_input, &mut self.y_scroll, &mut self.x_scroll, &mut self.h_sync_interrupt_enabled, &mut self.start_x, &mut self.display_mode_1);
+    pub fn update_mode_1_settings(&mut self, mode_1_input: u8) {
+        Mode1Settings::mode_1_settings(
+            mode_1_input,
+            &mut self.y_scroll,
+            &mut self.x_scroll,
+            &mut self.h_sync_interrupt_enabled,
+            &mut self.start_x,
+            &mut self.display_mode_1,
+        );
     }
 
-    fn mode_1_settings(mode_1_input:u8, y_scroll:&mut u8, x_scroll:&mut u16, h_sync_interrupt_enabled:&mut bool, start_x:&mut u8, display_mode_1:&mut u8) {
+    fn mode_1_settings(
+        mode_1_input: u8,
+        y_scroll: &mut u8,
+        x_scroll: &mut u16,
+        h_sync_interrupt_enabled: &mut bool,
+        start_x: &mut u8,
+        display_mode_1: &mut u8,
+    ) {
         // Set first scrolling line
         if 0 != (mode_1_input & Constants::VDP0DISHSCROLL) {
             *y_scroll = 16;
         } else {
             *y_scroll = 0;
         }
-    
+
         // Set last scrolling position
         if 0 != (mode_1_input & Constants::VDP0DISHSCROLL) {
             *x_scroll = 192;
         } else {
             *x_scroll = Constants::SMS_WIDTH;
         }
-    
+
         if 0 != (mode_1_input & Constants::VDP0LINEINTENABLE) {
             *h_sync_interrupt_enabled = true;
         } else {
             *h_sync_interrupt_enabled = false;
         }
-    
+
         if 0 != (mode_1_input & Constants::VDP0COL0OVERSCAN) {
             *start_x = Constants::PATTERNWIDTH;
         } else {
             *start_x = 0;
         }
-    
-            // TODO: Add additional sprite control
-//            if (mode_1_input & Constants::VDP0SHIFTSPRITES) {
-//                errors.warning("Sprite shift not implemented")
-//    
-//            if (mode_1_input & Constants::VDP0NOSYNC) {
-//                errors.warning("No sync, not implemented")
-    
+
+        // TODO: Add additional sprite control
+        //            if (mode_1_input & Constants::VDP0SHIFTSPRITES) {
+        //                errors.warning("Sprite shift not implemented")
+        //
+        //            if (mode_1_input & Constants::VDP0NOSYNC) {
+        //                errors.warning("No sync, not implemented")
+
         *display_mode_1 = 0;
         if 0 != (mode_1_input & Constants::VDP0M4) {
             *display_mode_1 |= 8;
@@ -98,31 +112,42 @@ impl Mode1Settings {
     }
 }
 
-
 pub struct Mode2Settings {
-    v_sync_interrupt_enabled:bool, 
-    enable_display:bool, 
-    sprite_height:u8, 
-    sprite_width:u8,
-    display_mode_2:u8,
+    v_sync_interrupt_enabled: bool,
+    enable_display: bool,
+    sprite_height: u8,
+    sprite_width: u8,
+    display_mode_2: u8,
 }
 
 impl Mode2Settings {
     fn new() -> Self {
         Self {
-            v_sync_interrupt_enabled:false, 
-            enable_display:false, 
-            sprite_height:8, 
-            sprite_width:8, 
-            display_mode_2:0,
+            v_sync_interrupt_enabled: false,
+            enable_display: false,
+            sprite_height: 8,
+            sprite_width: 8,
+            display_mode_2: 0,
         }
     }
 
-    pub fn update_mode_2_settings(&mut self, mode_2_input:u8) {
-        Mode2Settings::mode_2_settings(mode_2_input, &mut self.v_sync_interrupt_enabled, &mut self.enable_display, &mut self.sprite_height, &mut self.display_mode_2);
+    pub fn update_mode_2_settings(&mut self, mode_2_input: u8) {
+        Mode2Settings::mode_2_settings(
+            mode_2_input,
+            &mut self.v_sync_interrupt_enabled,
+            &mut self.enable_display,
+            &mut self.sprite_height,
+            &mut self.display_mode_2,
+        );
     }
 
-    fn mode_2_settings(mode_2_input:u8, v_sync_interrupt_enabled:&mut bool, enable_display:&mut bool, sprite_height:&mut u8, display_mode_2:&mut u8) {
+    fn mode_2_settings(
+        mode_2_input: u8,
+        v_sync_interrupt_enabled: &mut bool,
+        enable_display: &mut bool,
+        sprite_height: &mut u8,
+        display_mode_2: &mut u8,
+    ) {
         if 0 != (mode_2_input & Constants::VDP1VSYNC) {
             *v_sync_interrupt_enabled = true;
         } else {
@@ -134,17 +159,17 @@ impl Mode2Settings {
         } else {
             *enable_display = false;
         }
-    
+
         if 0 != (mode_2_input & Constants::VDP1BIGSPRITES) {
             *sprite_height = 16;
         } else {
             *sprite_height = 8;
         }
-    
-                // TODO: Add double sprites
-//            if (mode_2_input & Constants::VDP1DOUBLESPRITES) {
-//                errors.warning("Double sprites not implemented")
-    
+
+        // TODO: Add double sprites
+        //            if (mode_2_input & Constants::VDP1DOUBLESPRITES) {
+        //                errors.warning("Double sprites not implemented")
+
         *display_mode_2 = 0;
         if 0 != (mode_2_input & Constants::VDP1M3) {
             *display_mode_2 |= 4;
@@ -155,99 +180,85 @@ impl Mode2Settings {
     }
 }
 
-pub struct Constants {
-}
+pub struct Constants {}
 
 impl Constants {
-    const RAMSIZE:u16  = 0x4000;
-    const CRAMSIZE:u8  = 0x20;
+    const RAMSIZE: u16 = 0x4000;
+    const CRAMSIZE: u8 = 0x20;
     // 3Mhz CPU, 50Hz refresh ~= 60000 ticks
-    const VSYNCCYCLETIME:u16 = 65232;
-    const BLANKTIME:u16      = ((Constants::VSYNCCYCLETIME as u32 * 72)/262) as u16;
-    const VFRAMETIME:u16     = ((Constants::VSYNCCYCLETIME as u32 * 192)/262) as u16;
-    const HSYNCCYCLETIME:u16 = 216;
+    const VSYNCCYCLETIME: u16 = 65232;
+    const BLANKTIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * 72) / 262) as u16;
+    const VFRAMETIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * 192) / 262) as u16;
+    const HSYNCCYCLETIME: u16 = 216;
 
-    const REGISTERMASK:u8  = 0x0F;
-    const REGISTERUPDATEMASK:u8  = 0xF0;
-    const REGISTERUPDATEVALUE:u8 = 0x80;
-    const NUMVDPREGISTERS:u8 = 16;
-
-    const MAX_MODE_CONTROL_ENTRIES:u16 = 256;
+    const REGISTERMASK: u8 = 0x0F;
+    const REGISTERUPDATEMASK: u8 = 0xF0;
+    const REGISTERUPDATEVALUE: u8 = 0x80;
+    const NUMVDPREGISTERS: u8 = 16;
 
     // VDP status register
-    const VSYNCFLAG:u8   = 0x80;
+    const VSYNCFLAG: u8 = 0x80;
 
     // VDP register 0
-    const MODE_CONTROL_NO_1:u8 = 0x0;
-    const VDP0DISVSCROLL:u8    = 0x80;
-    const VDP0DISHSCROLL:u8    = 0x40;
-    const VDP0COL0OVERSCAN:u8  = 0x20;
-    const VDP0LINEINTENABLE:u8 = 0x10;
-    const VDP0SHIFTSPRITES:u8  = 0x08;
-    const VDP0M4:u8            = 0x04;
-    const VDP0M2:u8            = 0x02;
-    const VDP0NOSYNC:u8        = 0x01;
+    const MODE_CONTROL_NO_1: u8 = 0x0;
+    const VDP0DISHSCROLL: u8 = 0x40;
+    const VDP0COL0OVERSCAN: u8 = 0x20;
+    const VDP0LINEINTENABLE: u8 = 0x10;
+    const VDP0SHIFTSPRITES: u8 = 0x08;
+    const VDP0M4: u8 = 0x04;
+    const VDP0M2: u8 = 0x02;
+    const VDP0NOSYNC: u8 = 0x01;
 
-    // VDP register 1
-    const MODE_CONTROL_NO_2:u8 = 0x1;
-    const VDP1BIT7:u8          = 0x80;
-    const VDP1ENABLEDISPLAY:u8 = 0x40;
-    const VDP1VSYNC:u8         = 0x20;
-    const VDP1M1:u8            = 0x10;
-    const VDP1M3:u8            = 0x08;
-    const VDP1BIGSPRITES:u8    = 0x02;
-    const VDP1DOUBLESPRITES:u8 = 0x01;
+    // VDP register 1 /* bit 7 unused. */
+    const MODE_CONTROL_NO_2: u8 = 0x1;
+    const VDP1ENABLEDISPLAY: u8 = 0x40;
+    const VDP1VSYNC: u8 = 0x20;
+    const VDP1M1: u8 = 0x10;
+    const VDP1M3: u8 = 0x08;
+    const VDP1BIGSPRITES: u8 = 0x02;
+    const VDP1DOUBLESPRITES: u8 = 0x01;
 
-    const NAMETABLEPRIORITY:u8 = 0x10;
-    const NUMSPRITES:u8 = 64;
+    const NUMSPRITES: u8 = 64;
 
-    const DMM4:u8 = 0x8;
-    const DMM3:u8 = 0x4;
-    const DMM2:u8 = 0x2;
-    const DMM1:u8 = 0x1;
+    pub const BYTES_PER_PIXEL: u16 = 3; // TODO: Get the bytes per pixel from the display setup.
+    pub const SMS_WIDTH: u16 = 256;
+    pub const SMS_HEIGHT: u16 = 192; // MAX HEIGHT, TODO: Consider changing to 'u8'.
+    const SMS_COLOR_DEPTH: u8 = 16;
 
-    const PALETTE_ADDRESS:u16  = 0xC000;
+    const MAXPATTERNS: u16 = 512;
+    const PATTERNWIDTH: u8 = 8;
+    const PATTERNHEIGHT: u8 = 8;
+    const PATTERNSIZE: u8 = 64;
 
-    pub const BYTES_PER_PIXEL:u16  = 3; // TODO: Get the bytes per pixel from the display setup.
-    pub const SMS_WIDTH:u16  = 256;
-    pub const SMS_HEIGHT:u16 = 192; // MAX HEIGHT, TODO: Consider changing to 'u8'.
-    const SMS_COLOR_DEPTH:u8 = 16;
+    const MAXPALETTES: u8 = 2;
 
-    const MAXPATTERNS:u16 = 512;
-    const PATTERNWIDTH:u8  = 8;
-    const PATTERNHEIGHT:u8 = 8;
-    const PATTERNSIZE:u8 = 64;
+    const NUMTILEATTRIBUTES: u16 = 0x700;
+    const TILEATTRIBUTEMASK: u16 = 0x7FF;
+    const TILEATTRIBUTESADDRESSMASK: u16 = 0x3800;
+    const TILEATTRIBUTESTILEMASK: u16 = 0x07FE;
+    const TILESHIFT: u8 = 1;
+    const TILEATTRIBUTESHMASK: u16 = 0x0001;
+    const TILEPRIORITYSHIFT: u8 = 4;
+    const TILEPALETTESHIFT: u8 = 3;
+    const TILEVFLIPSHIFT: u8 = 2;
+    const TILEHFLIPSHIFT: u8 = 1;
 
-    const MAXPALETTES:u8 = 2;
+    const YTILES: u8 = 28;
+    const XTILES: u8 = 32;
+    const NUMTILES: u16 = Constants::XTILES as u16 * Constants::YTILES as u16;
 
-    const NUMTILEATTRIBUTES:u16 = 0x700;
-    const TILEATTRIBUTEMASK:u16     = 0x7FF;
-    const TILEATTRIBUTESADDRESSMASK:u16 = 0x3800;
-    const TILEATTRIBUTESTILEMASK:u16 = 0x07FE;
-    const TILESHIFT:u8 = 1;
-    const TILEATTRIBUTESHMASK:u16    = 0x0001;
-    const TILEPRIORITYSHIFT:u8 = 4;
-    const TILEPALETTESHIFT:u8 = 3;
-    const TILEVFLIPSHIFT:u8 = 2;
-    const TILEHFLIPSHIFT:u8 = 1;
+    const SPRITEATTRIBUTESADDRESSMASK: u16 = 0x3F00;
+    const SPRITEATTRIBUTESMASK: u16 = 0x00FF;
+    const NUMSPRITEATTRIBUTES: u16 = 0x00FF;
 
-    const YTILES:u8 = 28;
-    const XTILES:u8 = 32;
-    const NUMTILES:u16 = Constants::XTILES as u16 * Constants::YTILES as u16;
+    const SPRITETILEMASK: u16 = 0x0001;
 
-    const SPRITEATTRIBUTESADDRESSMASK:u16 = 0x3F00;
-    const SPRITEATTRIBUTESMASK:u16 = 0x00FF;
-    const NUMSPRITEATTRIBUTES:u16 = 0x00FF;
+    const LASTSPRITETOKEN: u8 = 0xD0;
+    const SPRITEXNMASK: u16 = 0x0080;
+    const MAXSPRITES: u8 = 64;
+    const MAXSPRITESPERSCANLINE: u8 = 8;
 
-    const SPRITETILEMASK:u16 = 0x0001;
-
-    const LASTSPRITETOKEN:u8 = 0xD0;
-    const SPRITEXNMASK:u16 = 0x0080;
-    const MAXSPRITES:u8 = 64;
-    const NOSPRITE:u8 = Constants::MAXSPRITES;
-    const MAXSPRITESPERSCANLINE:u8 = 8;
-
-    const PATTERNADDRESSLIMIT:u16 = 0x4000;
+    const PATTERNADDRESSLIMIT: u16 = 0x4000;
 }
 
 #[derive(Clone)]
@@ -258,7 +269,7 @@ pub struct ScanLines {
 impl ScanLines {
     pub fn new(width: u16) -> Self {
         Self {
-            scan_line: vec![display::Colour::new(0, 0, 0);width as usize],
+            scan_line: vec![display::Colour::new(0, 0, 0); width as usize],
         }
     }
 }
@@ -273,7 +284,7 @@ pub struct SpriteScanLines {
 impl SpriteScanLines {
     pub fn new(width: u16) -> Self {
         Self {
-            scan_line: vec![0;width as usize],
+            scan_line: vec![0; width as usize],
             num_sprites: 0,
             sprites: vec![0; Constants::MAXSPRITES as usize],
         }
@@ -288,7 +299,7 @@ pub struct BackgroundScanLines {
 impl BackgroundScanLines {
     pub fn new(width: u16) -> Self {
         Self {
-            scan_line: vec![0;width as usize],
+            scan_line: vec![0; width as usize],
         }
     }
 }
@@ -302,7 +313,7 @@ pub struct PriorityScanLines {
 impl PriorityScanLines {
     pub fn new(width: u16) -> Self {
         Self {
-            scan_line: vec![false;width as usize],
+            scan_line: vec![false; width as usize],
             has_priority: false,
         }
     }
@@ -318,10 +329,27 @@ pub struct DisplayBuffers {
 impl DisplayBuffers {
     pub fn new() -> Self {
         Self {
-            background_scan_lines: vec![ScanLines::new((Constants::PATTERNWIDTH as u16) *(Constants::XTILES as u16) *(Constants::YTILES as u16) );(Constants::YTILES*Constants::PATTERNHEIGHT) as usize],
-            forground_scan_lines: vec![PriorityScanLines::new((Constants::PATTERNWIDTH as u16) *(Constants::XTILES as u16) *(Constants::YTILES as u16) );(Constants::YTILES*Constants::PATTERNHEIGHT) as usize],
+            background_scan_lines: vec![
+                ScanLines::new(
+                    (Constants::PATTERNWIDTH as u16)
+                        * (Constants::XTILES as u16)
+                        * (Constants::YTILES as u16)
+                );
+                (Constants::YTILES * Constants::PATTERNHEIGHT) as usize
+            ],
+            forground_scan_lines: vec![
+                PriorityScanLines::new(
+                    (Constants::PATTERNWIDTH as u16)
+                        * (Constants::XTILES as u16)
+                        * (Constants::YTILES as u16)
+                );
+                (Constants::YTILES * Constants::PATTERNHEIGHT) as usize
+            ],
             scan_lines: vec![ScanLines::new(VDP::FRAME_WIDTH); Constants::SMS_HEIGHT as usize],
-            sprite_scan_lines: vec![SpriteScanLines::new(VDP::FRAME_WIDTH); Constants::SMS_HEIGHT as usize],
+            sprite_scan_lines: vec![
+                SpriteScanLines::new(VDP::FRAME_WIDTH);
+                Constants::SMS_HEIGHT as usize
+            ],
         }
     }
 }
@@ -331,7 +359,7 @@ pub struct VDP {
     ram: Vec<u8>,
     c_ram: Vec<u8>,
 
-    vdp_register: [u8;Constants::NUMVDPREGISTERS as usize],
+    vdp_register: [u8; Constants::NUMVDPREGISTERS as usize],
 
     horizontal_scroll_info: Vec<HorizontalScroll>,
     vertical_scroll_info: Vec<u8>,
@@ -360,7 +388,7 @@ pub struct VDP {
     tile_attributes_address: u16,
     write_bf_low_address: u8, // Holds the 'low' byte of the address when a write to bf occurs.
 
-    border_colour:u8,
+    border_colour: u8,
 
     code_register: u8,
 
@@ -368,71 +396,73 @@ pub struct VDP {
     address_latch: bool,
 
     last_v_sync_clock: clocks::Clock,
-    display_mode: u8, 
-    
+    display_mode: u8,
+
     interrupt_handler: VDPInterrupts,
 
-
-    sprite_tile_shift:u16,
-    horizontal_scroll:u8,
-    vertical_scroll:u8,
+    sprite_tile_shift: u16,
+    horizontal_scroll: u8,
+    vertical_scroll: u8,
 
     // Used internally for debugging/diagnostics
-    debug_name_table_offset:u16,
-    debug_sprite_information_table_offset:u16,
+    debug_name_table_offset: u16,
+    debug_sprite_information_table_offset: u16,
 }
 
 pub struct VDPInterrupts {
-    vdp_status_register:u8,
+    vdp_status_register: u8,
     v_sync: u16,
     y_end: u16,
     current_y_pos: u16,
     last_v_sync_clock: clocks::Clock,
-    line_int_time:u32,
-    line_interrupt:u16,
-    line_interrupt_latch:u16,
+    line_int_time: u32,
+    line_interrupt: u16,
+    line_interrupt_latch: u16,
 
-    h_int_pending:bool,
-    v_int_pending:bool,
-    v_sync_interrupt_enabled:bool,
-    h_sync_interrupt_enabled:bool,
+    h_int_pending: bool,
+    v_int_pending: bool,
+    v_sync_interrupt_enabled: bool,
+    h_sync_interrupt_enabled: bool,
 
-    frame_updated:bool,
+    frame_updated: bool,
 }
 
 impl VDP {
-    const SMS_WIDTH:u16  = 256;
-    const SMS_HEIGHT:u16 = 192; // MAX HEIGHT
-
-    const FRAME_WIDTH:u16  = Constants::SMS_WIDTH;
-    const FRAME_HEIGHT:u16 = Constants::SMS_HEIGHT;
-    const PIXEL_WIDTH:u16  = 2;
-    const PIXEL_HEIGHT:u16 = 2;
-
-    const START_DRAW_Y:u16 = 0;
-    const END_DRAW_Y:u16   = VDP::FRAME_HEIGHT;
-
+    const FRAME_WIDTH: u16 = Constants::SMS_WIDTH;
+    const FRAME_HEIGHT: u16 = Constants::SMS_HEIGHT;
 
     pub fn new() -> Self {
         Self {
-            ram: vec![0; Constants::RAMSIZE as usize],         
+            ram: vec![0; Constants::RAMSIZE as usize],
             c_ram: vec![0; Constants::CRAMSIZE as usize],
-            vdp_register: [0;Constants::NUMVDPREGISTERS as usize],
+            vdp_register: [0; Constants::NUMVDPREGISTERS as usize],
 
             // One entry per scan line for horizontal and vertical scroll info.
-            horizontal_scroll_info: vec![HorizontalScroll::default(); Constants::SMS_HEIGHT as usize],
-            vertical_scroll_info: vec![0;Constants::SMS_HEIGHT as usize],
+            horizontal_scroll_info: vec![
+                HorizontalScroll::default();
+                Constants::SMS_HEIGHT as usize
+            ],
+            vertical_scroll_info: vec![0; Constants::SMS_HEIGHT as usize],
 
-            last_horizontal_scroll_info: vec![HorizontalScroll::default(); Constants::SMS_HEIGHT as usize],
-            last_vertical_scroll_info: vec![0;Constants::SMS_HEIGHT as usize],
+            last_horizontal_scroll_info: vec![
+                HorizontalScroll::default();
+                Constants::SMS_HEIGHT as usize
+            ],
+            last_vertical_scroll_info: vec![0; Constants::SMS_HEIGHT as usize],
 
             pattern_info: vec![PatternInfo::default(); Constants::MAXPATTERNS as usize],
-            screen_palette: vec![display::Colour::new(0,0,0);Constants::CRAMSIZE as usize],
+            screen_palette: vec![display::Colour::new(0, 0, 0); Constants::CRAMSIZE as usize],
             display_buffers: DisplayBuffers::new(),
-            patterns4: vec![0;(Constants::MAXPATTERNS*(Constants::PATTERNSIZE as u16)) as usize],
-            patterns16: vec![vec![display::Colour::new(0,0,0);(Constants::MAXPATTERNS*(Constants::PATTERNSIZE as u16)) as usize]; Constants::MAXPALETTES as usize],
-            tile_attributes: vec![TileAttribute::default();Constants::NUMTILEATTRIBUTES as usize],
-            sprites: vec![Sprite::default();Constants::MAXSPRITES as usize],
+            patterns4: vec![0; (Constants::MAXPATTERNS * (Constants::PATTERNSIZE as u16)) as usize],
+            patterns16: vec![
+                vec![
+                    display::Colour::new(0, 0, 0);
+                    (Constants::MAXPATTERNS * (Constants::PATTERNSIZE as u16)) as usize
+                ];
+                Constants::MAXPALETTES as usize
+            ],
+            tile_attributes: vec![TileAttribute::default(); Constants::NUMTILEATTRIBUTES as usize],
+            sprites: vec![Sprite::default(); Constants::MAXSPRITES as usize],
 
             total_sprites: Constants::MAXSPRITES,
 
@@ -446,43 +476,39 @@ impl VDP {
 
             read_be_latch: 0,
             write_bf_low_address: 0,
-            border_colour:0,
+            border_colour: 0,
             address_latch: false,
             last_v_sync_clock: clocks::Clock::new(),
-            display_mode: 0, 
+            display_mode: 0,
             interrupt_handler: VDPInterrupts::new(),
 
-            sprite_tile_shift:0,
-            horizontal_scroll:0,
-            vertical_scroll:0,
+            sprite_tile_shift: 0,
+            horizontal_scroll: 0,
+            vertical_scroll: 0,
 
-            debug_name_table_offset:0,
-            debug_sprite_information_table_offset:0,
+            debug_name_table_offset: 0,
+            debug_sprite_information_table_offset: 0,
         }
     }
 
-    pub fn set_address(&mut self, value: u16) {
-
-    }
-    pub fn get_address(&self) -> u16 {
-        self.current_address
-    }
-
     pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
-        self.address_latch = false;  // Address is unlatched during port read
-    
-        let v_counter:u8 = ((clock.cycles-self.last_v_sync_clock.cycles)/Constants::HSYNCCYCLETIME as u32) as u8;
-        self.interrupt_handler.current_y_pos = (((clock.cycles-self.last_v_sync_clock.cycles)/Constants::HSYNCCYCLETIME as u32)+1) as u16;
-    
+        self.address_latch = false; // Address is unlatched during port read
+
+        let v_counter: u8 = ((clock.cycles - self.last_v_sync_clock.cycles)
+            / Constants::HSYNCCYCLETIME as u32) as u8;
+        self.interrupt_handler.current_y_pos = (((clock.cycles - self.last_v_sync_clock.cycles)
+            / Constants::HSYNCCYCLETIME as u32)
+            + 1) as u16;
+
         // I can't think of an ellegant solution, so this is as good as it gets
         // for now (fudge factor and all)
-// TODO: Add joystick (light gun)        self.inputs.joystick.setYpos(vCounter+10)
+        // TODO: Add joystick (light gun)        self.inputs.joystick.setYpos(vCounter+10)
         v_counter
     }
 
-    pub fn read_port_7f(&mut self, clock: &clocks::Clock) -> u8 {
-        self.address_latch = false;  // Address is unlatched during port read
-    
+    pub fn read_port_7f(&mut self, _clock: &clocks::Clock) -> u8 {
+        self.address_latch = false; // Address is unlatched during port read
+
         // TODO: Add/fix joystick (light gun)
         // I can't think of an ellegant solution, so this is as good as it gets
         // for now (fudge factor and all)
@@ -490,119 +516,145 @@ impl VDP {
         0
     }
 
-    pub fn read_port_be(&mut self, clock: &clocks::Clock) -> u8 {
+    pub fn read_port_be(&mut self, _clock: &clocks::Clock) -> u8 {
         self.address_latch = false; // Address is unlatched during port read
-    
+
         let data = self.read_be_latch;
-    
+
         self.current_address = (self.current_address + 1) & 0x3FFF; // Should be ok without this
         self.read_be_latch = self.ram[self.current_address as usize];
-    
+
         data
     }
 
-    pub fn set_palette(&mut self, address: u16, data:u8) {
+    pub fn set_palette(&mut self, address: u16, data: u8) {
         // uint16 colour
         // uint8 r, g, b
-    
-        let addr = address as u8 % Constants::CRAMSIZE;
-    
-        if self.c_ram[addr as usize] != data {
 
+        let addr = address as u8 % Constants::CRAMSIZE;
+
+        if self.c_ram[addr as usize] != data {
             self.c_ram[addr as usize] = data;
-    
+
             // Generate 8-bit RGB components, just to be generic
-            let r = ((data as u16 &0x3)*0xFF)/0x3;
-            let g = (((data as u16 >>2)&0x3)*0xFF)/0x3;
-            let b = (((data as u16 >>4)&0x3)*0xFF)/0x3;
-    
+            let r = ((data as u16 & 0x3) * 0xFF) / 0x3;
+            let g = (((data as u16 >> 2) & 0x3) * 0xFF) / 0x3;
+            let b = (((data as u16 >> 4) & 0x3) * 0xFF) / 0x3;
+
             let colour = display::Colour::new(r as u8, g as u8, b as u8);
-    
+
             self.screen_palette[addr as usize] = colour;
         }
     }
 
-    pub fn update_tile_attributes(&mut self, address: u16, old_data:u8, data:u8) {
+    pub fn update_tile_attributes(&mut self, address: u16, old_data: u8, data: u8) {
         // Only update if altered
         if old_data != data {
             let tile = (address & Constants::TILEATTRIBUTESTILEMASK) >> Constants::TILESHIFT;
-    
-            // Alteration of the high byte 
+
+            // Alteration of the high byte
             if 0 != address & Constants::TILEATTRIBUTESHMASK {
-                if 0 != self.tile_attributes[tile as usize].priority && 0 == (data >> Constants::TILEPRIORITYSHIFT) {
+                if 0 != self.tile_attributes[tile as usize].priority
+                    && 0 == (data >> Constants::TILEPRIORITYSHIFT)
+                {
                     self.tile_attributes[tile as usize].priority_cleared = true;
                 }
-    
-                self.tile_attributes[tile as usize].priority        =  data >> Constants::TILEPRIORITYSHIFT;
-                self.tile_attributes[tile as usize].palette_select  = 0 != (data >> Constants::TILEPALETTESHIFT) & 0x1;
-                self.tile_attributes[tile as usize].vertical_flip   = 0 != (data >> Constants::TILEVFLIPSHIFT) & 0x1;
-                self.tile_attributes[tile as usize].horizontal_flip = 0 != (data >> Constants::TILEHFLIPSHIFT) & 0x1;
-                self.tile_attributes[tile as usize].tile_number     = (self.tile_attributes[tile as usize].tile_number & 0xFF) | (((data as u16) & 0x1) << 8);
+
+                self.tile_attributes[tile as usize].priority = data >> Constants::TILEPRIORITYSHIFT;
+                self.tile_attributes[tile as usize].palette_select =
+                    0 != (data >> Constants::TILEPALETTESHIFT) & 0x1;
+                self.tile_attributes[tile as usize].vertical_flip =
+                    0 != (data >> Constants::TILEVFLIPSHIFT) & 0x1;
+                self.tile_attributes[tile as usize].horizontal_flip =
+                    0 != (data >> Constants::TILEHFLIPSHIFT) & 0x1;
+                self.tile_attributes[tile as usize].tile_number =
+                    (self.tile_attributes[tile as usize].tile_number & 0xFF)
+                        | (((data as u16) & 0x1) << 8);
             } else {
-                self.tile_attributes[tile as usize].tile_number     = (self.tile_attributes[tile as usize].tile_number & 0x100) | (data as u16);
+                self.tile_attributes[tile as usize].tile_number =
+                    (self.tile_attributes[tile as usize].tile_number & 0x100) | (data as u16);
             }
         }
     }
 
-    pub fn update_sprite_attributes(&mut self, address: u16, old_data:u8, data:u8) {
+    pub fn update_sprite_attributes(&mut self, address: u16, old_data: u8, data: u8) {
         // Only update if need be
         if old_data != data {
             let mut sprite_num = (address & Constants::SPRITEATTRIBUTESMASK) as u8;
-    
+
             // See if it's an x, or tile number attributes
             if 0 != (sprite_num & Constants::SPRITEXNMASK as u8) {
                 sprite_num = (sprite_num >> 1) ^ Constants::MAXSPRITES;
-                if 0 != (address & Constants::SPRITETILEMASK) { // Changing tile
-                    self.sprites[sprite_num as usize].tile_number = data as u16 | self.sprite_tile_shift;
-                }
-                else { // Changing x position
+                if 0 != (address & Constants::SPRITETILEMASK) {
+                    // Changing tile
+                    self.sprites[sprite_num as usize].tile_number =
+                        data as u16 | self.sprite_tile_shift;
+                } else {
+                    // Changing x position
                     self.sprites[sprite_num as usize].x = data as u16;
                 }
-    
-            } else if sprite_num < Constants::MAXSPRITES { // Updating y attribute
+            } else if sprite_num < Constants::MAXSPRITES {
+                // Updating y attribute
                 // The number of sprites has changed, do some work updating
                 // the appropriate scanlines
-    
+
                 // If inserting a new token earlier then previous, remove tiles
                 if data == Constants::LASTSPRITETOKEN {
                     if sprite_num < self.total_sprites {
                         for i in (sprite_num..self.total_sprites).rev() {
                             // Not the most efficient, but fairly robust
-                            for y in (self.sprites[i as usize].y)..(self.sprites[i as usize].y + (self.mode_2_control.sprite_height as u16)) {
+                            for y in (self.sprites[i as usize].y)
+                                ..(self.sprites[i as usize].y
+                                    + (self.mode_2_control.sprite_height as u16))
+                            {
                                 self.remove_sprite_to_scan_lines(y, i);
                             }
                         }
                         self.total_sprites = sprite_num;
                     }
-    
+
                     self.sprites[sprite_num as usize].y = (data as u16) + 1;
-                } else if (self.sprites[sprite_num as usize].y == (Constants::LASTSPRITETOKEN + 1) as u16) && (sprite_num == self.total_sprites) {
+                } else if (self.sprites[sprite_num as usize].y
+                    == (Constants::LASTSPRITETOKEN + 1) as u16)
+                    && (sprite_num == self.total_sprites)
+                {
                     // Removing token, so extend the number of sprites
-    
+
                     self.total_sprites += 1;
-                    while (self.total_sprites < Constants::MAXSPRITES) &&
-                          (self.sprites[self.total_sprites as usize].y != (Constants::LASTSPRITETOKEN + 1) as u16) {
-                                self.total_sprites += 1;
+                    while (self.total_sprites < Constants::MAXSPRITES)
+                        && (self.sprites[self.total_sprites as usize].y
+                            != (Constants::LASTSPRITETOKEN + 1) as u16)
+                    {
+                        self.total_sprites += 1;
                     }
-    
+
                     self.sprites[sprite_num as usize].y = (data as u16) + 1;
-    
+
                     // Not the most efficient, but fairly robust
-                    for i in sprite_num .. self.total_sprites {
-                        for y in self.sprites[i as usize].y..(self.sprites[i as usize].y + (self.mode_2_control.sprite_height as u16)) {
+                    for i in sprite_num..self.total_sprites {
+                        for y in self.sprites[i as usize].y
+                            ..(self.sprites[i as usize].y
+                                + (self.mode_2_control.sprite_height as u16))
+                        {
                             self.add_sprite_to_scan_lines(y, i);
                         }
                     }
                 } else if sprite_num < self.total_sprites {
                     // Remove from previous scanlines, add to new scanlines
                     // Not the most efficient, but fairly robust
-                    for y in self.sprites[sprite_num as usize].y..(self.sprites[sprite_num as usize].y + (self.mode_2_control.sprite_height as u16)) {
+                    for y in self.sprites[sprite_num as usize].y
+                        ..(self.sprites[sprite_num as usize].y
+                            + (self.mode_2_control.sprite_height as u16))
+                    {
                         self.remove_sprite_to_scan_lines(y, sprite_num);
                     }
-    
+
                     self.sprites[sprite_num as usize].y = (data as u16) + 1;
-    
-                    for y in (self.sprites[sprite_num as usize].y)..(self.sprites[sprite_num as usize].y + (self.mode_2_control.sprite_height as u16)) {
+
+                    for y in (self.sprites[sprite_num as usize].y)
+                        ..(self.sprites[sprite_num as usize].y
+                            + (self.mode_2_control.sprite_height as u16))
+                    {
                         self.add_sprite_to_scan_lines(y, sprite_num);
                     }
                 } else {
@@ -616,22 +668,36 @@ impl VDP {
         let scan_line_number = scan_line_number & 0xFF;
 
         if scan_line_number < self.interrupt_handler.y_end {
-            assert!(self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites != Constants::MAXSPRITES as u16);
-    
-            if self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites != Constants::MAXSPRITES as u16 {
-                let mut i = self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
+            assert!(
+                self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites
+                    != Constants::MAXSPRITES as u16
+            );
+
+            if self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites
+                != Constants::MAXSPRITES as u16
+            {
+                let mut i =
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
                 self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites += 1;
-                while i > 0  {
-                    if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i-1) as usize] < sprite_number {
-                        self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = sprite_number;
+                while i > 0 {
+                    if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                        [(i - 1) as usize]
+                        < sprite_number
+                    {
+                        self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                            [i as usize] = sprite_number;
                         return;
                     }
-    
-                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i - 1) as usize];
+
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                        [i as usize] = self.display_buffers.sprite_scan_lines
+                        [scan_line_number as usize]
+                        .sprites[(i - 1) as usize];
                     i -= 1;
                 }
-    
-                self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[0_usize] = sprite_number;
+
+                self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                    [0_usize] = sprite_number;
             } else {
                 panic!("Max sprite limit reached.");
             }
@@ -642,18 +708,26 @@ impl VDP {
         let scan_line_number = scan_line_number & 0xFF;
 
         let mut shift = 0;
-    
+
         if scan_line_number < self.interrupt_handler.y_end {
-            let num_sprites = self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
-    
+            let num_sprites =
+                self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites;
+
             for i in 0..(num_sprites - shift) {
-                if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] == sprite_number {
-                    shift +=1;
-                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].num_sprites -=1;
+                if self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                    [i as usize]
+                    == sprite_number
+                {
+                    shift += 1;
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize]
+                        .num_sprites -= 1;
                 }
-    
+
                 if i + shift < Constants::MAXSPRITES as u16 {
-                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[i as usize] = self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites[(i + shift) as usize];
+                    self.display_buffers.sprite_scan_lines[scan_line_number as usize].sprites
+                        [i as usize] = self.display_buffers.sprite_scan_lines
+                        [scan_line_number as usize]
+                        .sprites[(i + shift) as usize];
                 } else {
                     panic!("Index exceeds range of MAXSPRITES");
                 }
@@ -664,9 +738,13 @@ impl VDP {
     pub fn update_horizontal_scroll_info(&mut self) {
         let column_offset = (0x20 - (self.horizontal_scroll >> 3)) & 0x1F;
         let fine_scroll = self.horizontal_scroll & 0x7;
-        let x_offset = ((column_offset as u16) * (Constants::PATTERNWIDTH as u16) - (fine_scroll as u16)) % Constants::SMS_WIDTH;
-    
-        for y in self.interrupt_handler.current_y_pos as usize ..self.interrupt_handler.y_end as usize  {
+        let x_offset = ((column_offset as u16) * (Constants::PATTERNWIDTH as u16)
+            - (fine_scroll as u16))
+            % Constants::SMS_WIDTH;
+
+        for y in
+            self.interrupt_handler.current_y_pos as usize..self.interrupt_handler.y_end as usize
+        {
             self.horizontal_scroll_info[y].column_offset = column_offset;
             self.horizontal_scroll_info[y].fine_scroll = fine_scroll;
             self.horizontal_scroll_info[y].x_offset = x_offset;
@@ -674,18 +752,20 @@ impl VDP {
     }
 
     pub fn update_vertical_scroll_info(&mut self) {
-        for y in self.interrupt_handler.current_y_pos as usize ..self.interrupt_handler.y_end as usize  {
+        for y in
+            self.interrupt_handler.current_y_pos as usize..self.interrupt_handler.y_end as usize
+        {
             self.vertical_scroll_info[y] = self.vertical_scroll;
         }
     }
 
-    pub fn update_pattern(&mut self, address: u16, old_data:u8, data:u8) {
+    pub fn update_pattern(&mut self, address: u16, old_data: u8, data: u8) {
         let mut change = old_data ^ data; // Flip only the bits that have changed
         if change != 0 {
             let index = (address & 0x3FFC) << 1; // Base index (pattern + row)
-    
-            let mask = 1 << (address & 0x3);  // Bit position to flip
-    
+
+            let mask = 1 << (address & 0x3); // Bit position to flip
+
             // Only update if the data has changed
             // From right to left
             let mut x = 7;
@@ -694,7 +774,7 @@ impl VDP {
                 if 0 != change & 0x1 {
                     self.patterns4[(index + x) as usize] ^= mask;
                 }
-    
+
                 if x > 0 {
                     x -= 1;
                 }
@@ -703,34 +783,52 @@ impl VDP {
         }
     }
 
-    pub fn write_port_be(&mut self, clock: &clocks::Clock, data: u8) {
-        self.address_latch = false;  // Address is unlatched during port read
-    
-        if self.code_register == 0x3 { // Write to video ram
+    pub fn write_port_be(&mut self, _clock: &clocks::Clock, data: u8) {
+        self.address_latch = false; // Address is unlatched during port read
+
+        if self.code_register == 0x3 {
+            // Write to video ram
             self.set_palette(self.current_address, data);
         } else {
-            if ((self.current_address & Constants::TILEATTRIBUTESADDRESSMASK) == self.tile_attributes_address) &&
-               ((self.current_address & Constants::TILEATTRIBUTEMASK) < Constants::NUMTILEATTRIBUTES) {
-                self.update_tile_attributes(self.current_address,self.ram[self.current_address as usize], data);
-            } else if ((self.current_address & Constants::SPRITEATTRIBUTESADDRESSMASK) == self.sprite_attributes_address) &&
-                      ((self.current_address & Constants::SPRITEATTRIBUTESMASK) < Constants::NUMSPRITEATTRIBUTES) {
-                self.update_sprite_attributes(self.current_address,self.ram[self.current_address as usize], data);
+            if ((self.current_address & Constants::TILEATTRIBUTESADDRESSMASK)
+                == self.tile_attributes_address)
+                && ((self.current_address & Constants::TILEATTRIBUTEMASK)
+                    < Constants::NUMTILEATTRIBUTES)
+            {
+                self.update_tile_attributes(
+                    self.current_address,
+                    self.ram[self.current_address as usize],
+                    data,
+                );
+            } else if ((self.current_address & Constants::SPRITEATTRIBUTESADDRESSMASK)
+                == self.sprite_attributes_address)
+                && ((self.current_address & Constants::SPRITEATTRIBUTESMASK)
+                    < Constants::NUMSPRITEATTRIBUTES)
+            {
+                self.update_sprite_attributes(
+                    self.current_address,
+                    self.ram[self.current_address as usize],
+                    data,
+                );
             }
             if self.current_address < Constants::PATTERNADDRESSLIMIT {
-                self.update_pattern(self.current_address, self.ram[self.current_address as usize], data);
+                self.update_pattern(
+                    self.current_address,
+                    self.ram[self.current_address as usize],
+                    data,
+                );
             }
-    
+
             self.ram[self.current_address as usize] = data; // Update after function call
             self.read_be_latch = data;
         }
-    
+
         self.current_address = (self.current_address + 1) & 0x3FFF; // Should be ok without this
     }
 
     pub fn write_register(&mut self, register_number: u8, data: u8) {
-
         self.vdp_register[register_number as usize] = data; // Update register data
-    
+
         // Only need to react immediately to some register changes
         match register_number {
             0 => {
@@ -747,37 +845,42 @@ impl VDP {
                 self.sprite_attributes_address = ((data as u16) & 0x7E) << 7;
                 self.debug_sprite_information_table_offset = self.sprite_attributes_address;
             }
-    
+
             6 => {
                 // self._tileDefinitions = &self._vdpRAM[(data & 0x4) << 11]
-                //  Probably should do more when this changes, as all the 
+                //  Probably should do more when this changes, as all the
                 //  sprite tile numbers should change... maybe later
                 self.sprite_tile_shift = ((data as u16) & 0x4) << 6;
             }
-    
+
             7 => {
                 println!("Using border colour: {:x}", data);
                 self.border_colour = data & 0xf;
             }
-    
+
             8 => {
                 self.horizontal_scroll = data;
                 self.update_horizontal_scroll_info();
             }
-    
+
             9 => {
                 self.vertical_scroll = data;
                 self.update_vertical_scroll_info();
             }
-    
+
             10 => {
                 self.interrupt_handler.line_interrupt = data as u16;
             }
-            _ => { println!("write_register: unsupported write register: {} ", register_number);}
+            _ => {
+                println!(
+                    "write_register: unsupported write register: {} ",
+                    register_number
+                );
+            }
         }
     }
 
-    pub fn write_port_bf(&mut self, clock: &clocks::Clock, data: u8) {
+    pub fn write_port_bf(&mut self, _clock: &clocks::Clock, data: u8) {
         if !self.address_latch {
             self.write_bf_low_address = data;
             self.address_latch = true;
@@ -786,36 +889,46 @@ impl VDP {
                 self.write_register(data & Constants::REGISTERMASK, self.write_bf_low_address)
             }
 
-            self.current_address = ((self.write_bf_low_address as u16) + ((data as u16) << 8)) & 0x3FFF; // Should limit current_address to ram size
-            self.code_register = data >> 6; // TODO: Was self._codeRegister = (self._lowaddress + (data << 8)) >> 14
+            self.current_address =
+                ((self.write_bf_low_address as u16) + ((data as u16) << 8)) & 0x3FFF; // Should limit current_address to ram size
+            self.code_register = data >> 6;
             self.address_latch = false;
 
             self.read_be_latch = self.ram[self.current_address as usize];
         }
     }
 
-    pub fn read_port_bf(&mut self, clock: &clocks::Clock) -> u8 {
+    pub fn read_port_bf(&mut self, _clock: &clocks::Clock) -> u8 {
         self.address_latch = false; // Address is unlatched during port read
-    
+
         let original_value = self.interrupt_handler.vdp_status_register;
         self.interrupt_handler.vdp_status_register = 0;
         self.interrupt_handler.h_int_pending = false;
         self.interrupt_handler.v_int_pending = false;
-    
+
         original_value
     }
 
     pub fn update_mode_1_control(&mut self) {
-        self.mode_1_control.update_mode_1_settings(self.vdp_register[Constants::MODE_CONTROL_NO_1 as usize]);
-        self.interrupt_handler.h_sync_interrupt_enabled = self.mode_1_control.h_sync_interrupt_enabled;
-        self.update_display_mode(self.mode_1_control.display_mode_1, self.mode_2_control.display_mode_2);
+        self.mode_1_control
+            .update_mode_1_settings(self.vdp_register[Constants::MODE_CONTROL_NO_1 as usize]);
+        self.interrupt_handler.h_sync_interrupt_enabled =
+            self.mode_1_control.h_sync_interrupt_enabled;
+        self.update_display_mode(
+            self.mode_1_control.display_mode_1,
+            self.mode_2_control.display_mode_2,
+        );
     }
 
     pub fn update_mode_2_control(&mut self) {
-        self.mode_2_control.update_mode_2_settings(self.vdp_register[Constants::MODE_CONTROL_NO_2 as usize]);
-        self.interrupt_handler.v_sync_interrupt_enabled = self.mode_2_control.v_sync_interrupt_enabled;
-        self.update_display_mode(self.mode_1_control.display_mode_1, self.mode_2_control.display_mode_2);
-
+        self.mode_2_control
+            .update_mode_2_settings(self.vdp_register[Constants::MODE_CONTROL_NO_2 as usize]);
+        self.interrupt_handler.v_sync_interrupt_enabled =
+            self.mode_2_control.v_sync_interrupt_enabled;
+        self.update_display_mode(
+            self.mode_1_control.display_mode_1,
+            self.mode_2_control.display_mode_2,
+        );
     }
 
     fn update_display_mode(&mut self, display_mode_1: u8, display_mode_2: u8) {
@@ -830,14 +943,14 @@ impl VDP {
         }
     }
 
-    fn single_scan(&mut self, y:u16) {
+    fn single_scan(&mut self, y: u16) {
         let mut fine_scroll = 0;
         let mut x_offset = 0;
-    
+
         let sprite_scan_y = &self.display_buffers.sprite_scan_lines[y as usize];
         let vertical_offset = self.vertical_scroll_info[y as usize];
         let v_y = vertical_offset as u16 + y;
-        let tile_offset = v_y % ((Constants::YTILES*Constants::PATTERNHEIGHT) as u16);
+        let tile_offset = v_y % ((Constants::YTILES * Constants::PATTERNHEIGHT) as u16);
         let horizontal_info_y = &self.horizontal_scroll_info[y as usize];
         let background_scan_y = &self.display_buffers.background_scan_lines[tile_offset as usize];
         let background_scan_y_line = &background_scan_y.scan_line;
@@ -846,13 +959,13 @@ impl VDP {
         self.last_vertical_scroll_info[y as usize] = self.vertical_scroll_info[y as usize];
 
         let scan_y_lines = &mut self.display_buffers.scan_lines[y as usize].scan_line;
-        let forground_scan_y  = &mut self.display_buffers.forground_scan_lines[tile_offset as usize];
-    
+        let forground_scan_y = &mut self.display_buffers.forground_scan_lines[tile_offset as usize];
+
         if y >= self.mode_1_control.y_scroll as u16 {
             fine_scroll = horizontal_info_y.fine_scroll;
             x_offset = horizontal_info_y.x_offset;
         }
-    
+
         let mut x = fine_scroll;
         if self.mode_1_control.start_x > fine_scroll {
             x = self.mode_1_control.start_x;
@@ -862,7 +975,7 @@ impl VDP {
         // Copying the brackground appears to be the slowest sections of this function.
         let x_wrap_around = Constants::SMS_WIDTH - x_offset;
         for i in (x as u16)..x_wrap_around {
-            scan_y_lines[i as usize] = background_scan_y_line[(x_offset + i as u16) as usize]; 
+            scan_y_lines[i as usize] = background_scan_y_line[(x_offset + i as u16) as usize];
         }
 
         let offset = (Constants::SMS_WIDTH as i16) - (x_offset as i16);
@@ -877,27 +990,45 @@ impl VDP {
                     let sprite_number = sprite_scan_y.sprites[i as usize];
 
                     let x_start = self.sprites[sprite_number as usize].x;
-                    let x_end   = std::cmp::min(self.sprites[sprite_number as usize].x + (self.mode_2_control.sprite_width as u16), Constants::SMS_WIDTH);
+                    let x_end = std::cmp::min(
+                        self.sprites[sprite_number as usize].x
+                            + (self.mode_2_control.sprite_width as u16),
+                        Constants::SMS_WIDTH,
+                    );
                     let x_wrap_around = Constants::SMS_WIDTH - x_offset;
 
                     for x in x_start..x_wrap_around {
-                        if (sprite_scan_y.scan_line[x as usize] != 0) && !forground_scan_y.scan_line[(x+x_offset) as usize] {
-                            scan_y_lines[x as usize] = self.screen_palette[(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
+                        if (sprite_scan_y.scan_line[x as usize] != 0)
+                            && !forground_scan_y.scan_line[(x + x_offset) as usize]
+                        {
+                            scan_y_lines[x as usize] = self.screen_palette
+                                [(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
                         }
                     }
 
                     for x in std::cmp::max(x_start, x_wrap_around)..x_end {
-                        if (sprite_scan_y.scan_line[x as usize] != 0) && !forground_scan_y.scan_line[(x+x_offset - Constants::SMS_WIDTH) as usize] {
-                            scan_y_lines[x as usize] = self.screen_palette[(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
+                        if (sprite_scan_y.scan_line[x as usize] != 0)
+                            && !forground_scan_y.scan_line
+                                [(x + x_offset - Constants::SMS_WIDTH) as usize]
+                        {
+                            scan_y_lines[x as usize] = self.screen_palette
+                                [(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
                         }
                     }
                 }
             } else {
                 for i in 0..sprite_scan_y.num_sprites {
                     let sprite_number = sprite_scan_y.sprites[i as usize];
-                    for x in (self.sprites[sprite_number as usize].x)..std::cmp::min(self.sprites[sprite_number as usize].x + self.mode_2_control.sprite_width as u16, Constants::SMS_WIDTH) {
+                    for x in (self.sprites[sprite_number as usize].x)
+                        ..std::cmp::min(
+                            self.sprites[sprite_number as usize].x
+                                + self.mode_2_control.sprite_width as u16,
+                            Constants::SMS_WIDTH,
+                        )
+                    {
                         if sprite_scan_y.scan_line[x as usize] != 0 {
-                            scan_y_lines[x as usize] = self.screen_palette[(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
+                            scan_y_lines[x as usize] = self.screen_palette
+                                [(sprite_scan_y.scan_line[x as usize] | 0x10) as usize];
                         }
                     }
                 }
@@ -909,41 +1040,41 @@ impl VDP {
         }
     }
 
-    fn update_display(&mut self, raw_display:&mut [u8]) {
+    fn update_display(&mut self, _raw_display: &mut [u8]) {
         // The 'export' function is now used to update display, when the display is being draw to screen (lazy/basically pull vs push).
     }
 
-    fn clear_display(&mut self, raw_display:&mut [u8]) {
+    fn clear_display(&mut self, _raw_display: &mut [u8]) {
         // The 'export' function is now used to update display, when the display is being draw to screen (lazy/basically pull vs push).
     }
 
-    fn driver_update_display(&mut self, raw_display:&mut [u8]) {
+    fn driver_update_display(&mut self, raw_display: &mut [u8]) {
         let mut index = 0;
         for y in &self.display_buffers.scan_lines {
             for x in &y.scan_line {
-                x.convert_rgb23(&mut raw_display[index..(index+3)]);
+                x.convert_rgb23(&mut raw_display[index..(index + 3)]);
                 index += 3; // TODO: Change to 'pitch'
             }
-        } 
+        }
     }
 
     fn draw_buffer(&mut self) {
         self.draw_background();
         self.draw_sprites();
 
-//        self.draw_patterns() // For debuging purposes
+        //        self.draw_patterns() // For debuging purposes
     }
 
-    fn update_screen_pattern(&mut self, pattern_number:u16) {
-
+    fn update_screen_pattern(&mut self, pattern_number: u16) {
         let mut index = pattern_number << 6;
-    
-        for py in 0..Constants::PATTERNHEIGHT {
-            for px in 0..Constants::PATTERNWIDTH {
-                let pixel4 = self.patterns4[index as usize] ;
-    
+
+        for _py in 0..Constants::PATTERNHEIGHT {
+            for _px in 0..Constants::PATTERNWIDTH {
+                let pixel4 = self.patterns4[index as usize];
+
                 self.patterns16[0][index as usize] = self.screen_palette[pixel4 as usize];
-                self.patterns16[1][index as usize] = self.screen_palette[(pixel4 | (1 << 4)) as usize];
+                self.patterns16[1][index as usize] =
+                    self.screen_palette[(pixel4 | (1 << 4)) as usize];
                 index += 1;
             }
         }
@@ -952,95 +1083,108 @@ impl VDP {
     fn draw_background(&mut self) {
         let mut tile = 0;
 
-        for y in 0..(Constants::YTILES*Constants::PATTERNHEIGHT) {
+        for y in 0..(Constants::YTILES * Constants::PATTERNHEIGHT) {
             self.display_buffers.forground_scan_lines[y as usize].has_priority = false;
         }
-    
-        for y in (0..(Constants::YTILES*Constants::PATTERNHEIGHT) as u16).step_by(Constants::PATTERNHEIGHT as usize) {
-            for x in (0..(Constants::XTILES as u16)*(Constants::PATTERNWIDTH as u16)).step_by(Constants::PATTERNWIDTH as usize) {
 
+        for y in (0..(Constants::YTILES * Constants::PATTERNHEIGHT) as u16)
+            .step_by(Constants::PATTERNHEIGHT as usize)
+        {
+            for x in (0..(Constants::XTILES as u16) * (Constants::PATTERNWIDTH as u16))
+                .step_by(Constants::PATTERNWIDTH as usize)
+            {
                 let mut tile_attribute = self.tile_attributes[tile as usize];
-                let patterns16_palette = self.patterns16[tile_attribute.palette_select as usize].to_vec();
+                let patterns16_palette =
+                    self.patterns16[tile_attribute.palette_select as usize].to_vec();
 
-                if !self.display_buffers.forground_scan_lines[y as usize].has_priority && (tile_attribute.priority != 0) {
-                    for py in y..(y+ (Constants::PATTERNHEIGHT as u16)) {
+                if !self.display_buffers.forground_scan_lines[y as usize].has_priority
+                    && (tile_attribute.priority != 0)
+                {
+                    for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
                         self.display_buffers.forground_scan_lines[py as usize].has_priority = true;
                     }
                 }
-    
+
                 {
                     self.update_screen_pattern(tile_attribute.tile_number);
-    
-                    let mut patterns16_offset:i16 = (tile_attribute.tile_number as i16) << 6;
-                    let mut pattern_y_delta:i16 = 0;
-                    let mut pattern_x_delta:i16 = 1;
-    
+
+                    let mut patterns16_offset: i16 = (tile_attribute.tile_number as i16) << 6;
+                    let mut pattern_y_delta: i16 = 0;
+                    let mut pattern_x_delta: i16 = 1;
+
                     if tile_attribute.horizontal_flip {
-                        patterns16_offset += (Constants::PATTERNWIDTH as i16)-1;
+                        patterns16_offset += (Constants::PATTERNWIDTH as i16) - 1;
                         pattern_x_delta = -1;
                         pattern_y_delta = (Constants::PATTERNWIDTH as i16) * 2;
                     }
-    
+
                     if tile_attribute.vertical_flip {
-                        patterns16_offset += ((Constants::PATTERNHEIGHT as i16)-1) << 3;
+                        patterns16_offset += ((Constants::PATTERNHEIGHT as i16) - 1) << 3;
                         pattern_y_delta -= 2 * Constants::PATTERNWIDTH as i16;
                     }
-    
+
                     if tile_attribute.priority != 0 {
-                        let mut pattern4_offset:i16 = (tile_attribute.tile_number as i16) << 6;
-    
+                        let mut pattern4_offset: i16 = (tile_attribute.tile_number as i16) << 6;
+
                         if tile_attribute.horizontal_flip {
-                            pattern4_offset += Constants::PATTERNWIDTH as i16 -1;
+                            pattern4_offset += Constants::PATTERNWIDTH as i16 - 1;
                         }
-    
+
                         if tile_attribute.vertical_flip {
-                            pattern4_offset += (Constants::PATTERNHEIGHT as i16 -1) << 3;
+                            pattern4_offset += (Constants::PATTERNHEIGHT as i16 - 1) << 3;
                         }
-    
+
                         for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
-                            let background_y_line = &mut self.display_buffers.background_scan_lines[py as usize];
-                            let forground_y_line = &mut self.display_buffers.forground_scan_lines[py as usize];
+                            let background_y_line =
+                                &mut self.display_buffers.background_scan_lines[py as usize];
+                            let forground_y_line =
+                                &mut self.display_buffers.forground_scan_lines[py as usize];
                             for px in x..(x + (Constants::PATTERNWIDTH as u16)) {
-                                background_y_line.scan_line[px as usize] = patterns16_palette[patterns16_offset as usize];
-    
+                                background_y_line.scan_line[px as usize] =
+                                    patterns16_palette[patterns16_offset as usize];
+
                                 // Indicate a forground pixel if the value is
                                 // non-zero and it is set as a forground pixel...
                                 // well tile
                                 forground_y_line.scan_line[px as usize] = false;
-    
+
                                 // 'priority' is always true in this branch
                                 if self.patterns4[pattern4_offset as usize] != 0x0 {
                                     forground_y_line.scan_line[px as usize] = true;
                                 }
-    
+
                                 patterns16_offset += pattern_x_delta;
                                 pattern4_offset += pattern_x_delta;
                             }
-                            patterns16_offset +=  pattern_y_delta;
-                            pattern4_offset   +=  pattern_y_delta;
+                            patterns16_offset += pattern_y_delta;
+                            pattern4_offset += pattern_y_delta;
                         }
                     } else {
                         if tile_attribute.priority_cleared {
                             for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
-                                let forground_y_line = &mut self.display_buffers.forground_scan_lines[py as usize];
+                                let forground_y_line =
+                                    &mut self.display_buffers.forground_scan_lines[py as usize];
                                 for px in x..(x + (Constants::PATTERNWIDTH as u16)) {
                                     forground_y_line.scan_line[px as usize] = false;
                                 }
                             }
                             tile_attribute.priority_cleared = false;
                         }
-    
+
                         for py in y..(y + (Constants::PATTERNHEIGHT as u16)) {
-                            let background_y_line = &mut self.display_buffers.background_scan_lines[py as usize];
+                            let background_y_line =
+                                &mut self.display_buffers.background_scan_lines[py as usize];
                             if pattern_x_delta == 1 {
                                 for i in 0..(Constants::PATTERNWIDTH as u16) {
-                                    background_y_line.scan_line[(x + i) as usize] = patterns16_palette[(patterns16_offset as u16 + i as u16) as usize];
+                                    background_y_line.scan_line[(x + i) as usize] =
+                                        patterns16_palette
+                                            [(patterns16_offset as u16 + i as u16) as usize];
                                 }
                                 patterns16_offset += Constants::PATTERNWIDTH as i16;
-                            }
-                            else {
+                            } else {
                                 for px in 0..(Constants::PATTERNWIDTH as u16) {
-                                    background_y_line.scan_line[(x+px) as usize]  = patterns16_palette[patterns16_offset as usize];
+                                    background_y_line.scan_line[(x + px) as usize] =
+                                        patterns16_palette[patterns16_offset as usize];
                                     patterns16_offset += pattern_x_delta;
                                 }
                             }
@@ -1060,34 +1204,45 @@ impl VDP {
         // Check for any sprite alterations
         for i in 0..self.total_sprites {
             let mut y = self.sprites[i as usize].y;
-            while (y < self.sprites[i as usize].y + (self.mode_2_control.sprite_height as u16)) && (y < Constants::SMS_HEIGHT) {
+            while (y < self.sprites[i as usize].y + (self.mode_2_control.sprite_height as u16))
+                && (y < Constants::SMS_HEIGHT)
+            {
                 y += 1;
             }
         }
-    
+
         for y in 0..self.interrupt_handler.y_end {
             for i in 0..Constants::SMS_WIDTH {
                 self.display_buffers.sprite_scan_lines[y as usize].scan_line[i as usize] = 0;
             }
 
             let mut i = 0;
-            while (i < self.display_buffers.sprite_scan_lines[y as usize].num_sprites) && (i < Constants::MAXSPRITESPERSCANLINE as u16) {
-                let sprite_num = self.display_buffers.sprite_scan_lines[y as usize].sprites[i as usize];
+            while (i < self.display_buffers.sprite_scan_lines[y as usize].num_sprites)
+                && (i < Constants::MAXSPRITESPERSCANLINE as u16)
+            {
+                let sprite_num =
+                    self.display_buffers.sprite_scan_lines[y as usize].sprites[i as usize];
 
                 // FIXME, loosing motivation, this is better but still
                 // not quite right
-                let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT 
-                    { y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT } 
-                else 
-                    { y - self.sprites[sprite_num as usize].y };
+                let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
+                    y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT
+                } else {
+                    y - self.sprites[sprite_num as usize].y
+                };
 
                 let tile_addr = (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
                 for x in 0..self.mode_2_control.sprite_width {
                     // If the line is clear
-                    if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH) && 
-                        (self.display_buffers.sprite_scan_lines[y as usize].scan_line[(self.sprites[sprite_num as usize].x + x as u16) as usize]==0) {
-                            self.display_buffers.sprite_scan_lines[y as usize].scan_line[(self.sprites[sprite_num as usize].x + x as u16) as usize] = self.patterns4[(tile_addr | x as u16) as usize];
-                        }
+                    if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH)
+                        && (self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                            [(self.sprites[sprite_num as usize].x + x as u16) as usize]
+                            == 0)
+                    {
+                        self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                            [(self.sprites[sprite_num as usize].x + x as u16) as usize] =
+                            self.patterns4[(tile_addr | x as u16) as usize];
+                    }
                 }
 
                 i += 1;
@@ -1096,59 +1251,74 @@ impl VDP {
     }
 
     fn print_debug_info(&mut self) {
-        println!("{} {}", self.debug_name_table_offset, self.debug_sprite_information_table_offset); 
+        println!(
+            "{} {}",
+            self.debug_name_table_offset, self.debug_sprite_information_table_offset
+        );
     }
 
     // Draw the background tiles
     fn draw_patterns(&mut self) {
-        let mut pattern:u16 = 0;
+        let mut pattern: u16 = 0;
         let palette_select = 1;
-    
+
         for y in 0..16 {
             for x in 0..Constants::XTILES {
                 for py in 0..Constants::PATTERNHEIGHT {
                     for px in 0..Constants::PATTERNWIDTH {
-                        let pixel4 = self.patterns4[((pattern << 6) | ((py as u16) << 3 )| (px as u16)) as usize] | (palette_select << 4);
-                        self.display_buffers.background_scan_lines[(Constants::PATTERNHEIGHT * y + py) as usize].scan_line[(Constants::PATTERNWIDTH *x+px) as usize] = self.screen_palette[pixel4 as usize];
-                        self.display_buffers.scan_lines[(Constants::PATTERNHEIGHT * y + py) as usize].scan_line[(Constants::PATTERNWIDTH *x + px) as usize] = self.screen_palette[pixel4 as usize];
+                        let pixel4 = self.patterns4
+                            [((pattern << 6) | ((py as u16) << 3) | (px as u16)) as usize]
+                            | (palette_select << 4);
+                        self.display_buffers.background_scan_lines
+                            [(Constants::PATTERNHEIGHT * y + py) as usize]
+                            .scan_line[(Constants::PATTERNWIDTH * x + px) as usize] =
+                            self.screen_palette[pixel4 as usize];
+                        self.display_buffers.scan_lines
+                            [(Constants::PATTERNHEIGHT * y + py) as usize]
+                            .scan_line[(Constants::PATTERNWIDTH * x + px) as usize] =
+                            self.screen_palette[pixel4 as usize];
                     }
                 }
                 pattern += 1;
             }
         }
     }
-
 }
 
 impl ports::Device for VDP {
     fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
         match port_address {
             // Even values: 0x80 -> 0xBE
-            addr if (addr & 0xC1) == 0x80 => {self.read_port_be(clock)}
+            addr if (addr & 0xC1) == 0x80 => self.read_port_be(clock),
             // Odd values: 0x81 -> 0xBF
-            addr if (addr & 0xC1) == 0x81 => {self.read_port_bf(clock)}
-            // Add the vdp to port `7F' plus all the mirror ports, vdp h_counter
-            n if (n & 0xC1 == 0x41) => {self.read_port_7e(clock)}
+            addr if (addr & 0xC1) == 0x81 => self.read_port_bf(clock),
             // Add the vdp to port `7E' plus all the mirror ports, vdp v_counter
-            n if (n & 0xC1 == 0x40) => {self.read_port_7e(clock)}
-            _ => {0 /* Unhandled, just return 0 for now */}
+            n if (n & 0xC1 == 0x40) => self.read_port_7e(clock),
+            // Add the vdp to port `7F' plus all the mirror ports, vdp h_counter
+            n if (n & 0xC1 == 0x41) => self.read_port_7f(clock),
+            _ => {
+                0 /* Unhandled, just return 0 for now */
+            }
         }
     }
-    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) {
+    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8) {
         match port_address {
-
             // Even values: 0x80 -> 0xBE
-            addr if (addr & 0xC1) == 0x80 => {self.write_port_be(clock, value);}
+            addr if (addr & 0xC1) == 0x80 => {
+                self.write_port_be(clock, value);
+            }
             // Odd values: 0x81 -> 0xBF
-            addr if (addr & 0xC1) == 0x81 => {self.write_port_bf(clock, value);}
+            addr if (addr & 0xC1) == 0x81 => {
+                self.write_port_bf(clock, value);
+            }
             _ => {}
         }
     }
 
-    fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool {
+    fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool {
         self.interrupt_handler.update_in_frame_timing(clock);
 
-        self.interrupt_handler.update_post_frame_timing(clock);
+        self.interrupt_handler.update_post_frame_timing();
 
         if self.interrupt_handler.v_sync >= Constants::VFRAMETIME {
             if self.mode_2_control.enable_display {
@@ -1166,11 +1336,11 @@ impl ports::Device for VDP {
             self.update_horizontal_scroll_info();
             self.update_vertical_scroll_info();
         }
-    
-        self.interrupt_handler.poll_interrupts(clock)
+
+        self.interrupt_handler.poll_interrupts()
     }
 
-    fn export(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) {
+    fn export(&mut self, raw_display: &mut Vec<u8>) {
         if self.mode_2_control.enable_display {
             // Only draw if 'enable_display' has been set.
             for y in 0..self.interrupt_handler.y_end {
@@ -1184,7 +1354,7 @@ impl ports::Device for VDP {
 impl VDPInterrupts {
     pub fn new() -> Self {
         Self {
-            vdp_status_register:0,
+            vdp_status_register: 0,
             v_sync: 0,
             last_v_sync_clock: clocks::Clock::new(),
             y_end: 0,
@@ -1197,29 +1367,30 @@ impl VDPInterrupts {
             v_sync_interrupt_enabled: true,
             h_sync_interrupt_enabled: true,
 
-            frame_updated:false,
+            frame_updated: false,
         }
     }
 }
 
-
 impl VDPInterrupts {
     fn update_in_frame_timing(&mut self, clock: &clocks::Clock) {
         self.v_sync = (clock.cycles - self.last_v_sync_clock.cycles) as u16;
-    
-        if (self.line_int_time < Constants::VFRAMETIME as u32) &&
-            (self.v_sync as u32 >= self.line_int_time) {
 
-            self.current_y_pos = (((clock.cycles-self.last_v_sync_clock.cycles)/Constants::HSYNCCYCLETIME as u32)+1) as u16;
+        if (self.line_int_time < Constants::VFRAMETIME as u32)
+            && (self.v_sync as u32 >= self.line_int_time)
+        {
+            self.current_y_pos = (((clock.cycles - self.last_v_sync_clock.cycles)
+                / Constants::HSYNCCYCLETIME as u32)
+                + 1) as u16;
 
             self.line_interrupt_latch = self.line_interrupt + 1;
             self.line_int_time += (self.line_interrupt_latch * Constants::HSYNCCYCLETIME) as u32;
-    
+
             self.h_int_pending = true;
         }
     }
 
-    fn update_post_frame_timing(&mut self, clock: &clocks::Clock) {
+    fn update_post_frame_timing(&mut self) {
         if !self.frame_updated && self.v_sync >= Constants::VFRAMETIME {
             self.frame_updated = true;
             self.v_int_pending = true;
@@ -1235,14 +1406,15 @@ impl VDPInterrupts {
             self.last_v_sync_clock.cycles = clock.cycles;
             self.v_sync = 0;
             self.current_y_pos = self.y_end;
-    
+
             self.line_interrupt_latch = self.line_interrupt;
             self.line_int_time = (self.line_interrupt_latch * Constants::HSYNCCYCLETIME) as u32;
         }
     }
 
-    fn poll_interrupts(&mut self, clock: &clocks::Clock) -> bool {
-        (self.v_sync_interrupt_enabled && self.v_int_pending) || (self.h_sync_interrupt_enabled && self.h_int_pending)
+    fn poll_interrupts(&mut self) -> bool {
+        (self.v_sync_interrupt_enabled && self.v_int_pending)
+            || (self.h_sync_interrupt_enabled && self.h_int_pending)
     }
 }
 
@@ -1254,6 +1426,9 @@ mod tests {
     use sdl2::pixels;
     use sdl2::rect;
 
+    const PIXEL_WIDTH: u16 = 2;
+    const PIXEL_HEIGHT: u16 = 2;
+
     impl vdp::VDP {
         pub fn driver_open_display(&mut self) {
             use rand::Rng;
@@ -1262,7 +1437,11 @@ mod tests {
             let video_subsystem = sdl_context.video().unwrap();
 
             let window = video_subsystem
-                .window("Rusty Sega", (vdp::VDP::FRAME_WIDTH * vdp::VDP::PIXEL_WIDTH) as u32, (vdp::VDP::FRAME_HEIGHT * vdp::VDP::PIXEL_HEIGHT) as u32)
+                .window(
+                    "Rusty Sega",
+                    (vdp::VDP::FRAME_WIDTH * PIXEL_WIDTH) as u32,
+                    (vdp::VDP::FRAME_HEIGHT * PIXEL_HEIGHT) as u32,
+                )
                 .position_centered()
                 .build()
                 .unwrap();
@@ -1270,7 +1449,7 @@ mod tests {
             let mut canvas = window.into_canvas().build().unwrap();
 
             let mut event_pump = sdl_context.event_pump().unwrap();
-            let mut i =0;
+            let mut i = 0;
             let mut rng = rand::thread_rng();
 
             canvas.set_draw_color(pixels::Color::RGB(0, 0, 0));
@@ -1284,19 +1463,26 @@ mod tests {
                 for event in event_pump.poll_iter() {
                     match event {
                         event::Event::Quit { .. } => break 'running,
-                            event::Event::KeyDown { keycode: Some(keyboard::Keycode::Q), repeat: false, .. } => break 'running,
-                            event::Event::KeyDown { ..  } =>
-                            {
-                                points.fill_with(|| rect::Point::new(rng.gen_range(0..w as i32), rng.gen_range(0..h as i32)));
-                                canvas.draw_points(points.as_slice()).unwrap();
-                                canvas.present();
-                            }
-                        event::Event::KeyUp { ..  } => {}
+                        event::Event::KeyDown {
+                            keycode: Some(keyboard::Keycode::Q),
+                            repeat: false,
+                            ..
+                        } => break 'running,
+                        event::Event::KeyDown { .. } => {
+                            points.fill_with(|| {
+                                rect::Point::new(
+                                    rng.gen_range(0..w as i32),
+                                    rng.gen_range(0..h as i32),
+                                )
+                            });
+                            canvas.draw_points(points.as_slice()).unwrap();
+                            canvas.present();
+                        }
+                        event::Event::KeyUp { .. } => {}
                         _ => {}
                     }
                 }
             }
-
         }
     }
 
@@ -1310,21 +1496,21 @@ mod tests {
 
     #[test]
     fn test_check_constants() {
-        assert!(vdp::Constants::NUMTILES, 896);
-        assert!(vdp::Constants::BLANKTIME, 17926);
-        assert!(vdp::Constants::VFRAMETIME, 47803);
+        assert_eq!(vdp::Constants::NUMTILES, 896);
+        assert_eq!(vdp::Constants::BLANKTIME, 17926);
+        assert_eq!(vdp::Constants::VFRAMETIME, 47803);
     }
 }
 
-    // set_colour
-    // get_colour
-    // setCycle
-    // pollInterupts
+// set_colour
+// get_colour
+// setCycle
+// pollInterupts
 
-    // _populateMode1Control
-    // _populateMode2Control
-    // setInterupt -> set_interrupt
-    // getNextInterupt -> get_next_interrupt
-    // openDisplay -> open_display
-    // printSpriteInformation -> print_sprite_information
-    // printNameTable -> print_name_table
+// _populateMode1Control
+// _populateMode2Control
+// setInterupt -> set_interrupt
+// getNextInterupt -> get_next_interrupt
+// openDisplay -> open_display
+// printSpriteInformation -> print_sprite_information
+// printNameTable -> print_name_table

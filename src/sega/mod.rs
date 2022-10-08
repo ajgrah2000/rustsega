@@ -1,7 +1,7 @@
-pub mod memory;
-pub mod cpu;
 pub mod clocks;
-pub mod interruptor;
-pub mod ports;
+pub mod cpu;
 pub mod graphics;
+pub mod interruptor;
+pub mod memory;
+pub mod ports;
 pub mod sega;

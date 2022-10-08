@@ -1,7 +1,6 @@
 use super::clocks;
 
-struct NullPort {
-}
+struct NullPort {}
 
 impl NullPort {
     fn new() -> Self {
@@ -9,28 +8,24 @@ impl NullPort {
     }
 }
 
-enum PortEnum {
-    NullPort, 
-}
-
 pub trait Port {
-    fn write(&mut self, clock: &clocks::Clock, value: u8); 
-    fn read(&mut self, clock: &clocks::Clock) -> u8; 
+    fn write(&mut self, clock: &clocks::Clock, value: u8);
+    fn read(&mut self, clock: &clocks::Clock) -> u8;
 }
 
 pub trait Device {
-    fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool;
-    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8);
+    fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool;
+    fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8);
     fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8;
-    fn export(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock);
+    fn export(&mut self, raw_display: &mut Vec<u8>);
 }
 
 impl Port for NullPort {
-    fn write(&mut self, clock: &clocks::Clock, value: u8) {
+    fn write(&mut self, _clock: &clocks::Clock, value: u8) {
         println!("null write value = {}", value);
     }
 
-    fn read(&mut self, clock: &clocks::Clock) -> u8 {
+    fn read(&mut self, _clock: &clocks::Clock) -> u8 {
         0
     }
 }
@@ -64,8 +59,12 @@ impl Ports {
 
     pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
         // TODO: Fix dummy joystick return values.
-        if port_address == 0xdc { return 0xff;}
-        if port_address == 0xdd { return 0xff;}
+        if port_address == 0xdc {
+            return 0xff;
+        }
+        if port_address == 0xdd {
+            return 0xff;
+        }
 
         let mut last_value = 0;
         // TODO: Replace with something useful, use a map or lookup, or hook up ports directly.
@@ -75,21 +74,20 @@ impl Ports {
         last_value
     }
 
-    pub fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value:u8) {
+    pub fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8) {
         for i in 0..self.devices.len() {
             // TODO: Replace with something useful.
             self.devices[i].port_write(clock, port_address, value);
         }
     }
 
-    pub fn export(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) {
+    pub fn export(&mut self, raw_display: &mut Vec<u8>) {
         for i in 0..self.devices.len() {
-            self.devices[i].export(raw_display, clock);
+            self.devices[i].export(raw_display);
         }
     }
 
-    pub fn poll_interrupts(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) -> bool
-    {
+    pub fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool {
         let mut interrupt = false;
         for i in 0..self.devices.len() {
             interrupt |= self.devices[i].poll_interrupts(raw_display, clock);
@@ -98,4 +96,3 @@ impl Ports {
         interrupt
     }
 }
-
