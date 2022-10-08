@@ -910,15 +910,11 @@ impl VDP {
     }
 
     fn update_display(&mut self, raw_display:&mut [u8]) {
-        for y in 0..self.interrupt_handler.y_end {
-            self.single_scan(y);
-        }
-
-        self.driver_update_display(raw_display);
+        // The 'export' function is now used to update display, when the display is being draw to screen (lazy/basically pull vs push).
     }
 
     fn clear_display(&mut self, raw_display:&mut [u8]) {
-        self.driver_update_display(raw_display);
+        // The 'export' function is now used to update display, when the display is being draw to screen (lazy/basically pull vs push).
     }
 
     fn driver_update_display(&mut self, raw_display:&mut [u8]) {
@@ -1172,6 +1168,16 @@ impl ports::Device for VDP {
         }
     
         self.interrupt_handler.poll_interrupts(clock)
+    }
+
+    fn export(&mut self, raw_display:&mut Vec<u8>, clock: &clocks::Clock) {
+        if self.mode_2_control.enable_display {
+            // Only draw if 'enable_display' has been set.
+            for y in 0..self.interrupt_handler.y_end {
+                self.single_scan(y);
+            }
+        }
+        self.driver_update_display(raw_display);
     }
 }
 

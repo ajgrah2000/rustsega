@@ -53,6 +53,10 @@ impl<M: memory::MemoryRW> Core<M> {
         }
     }
 
+    pub fn export(&mut self, debug: bool){
+        self.ports.export(&mut self.raw_display, &self.clock);
+    }
+
     pub fn step(&mut self, debug: bool){
         // Start with 'expanded' version of step
 

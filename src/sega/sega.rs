@@ -70,9 +70,11 @@ impl Sega {
         for k in 0..iterations {
 
             // Clock the CPU lots per display update.
-            for j in 0..1000 {
+            for j in 0..500 {
                 self.core.step(self.debug);
             }
+
+            self.core.export(self.debug);
 
             texture.with_lock(None, |buffer: &mut [u8], pitch: usize| {self.core.generate_display(buffer, pitch)}).unwrap();
 
