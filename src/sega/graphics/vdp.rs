@@ -740,8 +740,11 @@ impl Vdp {
         let fine_scroll = self.horizontal_scroll & 0x7;
 
         let pattern_offset = (column_offset as u16) * (Constants::PATTERNWIDTH as u16);
-        let x_offset = if pattern_offset > fine_scroll as u16
-            {(pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH} else {0};
+        let x_offset = if pattern_offset > fine_scroll as u16 {
+            (pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH
+        } else {
+            0
+        };
 
         for y in
             self.interrupt_handler.current_y_pos as usize..self.interrupt_handler.y_end as usize
@@ -1225,31 +1228,32 @@ impl Vdp {
                     self.display_buffers.sprite_scan_lines[y as usize].sprites[i as usize];
 
                 // Adding check to avoid out of bounds from tiley index
-                if (y > self.sprites[sprite_num as usize].y) ||
-                   ((y +  Constants::SMS_HEIGHT) > self.sprites[sprite_num as usize].y) 
-                   {
-                       // FIXME, loosing motivation, this is better but still
-                       // not quite right
-                       let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
-                           y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT
-                       } else {
-                           y - self.sprites[sprite_num as usize].y
-                       };
+                if (y > self.sprites[sprite_num as usize].y)
+                    || ((y + Constants::SMS_HEIGHT) > self.sprites[sprite_num as usize].y)
+                {
+                    // FIXME, loosing motivation, this is better but still
+                    // not quite right
+                    let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
+                        y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT
+                    } else {
+                        y - self.sprites[sprite_num as usize].y
+                    };
 
-                       let tile_addr = (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
-                       for x in 0..self.mode_2_control.sprite_width {
-                           // If the line is clear
-                           if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH)
-                               && (self.display_buffers.sprite_scan_lines[y as usize].scan_line
-                                   [(self.sprites[sprite_num as usize].x + x as u16) as usize]
-                                   == 0)
-                               {
-                                   self.display_buffers.sprite_scan_lines[y as usize].scan_line
-                                       [(self.sprites[sprite_num as usize].x + x as u16) as usize] =
-                                       self.patterns4[(tile_addr | x as u16) as usize];
-                               }
-                       }
-                   }
+                    let tile_addr =
+                        (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
+                    for x in 0..self.mode_2_control.sprite_width {
+                        // If the line is clear
+                        if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH)
+                            && (self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                                [(self.sprites[sprite_num as usize].x + x as u16) as usize]
+                                == 0)
+                        {
+                            self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                                [(self.sprites[sprite_num as usize].x + x as u16) as usize] =
+                                self.patterns4[(tile_addr | x as u16) as usize];
+                        }
+                    }
+                }
 
                 i += 1;
             }
@@ -1303,7 +1307,9 @@ impl ports::Device for Vdp {
             // Add the vdp to port `7F' plus all the mirror ports, vdp h_counter
             n if (n & 0xC1 == 0x41) => Some(self.read_port_7f(clock)),
 
-            _ => { None /* Unhandled */ }
+            _ => {
+                None /* Unhandled */
+            }
         }
     }
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8) {

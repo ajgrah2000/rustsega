@@ -62,10 +62,14 @@ impl Ports {
 
     pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
         for i in 0..self.devices.len() {
-            if let Some(value) = self.devices[i].port_read(clock, port_address) { return value; };
+            if let Some(value) = self.devices[i].port_read(clock, port_address) {
+                return value;
+            };
         }
 
-        if let Some(value) = self.joysticks.port_read(clock, port_address) { return value; };
+        if let Some(value) = self.joysticks.port_read(clock, port_address) {
+            return value;
+        };
 
         0
     }

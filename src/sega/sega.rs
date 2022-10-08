@@ -6,10 +6,10 @@ use sdl2::video;
 use super::clocks;
 use super::cpu;
 use super::graphics;
+use super::inputs;
 use super::interruptor;
 use super::memory;
 use super::ports;
-use super::inputs;
 
 pub struct WindowSize {
     frame_width: u16,
@@ -21,7 +21,10 @@ pub struct WindowSize {
 impl WindowSize {
     fn new(frame_width: u16, frame_height: u16, pixel_width: u8, pixel_height: u8) -> Self {
         Self {
-            frame_width, frame_height, pixel_width, pixel_height
+            frame_width,
+            frame_height,
+            pixel_width,
+            pixel_height,
         }
     }
 }
@@ -69,9 +72,7 @@ impl Sega {
 
         let window_size = WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SCALE_X, SCALE_Y);
 
-        self.main_loop(window_size,
-            pixels::PixelFormatEnum::RGB24,
-        );
+        self.main_loop(window_size, pixels::PixelFormatEnum::RGB24);
     }
 
     pub fn new(debug: bool, cartridge_name: String) -> Self {
@@ -148,11 +149,7 @@ impl Sega {
     }
 
     // Main entry point, intention is to call 'once'.
-    pub fn main_loop(
-        &mut self,
-        window_size: WindowSize,
-        pixel_format: pixels::PixelFormatEnum,
-    ) {
+    pub fn main_loop(&mut self, window_size: WindowSize, pixel_format: pixels::PixelFormatEnum) {
         let mut sdl_context = sdl2::init().unwrap();
 
         let mut canvas = graphics::display::SDLUtility::create_canvas(
@@ -166,16 +163,13 @@ impl Sega {
 
         'running: loop {
             for event in event_pump.poll_iter() {
-                if !inputs::Input::handle_events(event, &mut self.core.ports.joysticks) {break 'running};
+                if !inputs::Input::handle_events(event, &mut self.core.ports.joysticks) {
+                    break 'running;
+                };
             }
 
             // First loop, draw 30 frames at a time.
-            self.draw_loop(
-                &mut canvas,
-                pixel_format,
-                &window_size,
-                30,
-            );
+            self.draw_loop(&mut canvas, pixel_format, &window_size, 30);
         }
     }
 }
