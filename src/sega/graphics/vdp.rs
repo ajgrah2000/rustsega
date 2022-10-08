@@ -738,9 +738,11 @@ impl VDP {
     pub fn update_horizontal_scroll_info(&mut self) {
         let column_offset = (0x20 - (self.horizontal_scroll >> 3)) & 0x1F;
         let fine_scroll = self.horizontal_scroll & 0x7;
-        let x_offset = ((column_offset as u16) * (Constants::PATTERNWIDTH as u16)
-            - (fine_scroll as u16))
-            % Constants::SMS_WIDTH;
+
+        let pattern_offset = (column_offset as u16) * (Constants::PATTERNWIDTH as u16);
+        let x_offset = if pattern_offset > fine_scroll as u16
+            {(pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH} else
+            {0};
 
         for y in
             self.interrupt_handler.current_y_pos as usize..self.interrupt_handler.y_end as usize
@@ -1223,27 +1225,32 @@ impl VDP {
                 let sprite_num =
                     self.display_buffers.sprite_scan_lines[y as usize].sprites[i as usize];
 
-                // FIXME, loosing motivation, this is better but still
-                // not quite right
-                let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
-                    y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT
-                } else {
-                    y - self.sprites[sprite_num as usize].y
-                };
+                // Adding check to avoid out of bounds from tiley index
+                if (y > self.sprites[sprite_num as usize].y) ||
+                   ((y +  Constants::SMS_HEIGHT) > self.sprites[sprite_num as usize].y) 
+                   {
+                       // FIXME, loosing motivation, this is better but still
+                       // not quite right
+                       let tiley = if self.sprites[sprite_num as usize].y > Constants::SMS_HEIGHT {
+                           y - self.sprites[sprite_num as usize].y + Constants::SMS_HEIGHT
+                       } else {
+                           y - self.sprites[sprite_num as usize].y
+                       };
 
-                let tile_addr = (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
-                for x in 0..self.mode_2_control.sprite_width {
-                    // If the line is clear
-                    if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH)
-                        && (self.display_buffers.sprite_scan_lines[y as usize].scan_line
-                            [(self.sprites[sprite_num as usize].x + x as u16) as usize]
-                            == 0)
-                    {
-                        self.display_buffers.sprite_scan_lines[y as usize].scan_line
-                            [(self.sprites[sprite_num as usize].x + x as u16) as usize] =
-                            self.patterns4[(tile_addr | x as u16) as usize];
-                    }
-                }
+                       let tile_addr = (self.sprites[sprite_num as usize].tile_number << 6) | (tiley << 3);
+                       for x in 0..self.mode_2_control.sprite_width {
+                           // If the line is clear
+                           if ((self.sprites[sprite_num as usize].x + x as u16) < Constants::SMS_WIDTH)
+                               && (self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                                   [(self.sprites[sprite_num as usize].x + x as u16) as usize]
+                                   == 0)
+                               {
+                                   self.display_buffers.sprite_scan_lines[y as usize].scan_line
+                                       [(self.sprites[sprite_num as usize].x + x as u16) as usize] =
+                                       self.patterns4[(tile_addr | x as u16) as usize];
+                               }
+                       }
+                   }
 
                 i += 1;
             }
@@ -1405,7 +1412,7 @@ impl VDPInterrupts {
             self.frame_updated = false;
             self.last_v_sync_clock.cycles = clock.cycles;
             self.v_sync = 0;
-            self.current_y_pos = self.y_end;
+            self.current_y_pos = 0;
 
             self.line_interrupt_latch = self.line_interrupt;
             self.line_int_time = (self.line_interrupt_latch * Constants::HSYNCCYCLETIME) as u32;
