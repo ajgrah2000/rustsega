@@ -53,12 +53,12 @@ impl SDLUtility {
         canvas.texture_creator()
     }
 
-    pub fn create_texture<'l>(
-        texture_creator: &'l render::TextureCreator<video::WindowContext>,
+    pub fn create_texture(
+        texture_creator: &render::TextureCreator<video::WindowContext>,
         pixel_format: pixels::PixelFormatEnum,
         frame_width: u16,
         frame_height: u16,
-    ) -> render::Texture<'l> {
+    ) -> render::Texture {
         texture_creator
             .create_texture_streaming(pixel_format, frame_width as u32, frame_height as u32)
             .map_err(|e| e.to_string())

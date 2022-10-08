@@ -1,5 +1,3 @@
-use sdl2::event;
-use sdl2::keyboard;
 use sdl2::pixels;
 use sdl2::rect;
 use sdl2::render;
@@ -11,6 +9,22 @@ use super::graphics;
 use super::interruptor;
 use super::memory;
 use super::ports;
+use super::inputs;
+
+pub struct WindowSize {
+    frame_width: u16,
+    frame_height: u16,
+    pixel_width: u8,
+    pixel_height: u8,
+}
+
+impl WindowSize {
+    fn new(frame_width: u16, frame_height: u16, pixel_width: u8, pixel_height: u8) -> Self {
+        Self {
+            frame_width, frame_height, pixel_width, pixel_height
+        }
+    }
+}
 
 pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
@@ -32,11 +46,12 @@ impl Sega {
         let clock = clocks::Clock::new();
         let mut memory = memory::memory::MemoryAbsolute::new();
         let pc_state = cpu::pc_state::PcState::new();
-        let vdp = graphics::vdp::VDP::new();
+        let vdp = graphics::vdp::Vdp::new();
         let mut ports = ports::Ports::new();
         let interruptor = interruptor::Interruptor::new();
 
         // Add the graphics device to the list of ports.
+        // Joysticks are held directly, not as a 'device' (don't need to pass to ports).
         ports.add_device(Box::new(vdp));
 
         memory.set_cartridge(cartridge);
@@ -52,11 +67,9 @@ impl Sega {
         const FRAME_WIDTH: u16 = SMS_WIDTH * (SCALE_X as u16);
         const FRAME_HEIGHT: u16 = SMS_HEIGHT * (SCALE_Y as u16);
 
-        self.main_loop(
-            FRAME_WIDTH,
-            FRAME_HEIGHT,
-            SCALE_X,
-            SCALE_Y,
+        let window_size = WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SCALE_X, SCALE_Y);
+
+        self.main_loop(window_size,
             pixels::PixelFormatEnum::RGB24,
         );
     }
@@ -70,10 +83,7 @@ impl Sega {
         &mut self,
         canvas: &mut render::Canvas<video::Window>,
         pixel_format: pixels::PixelFormatEnum,
-        frame_width: u16,
-        frame_height: u16,
-        pixel_width: u8,
-        pixel_height: u8,
+        window_size: &WindowSize,
         iterations: u32,
     ) {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
@@ -81,8 +91,8 @@ impl Sega {
         let mut texture = graphics::display::SDLUtility::create_texture(
             &texture_creator,
             pixel_format,
-            frame_width / (pixel_width as u16),
-            frame_height / (pixel_height as u16),
+            window_size.frame_width / (window_size.pixel_width as u16),
+            window_size.frame_height / (window_size.pixel_height as u16),
         );
 
         // Number of iterations to do before getting a new texture.
@@ -109,8 +119,8 @@ impl Sega {
                     Some(rect::Rect::new(
                         0,
                         0,
-                        (frame_width / (pixel_width as u16)) as u32,
-                        (frame_height / (pixel_width as u16)) as u32,
+                        (window_size.frame_width / (window_size.pixel_width as u16)) as u32,
+                        (window_size.frame_height / (window_size.pixel_height as u16)) as u32,
                     )),
                 )
                 .unwrap();
@@ -120,8 +130,8 @@ impl Sega {
                 Some(rect::Rect::new(
                     0,
                     0,
-                    frame_width as u32,
-                    frame_height as u32,
+                    window_size.frame_width as u32,
+                    window_size.frame_height as u32,
                 )),
                 0.0,
                 None,
@@ -138,12 +148,9 @@ impl Sega {
     }
 
     // Main entry point, intention is to call 'once'.
-    pub fn main_loop<'a>(
-        &'a mut self,
-        frame_width: u16,
-        frame_height: u16,
-        pixel_width: u8,
-        pixel_height: u8,
+    pub fn main_loop(
+        &mut self,
+        window_size: WindowSize,
         pixel_format: pixels::PixelFormatEnum,
     ) {
         let mut sdl_context = sdl2::init().unwrap();
@@ -151,32 +158,22 @@ impl Sega {
         let mut canvas = graphics::display::SDLUtility::create_canvas(
             &mut sdl_context,
             "rust-sega emulator",
-            frame_width,
-            frame_height,
+            window_size.frame_width,
+            window_size.frame_height,
         );
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
         'running: loop {
             for event in event_pump.poll_iter() {
-                match event {
-                    event::Event::Quit { .. }
-                    | event::Event::KeyDown {
-                        keycode: Some(keyboard::Keycode::Escape),
-                        ..
-                    } => break 'running,
-                    _ => {}
-                }
+                if !inputs::Input::handle_events(event, &mut self.core.ports.joysticks) {break 'running};
             }
 
             // First loop, draw 30 frames at a time.
             self.draw_loop(
                 &mut canvas,
                 pixel_format,
-                frame_width,
-                frame_height,
-                pixel_width,
-                pixel_height,
+                &window_size,
                 30,
             );
         }

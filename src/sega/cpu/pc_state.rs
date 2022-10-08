@@ -375,7 +375,7 @@ impl PcState {
 
     // Additional utility functions, intended to simplify some of the calls.
     pub fn increment_reg(register: &mut dyn Reg16RW, increment: i8) {
-        let update_value = ((register.get() as i16) + (increment as i16)) as u16;
+        let update_value = (register.get() as i16).wrapping_add(increment as i16) as u16;
         register.set(update_value);
     }
 

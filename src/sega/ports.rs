@@ -1,4 +1,5 @@
 use super::clocks;
+use super::inputs;
 
 struct NullPort {}
 
@@ -16,7 +17,7 @@ pub trait Port {
 pub trait Device {
     fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool;
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8);
-    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8;
+    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> Option<u8>;
     fn export(&mut self, raw_display: &mut Vec<u8>);
 }
 
@@ -33,6 +34,7 @@ impl Port for NullPort {
 pub struct Ports {
     ports: Vec<Box<dyn Port>>,
     devices: Vec<Box<dyn Device>>,
+    pub joysticks: inputs::Joystick,
 }
 
 impl Ports {
@@ -46,6 +48,7 @@ impl Ports {
         Self {
             ports: new_ports,
             devices: Vec::new(),
+            joysticks: inputs::Joystick::new(),
         }
     }
 
@@ -58,20 +61,13 @@ impl Ports {
     }
 
     pub fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
-        // TODO: Fix dummy joystick return values.
-        if port_address == 0xdc {
-            return 0xff;
-        }
-        if port_address == 0xdd {
-            return 0xff;
+        for i in 0..self.devices.len() {
+            if let Some(value) = self.devices[i].port_read(clock, port_address) { return value; };
         }
 
-        let mut last_value = 0;
-        // TODO: Replace with something useful, use a map or lookup, or hook up ports directly.
-        for i in 0..self.devices.len() {
-            last_value = self.devices[i].port_read(clock, port_address)
-        }
-        last_value
+        if let Some(value) = self.joysticks.port_read(clock, port_address) { return value; };
+
+        0
     }
 
     pub fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8) {

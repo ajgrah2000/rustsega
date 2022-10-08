@@ -10,7 +10,7 @@ pub struct Core<M> {
     clock: clocks::Clock,
     memory: M,
     pc_state: pc_state::PcState,
-    ports: ports::Ports,
+    pub ports: ports::Ports,
     interruptor: interruptor::Interruptor,
     raw_display: Vec<u8>,
 }
@@ -114,7 +114,7 @@ fn test_core_creation() {
     let clock = clocks::Clock::new();
     let memory = memory::MemoryAbsolute::new();
     let pc_state = pc_state::PcState::new();
-    let vdp = vdp::VDP::new();
+    let vdp = vdp::Vdp::new();
     let mut ports = ports::Ports::new();
     let interruptor = interruptor::Interruptor::new();
     ports.add_device(Box::new(vdp));

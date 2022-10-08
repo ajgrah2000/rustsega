@@ -196,10 +196,10 @@ impl Constants {
     const REGISTERUPDATEVALUE: u8 = 0x80;
     const NUMVDPREGISTERS: u8 = 16;
 
-    // VDP status register
+    // Vdp status register
     const VSYNCFLAG: u8 = 0x80;
 
-    // VDP register 0
+    // Vdp register 0
     const MODE_CONTROL_NO_1: u8 = 0x0;
     const VDP0DISHSCROLL: u8 = 0x40;
     const VDP0COL0OVERSCAN: u8 = 0x20;
@@ -209,7 +209,7 @@ impl Constants {
     const VDP0M2: u8 = 0x02;
     const VDP0NOSYNC: u8 = 0x01;
 
-    // VDP register 1 /* bit 7 unused. */
+    // Vdp register 1 /* bit 7 unused. */
     const MODE_CONTROL_NO_2: u8 = 0x1;
     const VDP1ENABLEDISPLAY: u8 = 0x40;
     const VDP1VSYNC: u8 = 0x20;
@@ -345,17 +345,17 @@ impl DisplayBuffers {
                 );
                 (Constants::YTILES * Constants::PATTERNHEIGHT) as usize
             ],
-            scan_lines: vec![ScanLines::new(VDP::FRAME_WIDTH); Constants::SMS_HEIGHT as usize],
+            scan_lines: vec![ScanLines::new(Vdp::FRAME_WIDTH); Constants::SMS_HEIGHT as usize],
             sprite_scan_lines: vec![
-                SpriteScanLines::new(VDP::FRAME_WIDTH);
+                SpriteScanLines::new(Vdp::FRAME_WIDTH);
                 Constants::SMS_HEIGHT as usize
             ],
         }
     }
 }
 
-// Create a dummy VDP, to try out hooking into ports.
-pub struct VDP {
+// Create a dummy Vdp, to try out hooking into ports.
+pub struct Vdp {
     ram: Vec<u8>,
     c_ram: Vec<u8>,
 
@@ -427,7 +427,7 @@ pub struct VDPInterrupts {
     frame_updated: bool,
 }
 
-impl VDP {
+impl Vdp {
     const FRAME_WIDTH: u16 = Constants::SMS_WIDTH;
     const FRAME_HEIGHT: u16 = Constants::SMS_HEIGHT;
 
@@ -741,8 +741,7 @@ impl VDP {
 
         let pattern_offset = (column_offset as u16) * (Constants::PATTERNWIDTH as u16);
         let x_offset = if pattern_offset > fine_scroll as u16
-            {(pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH} else
-            {0};
+            {(pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH} else {0};
 
         for y in
             self.interrupt_handler.current_y_pos as usize..self.interrupt_handler.y_end as usize
@@ -1292,20 +1291,19 @@ impl VDP {
     }
 }
 
-impl ports::Device for VDP {
-    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> u8 {
+impl ports::Device for Vdp {
+    fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> Option<u8> {
         match port_address {
             // Even values: 0x80 -> 0xBE
-            addr if (addr & 0xC1) == 0x80 => self.read_port_be(clock),
+            addr if (addr & 0xC1) == 0x80 => Some(self.read_port_be(clock)),
             // Odd values: 0x81 -> 0xBF
-            addr if (addr & 0xC1) == 0x81 => self.read_port_bf(clock),
+            addr if (addr & 0xC1) == 0x81 => Some(self.read_port_bf(clock)),
             // Add the vdp to port `7E' plus all the mirror ports, vdp v_counter
-            n if (n & 0xC1 == 0x40) => self.read_port_7e(clock),
+            n if (n & 0xC1 == 0x40) => Some(self.read_port_7e(clock)),
             // Add the vdp to port `7F' plus all the mirror ports, vdp h_counter
-            n if (n & 0xC1 == 0x41) => self.read_port_7f(clock),
-            _ => {
-                0 /* Unhandled, just return 0 for now */
-            }
+            n if (n & 0xC1 == 0x41) => Some(self.read_port_7f(clock)),
+
+            _ => { None /* Unhandled */ }
         }
     }
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8) {
@@ -1436,7 +1434,7 @@ mod tests {
     const PIXEL_WIDTH: u16 = 2;
     const PIXEL_HEIGHT: u16 = 2;
 
-    impl vdp::VDP {
+    impl vdp::Vdp {
         pub fn driver_open_display(&mut self) {
             use rand::Rng;
 
@@ -1446,8 +1444,8 @@ mod tests {
             let window = video_subsystem
                 .window(
                     "Rusty Sega",
-                    (vdp::VDP::FRAME_WIDTH * PIXEL_WIDTH) as u32,
-                    (vdp::VDP::FRAME_HEIGHT * PIXEL_HEIGHT) as u32,
+                    (vdp::Vdp::FRAME_WIDTH * PIXEL_WIDTH) as u32,
+                    (vdp::Vdp::FRAME_HEIGHT * PIXEL_HEIGHT) as u32,
                 )
                 .position_centered()
                 .build()
@@ -1496,7 +1494,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_open_display() {
-        let mut vdp = vdp::VDP::new();
+        let mut vdp = vdp::Vdp::new();
 
         vdp.driver_open_display();
     }
