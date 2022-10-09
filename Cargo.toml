@@ -6,7 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [profile.dev]
 # Enable optimisations in debug mode (keep all other settings/checks)
-#opt-level = 2
+opt-level = 2
 
 [profile.release]
 debug = true
