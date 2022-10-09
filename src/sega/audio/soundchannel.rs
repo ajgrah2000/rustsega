@@ -5,21 +5,22 @@ pub struct SoundChannel {
     playlength: SoundPatternType,
     nextlength: SoundPatternType,
     playpos: SoundPatternType,
-    playbuf: Vec<u8>,
-    next: Vec<u8>,
+    playbuf: Vec<PlaybackType>,
+    next: Vec<PlaybackType>,
     updated: bool,
 
     r_min: u32,
 }
 
+pub type PlaybackType = u8;  // Only 8-bit playback is currently supported.
 impl SoundChannel {
     const MAX_SOUND_PATTERN: SoundPatternType = 512;
 
     pub fn new() -> Self {
         Self {
             volume: 0,
-            playlength: 0,
-            nextlength: 0,
+            playlength: SoundChannel::MAX_SOUND_PATTERN,
+            nextlength: SoundChannel::MAX_SOUND_PATTERN,
             playpos: 0,
             playbuf: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
             next: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
@@ -57,7 +58,7 @@ impl SoundChannel {
                 }
             }
 
-            self.next[nextlength as usize] = vol;
+            self.next[nextlength as usize] = vol as PlaybackType;
             r += d;
         }
 
@@ -66,7 +67,7 @@ impl SoundChannel {
         self.updated = true;
     }
 
-    pub fn get_wave(&mut self, length: u32) -> Vec<u8> {
+    pub fn get_wave(&mut self, length: u32) -> Vec<PlaybackType> {
         // Generate the 'wave' output buffer.
         // First copy what's left of the current 'play buffer', update to the
         // new buffer, if it's changed and copy that until the wave buffer has
@@ -74,13 +75,10 @@ impl SoundChannel {
 
         let mut wave = Vec::with_capacity(length as usize);
 
-        let mut wave_pos = 0;
-        while (self.playpos < self.playlength) && (wave_pos < length) {
-//            wave[wave_pos as usize] = self.playbuf[self.playpos as usize];
+        while (self.playpos < self.playlength) && (wave.len() < length as usize) {
             wave.push(self.playbuf[self.playpos as usize]);
 
             self.playpos += 1;
-            wave_pos += 1;
         }
 
         if self.playpos >= self.playlength {
@@ -92,23 +90,21 @@ impl SoundChannel {
                 std::mem::swap(&mut self.playlength, &mut self.nextlength);
             }
             if self.playlength == 0 {
-                while wave_pos < length {
-//                    wave[wave_pos as usize] = 0;
+                while wave.len() < length as usize {
                     wave.push(0);
                 }
             } else {
                 self.playpos = 0;
-                while wave_pos < length {
+                while wave.len() < length as usize {
                     self.playpos = 0;
-                    while (self.playpos < self.playlength) && (wave_pos < length) {
-//                        wave[wave_pos as usize] = self.playbuf[self.playpos as usize];
+                    while (self.playpos < self.playlength) && (wave.len() < length as usize) {
                         wave.push(self.playbuf[self.playpos as usize]);
-                        wave_pos += 1;
                         self.playpos += 1;
                     }
                 }
             }
         }
+//        wave.iter_mut().for_each(|x| *x = 0x7F);
 
         wave
     }

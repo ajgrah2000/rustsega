@@ -122,14 +122,23 @@ pub struct Input {
 }
 
 impl Input {
-    const KEY_UP:keyboard::Keycode     = keyboard::Keycode::X;
+    const KEY_UP:keyboard::Keycode     = keyboard::Keycode::Up;
     const KEY_DOWN:keyboard::Keycode   = keyboard::Keycode::Down;
     const KEY_LEFT:keyboard::Keycode   = keyboard::Keycode::Left;
     const KEY_RIGHT:keyboard::Keycode  = keyboard::Keycode::Right;
     const KEY_FIRE_A:keyboard::Keycode = keyboard::Keycode::Z;
-    const KEY_FIRE_B:keyboard::Keycode = keyboard::Keycode::Up;
+    const KEY_FIRE_B:keyboard::Keycode = keyboard::Keycode::X;
     const KEY_RESET:keyboard::Keycode  = keyboard::Keycode::R;
-    pub const KEY_QUIT:keyboard::Keycode   = keyboard::Keycode::Escape;
+    const KEY_QUIT:keyboard::Keycode   = keyboard::Keycode::Escape;
+
+    pub fn print_keys() {
+        println!("Key mappings (Joystick 1):");
+        println!("Up: {}, Down: {}, Left: {}, Right: {}", Input::KEY_UP, Input::KEY_DOWN, Input::KEY_LEFT, Input::KEY_RIGHT);
+        println!("Fire A: {}, Fire B: {}", Input::KEY_FIRE_A, Input::KEY_FIRE_B);
+        println!("Reset: {}", Input::KEY_RESET);
+        println!("");
+        println!("Quit: {}", Input::KEY_QUIT);
+    }
 
     // Return 'true' if handled, otherwise 'false' (ie quit)
     pub fn handle_events(event:event::Event, joystick:&mut Joystick) -> bool {

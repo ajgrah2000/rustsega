@@ -38,7 +38,8 @@ pub struct Sega {
 
 impl Sega {
 
-    const FIXED_AUDIO_QUEUE_LENGTH: u32 = 3000; // TODO: dynamically set the length based on speed/previous queue lengths, to 'minimise sound delay'
+    const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 10; // Number of display updates per key press event. (reduces texture creation overhead).
+    const CPU_STEPS_PER_DISPLAY_UPDATE:  u32 = 500; // Number of times to step the CPU before updating the display.
 
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let mut cartridge = memory::cartridge::Cartridge::new(&cartridge_name);
@@ -75,7 +76,8 @@ impl Sega {
         const FRAME_WIDTH: u16 = SMS_WIDTH * (SCALE_X as u16);
         const FRAME_HEIGHT: u16 = SMS_HEIGHT * (SCALE_Y as u16);
 
-        println!("powering on Sega Emulator.  Press {} to quit.", inputs::Input::KEY_QUIT);
+        println!("powering on Sega Emulator.");
+        inputs::Input::print_keys();
 
         let window_size = WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SCALE_X, SCALE_Y);
 
@@ -108,16 +110,14 @@ impl Sega {
         // These loops will update the display, but currently events aren't checked in this time.
         for _k in 0..iterations {
             // Clock the CPU lots per display update.
-            for _j in 0..500 {
+            for _j in 0..Sega::CPU_STEPS_PER_DISPLAY_UPDATE {
                 self.core.step(self.debug, self.realtime);
             }
 
             self.core.export();
 
-            assert!(audio_queue.size() <= Sega::FIXED_AUDIO_QUEUE_LENGTH);
-            let fill_size = Sega::FIXED_AUDIO_QUEUE_LENGTH - audio_queue.size();
-            let sound_buffer = self.core.ports.audio.get_next_audio_chunk(fill_size);
-            audio_queue.queue_audio(&sound_buffer).unwrap();
+            // Top-up the audio queue
+            sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
 
             texture
                 .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
@@ -185,8 +185,8 @@ impl Sega {
                 };
             }
 
-            // First loop, draw 30 frames at a time.
-            self.draw_loop(&mut canvas, pixel_format, &window_size, 30, &mut audio_queue);
+            // First loop, draw FRAMES_PER_KEY_EVENT frames at a time.
+            self.draw_loop(&mut canvas, pixel_format, &window_size, Sega::DISPLAY_UPDATES_PER_KEY_EVENT, &mut audio_queue);
         }
     }
 }

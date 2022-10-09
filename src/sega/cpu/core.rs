@@ -139,7 +139,7 @@ fn test_core_creation() {
     ports.add_device(Box::new(vdp));
     let mut core = Core::new(clock, memory, pc_state, ports, interruptor);
 
-    core.step(true);
+    core.step(true, false);
     println!("{}", core.pc_state);
-    core.step(true);
+    core.step(true, false);
 }
