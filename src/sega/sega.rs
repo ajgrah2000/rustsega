@@ -6,6 +6,7 @@ use sdl2::video;
 use super::clocks;
 use super::cpu;
 use super::graphics;
+use super::audio::sound;
 use super::inputs;
 use super::interruptor;
 use super::memory;
@@ -35,6 +36,9 @@ pub struct Sega {
 }
 
 impl Sega {
+
+    const FIXED_AUDIO_QUEUE_LENGTH: u32 = 3000; // TODO: dynamically set the length based on speed/previous queue lengths, to 'minimise sound delay'
+
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let mut cartridge = memory::cartridge::Cartridge::new(&cartridge_name);
         match cartridge.load() {
@@ -86,6 +90,7 @@ impl Sega {
         pixel_format: pixels::PixelFormatEnum,
         window_size: &WindowSize,
         iterations: u32,
+        audio_queue: &mut sound::SoundQueueType,
     ) {
         // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
         let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
@@ -105,6 +110,11 @@ impl Sega {
             }
 
             self.core.export();
+
+            assert!(audio_queue.size() <= Sega::FIXED_AUDIO_QUEUE_LENGTH);
+            let fill_size = Sega::FIXED_AUDIO_QUEUE_LENGTH - audio_queue.size();
+            let sound_buffer = self.core.ports.audio.get_next_audio_chunk(fill_size);
+            audio_queue.queue_audio(&sound_buffer).unwrap();
 
             texture
                 .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
@@ -159,6 +169,10 @@ impl Sega {
             window_size.frame_height,
         );
 
+        let mut audio_queue = sound::SDLUtility::get_audio_queue(&mut sdl_context).unwrap();
+
+        audio_queue.resume(); // Start the audio (nothing in the queue at this point).
+
         let mut event_pump = sdl_context.event_pump().unwrap();
 
         'running: loop {
@@ -169,7 +183,7 @@ impl Sega {
             }
 
             // First loop, draw 30 frames at a time.
-            self.draw_loop(&mut canvas, pixel_format, &window_size, 30);
+            self.draw_loop(&mut canvas, pixel_format, &window_size, 30, &mut audio_queue);
         }
     }
 }

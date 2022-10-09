@@ -1,5 +1,6 @@
 use super::clocks;
 use super::inputs;
+use super::audio::sound;
 
 struct NullPort {}
 
@@ -35,6 +36,7 @@ pub struct Ports {
     ports: Vec<Box<dyn Port>>,
     devices: Vec<Box<dyn Device>>,
     pub joysticks: inputs::Joystick,
+    pub audio: sound::Sound,
 }
 
 impl Ports {
@@ -49,6 +51,7 @@ impl Ports {
             ports: new_ports,
             devices: Vec::new(),
             joysticks: inputs::Joystick::new(),
+            audio: sound::Sound::new(),
         }
     }
 
@@ -78,6 +81,11 @@ impl Ports {
         for i in 0..self.devices.len() {
             // TODO: Replace with something useful.
             self.devices[i].port_write(clock, port_address, value);
+        }
+
+        if port_address & 0xC0 == 0x40 {
+            // 7E + 7F plus all of the pirror ports.
+            self.audio.write_port(value);
         }
     }
 

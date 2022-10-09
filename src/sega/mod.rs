@@ -1,3 +1,4 @@
+pub mod audio;
 pub mod clocks;
 pub mod cpu;
 pub mod graphics;
