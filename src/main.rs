@@ -4,7 +4,7 @@
 
 mod sega;
 
-fn parse_args(debug: &mut bool, cartridge_name: &mut String) {
+fn parse_args(debug: &mut bool, realtime: &mut bool, cartridge_name: &mut String) {
     // Handle command line arguments.
     let mut ap = argparse::ArgumentParser::new();
     ap.set_description("Rusty Sega Emulator");
@@ -12,6 +12,11 @@ fn parse_args(debug: &mut bool, cartridge_name: &mut String) {
         &["-d", "--debug"],
         argparse::StoreTrue,
         "Print PC State Debug Info",
+    );
+    ap.refer(realtime).add_option(
+        &["-n", "--no_delay"],
+        argparse::StoreFalse,
+        "Run the emulator with no delay (rather than real-time)",
     );
     ap.refer(cartridge_name)
         .add_argument("cartridge", argparse::Store, "Name of cratridge to run")
@@ -21,11 +26,12 @@ fn parse_args(debug: &mut bool, cartridge_name: &mut String) {
 
 fn main() {
     let mut debug = false;
+    let mut realtime = true;
     let mut cartridge_name = String::new();
 
-    parse_args(&mut debug, &mut cartridge_name);
+    parse_args(&mut debug, &mut realtime, &mut cartridge_name);
 
-    let mut sega_machine = sega::sega::Sega::new(debug, cartridge_name);
+    let mut sega_machine = sega::sega::Sega::new(debug, realtime, cartridge_name);
 
     sega_machine.power_sega();
 

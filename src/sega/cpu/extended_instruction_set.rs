@@ -314,7 +314,7 @@ pub fn otir<M>(
 {
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
 
-    pc_state.set_b(pc_state.get_b() - 1);
+    pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
 

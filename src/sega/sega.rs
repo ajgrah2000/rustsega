@@ -33,6 +33,7 @@ impl WindowSize {
 pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
     debug: bool,
+    realtime: bool,
 }
 
 impl Sega {
@@ -74,14 +75,16 @@ impl Sega {
         const FRAME_WIDTH: u16 = SMS_WIDTH * (SCALE_X as u16);
         const FRAME_HEIGHT: u16 = SMS_HEIGHT * (SCALE_Y as u16);
 
+        println!("powering on Sega Emulator.  Press {} to quit.", inputs::Input::KEY_QUIT);
+
         let window_size = WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SCALE_X, SCALE_Y);
 
         self.main_loop(window_size, pixels::PixelFormatEnum::RGB24);
     }
 
-    pub fn new(debug: bool, cartridge_name: String) -> Self {
+    pub fn new(debug: bool, realtime: bool, cartridge_name: String) -> Self {
         let core = Self::build_sega(cartridge_name);
-        Self { core, debug }
+        Self { core, debug, realtime }
     }
 
     pub fn draw_loop(
@@ -106,7 +109,7 @@ impl Sega {
         for _k in 0..iterations {
             // Clock the CPU lots per display update.
             for _j in 0..500 {
-                self.core.step(self.debug);
+                self.core.step(self.debug, self.realtime);
             }
 
             self.core.export();

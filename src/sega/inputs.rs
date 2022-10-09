@@ -122,14 +122,14 @@ pub struct Input {
 }
 
 impl Input {
-    const KEY_UP:keyboard::Keycode     = keyboard::Keycode::Up;
+    const KEY_UP:keyboard::Keycode     = keyboard::Keycode::X;
     const KEY_DOWN:keyboard::Keycode   = keyboard::Keycode::Down;
     const KEY_LEFT:keyboard::Keycode   = keyboard::Keycode::Left;
     const KEY_RIGHT:keyboard::Keycode  = keyboard::Keycode::Right;
     const KEY_FIRE_A:keyboard::Keycode = keyboard::Keycode::Z;
-    const KEY_FIRE_B:keyboard::Keycode = keyboard::Keycode::X;
+    const KEY_FIRE_B:keyboard::Keycode = keyboard::Keycode::Up;
     const KEY_RESET:keyboard::Keycode  = keyboard::Keycode::R;
-    const KEY_QUIT:keyboard::Keycode   = keyboard::Keycode::Escape;
+    pub const KEY_QUIT:keyboard::Keycode   = keyboard::Keycode::Escape;
 
     // Return 'true' if handled, otherwise 'false' (ie quit)
     pub fn handle_events(event:event::Event, joystick:&mut Joystick) -> bool {
