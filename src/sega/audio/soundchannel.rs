@@ -10,28 +10,34 @@ pub struct SoundChannel {
     updated: bool,
 
     r_min: u32,
+    play_count: u32,
 }
 
 pub type PlaybackType = u8;  // Only 8-bit playback is currently supported.
 impl SoundChannel {
     const MAX_SOUND_PATTERN: SoundPatternType = 512;
 
+    const MAX_PLAY_FADE_COUNT: u32 = 100;
+    const NUM_CHANNELS: u8 = 4;
+    const NEUTRAL_SOUND_LEVEL: u32 = 0x7F/SoundChannel::NUM_CHANNELS as u32;
+
     pub fn new() -> Self {
         Self {
             volume: 0,
-            playlength: SoundChannel::MAX_SOUND_PATTERN,
-            nextlength: SoundChannel::MAX_SOUND_PATTERN,
+            playlength: 0, //SoundChannel::MAX_SOUND_PATTERN,
+            nextlength: 0, //SoundChannel::MAX_SOUND_PATTERN,
             playpos: 0,
             playbuf: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
             next: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
             updated: false,
 
             r_min: 0,
+            play_count: SoundChannel::MAX_PLAY_FADE_COUNT,
         }
     }
 
     pub fn set_volume(&mut self, volume: u8) {
-        self.volume = volume / 4;
+        self.volume = volume / SoundChannel::NUM_CHANNELS;
     }
 
     pub fn set_frequency(&mut self, freq: u32, sample_rate: u32) {
@@ -104,8 +110,13 @@ impl SoundChannel {
                 }
             }
         }
-//        wave.iter_mut().for_each(|x| *x = 0x7F);
 
+        // TODO: Improve 'fade in' of audio, to avoid 'snap/crackle/pop'
+        if self.play_count > 0 { 
+            wave.iter_mut().for_each(|x| {if self.play_count > 0 {self.play_count -= 1;} 
+                                                *x = (((self.play_count * SoundChannel::NEUTRAL_SOUND_LEVEL) + 
+                                                     (*x as u32 * (SoundChannel::MAX_PLAY_FADE_COUNT - self.play_count)))/SoundChannel::MAX_PLAY_FADE_COUNT) as u8});
+        }
         wave
     }
 }

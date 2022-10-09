@@ -181,6 +181,7 @@ impl Sega {
 
         let mut audio_queue = sound::SDLUtility::get_audio_queue(&mut sdl_context).unwrap();
 
+        audio_queue.clear(); 
         audio_queue.resume(); // Start the audio (nothing in the queue at this point).
 
         let mut event_pump = sdl_context.event_pump().unwrap();

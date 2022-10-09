@@ -11,6 +11,8 @@ impl SDLUtility {
     const AUDIO_SAMPLE_SIZE:u16 = 100; // 'Desired' sample size (smaller make sound 'more accurate')
     const FRACTION_FILL:f32 = 0.8; // TODO: FUDGE FACTOR.  Don't completely fill, samples a removed 1 at a time, don't fill them immediately.
 
+    const MONO_STERO_FLAG:u8 = 1; // TODO: Make this configurable 1 - mono, 2 - stereo
+
     pub fn get_audio_queue (
         sdl_context: &mut sdl2::Sdl,
     ) -> Result<SoundQueueType, String> {
@@ -18,19 +20,19 @@ impl SDLUtility {
 
         let desired_spec = audio::AudioSpecDesired {
             freq: Some(Sound::SAMPLERATE as i32),
-            channels: Some(1), // mono
+            channels: Some(SDLUtility::MONO_STERO_FLAG), // mono
             samples: Some(SDLUtility::AUDIO_SAMPLE_SIZE),
         };
 
-        let queue = audio_subsystem.open_queue::<soundchannel::PlaybackType,_>(None, &desired_spec);
-        queue
+        audio_subsystem.open_queue::<soundchannel::PlaybackType,_>(None, &desired_spec)
     }
 
     pub fn top_up_audio_queue<F>(audio_queue: &mut SoundQueueType, mut get_additional_buffer:F)
         where F: FnMut(u32) ->Vec<soundchannel::PlaybackType> {
             assert!(audio_queue.size() <= SDLUtility::TARGET_QUEUE_LENGTH as u32);
             let fill_size = ((SDLUtility::TARGET_QUEUE_LENGTH - audio_queue.size()) as f32 * SDLUtility::FRACTION_FILL) as u32;
-            let sound_buffer = get_additional_buffer(fill_size);
+            // If 'stereo' the buffer is twice as large, so just as for half as much.
+            let sound_buffer = get_additional_buffer(fill_size/(SDLUtility::MONO_STERO_FLAG as u32));
             audio_queue.queue_audio(&sound_buffer).unwrap();
     }
 }
@@ -49,7 +51,6 @@ impl Sound {
     const CHANNELS: u8 = 4;
     const BITS: u8 = 8;
     const MAX_VOLUME_MASK: u8 = 0xF;
-
     pub fn new() -> Self {
         Self {
             volume: vec![Sound::MAX_VOLUME_MASK; Sound::CHANNELS as usize],
@@ -69,18 +70,27 @@ impl Sound {
 
 
     pub fn get_next_audio_chunk(&mut self, length: u32) -> Vec<soundchannel::PlaybackType> {
-        let mut stream = Vec::with_capacity(length as usize);
-        for i in 0..length {
-            stream.push(0);
-        }
+        let mut stream = Vec::with_capacity((2*length) as usize);
+        if length > 0 {
+            for i in 0..(length * (SDLUtility::MONO_STERO_FLAG as u32)) {
+                stream.push(0x0); // Neutral volume
+            }
 
-        for c in 0..Sound::CHANNELS {
-            self.channels[c as usize].set_volume((Sound::MAX_VOLUME_MASK - self.volume[c as usize]) << 4);
-            self.channels[c as usize].set_frequency(Sound::get_hertz(self.freq[c as usize]), Sound::SAMPLERATE);
-            let channel_wave = self.channels[c as usize].get_wave(length);
+            for c in 0..Sound::CHANNELS {
+                self.channels[c as usize].set_volume((Sound::MAX_VOLUME_MASK - self.volume[c as usize]) << 4);
+                self.channels[c as usize].set_frequency(Sound::get_hertz(self.freq[c as usize]), Sound::SAMPLERATE);
+                let channel_wave = self.channels[c as usize].get_wave(length);
 
-            for i in 0..length {
-                stream[i as usize] += channel_wave[i as usize];
+                if c % SDLUtility::MONO_STERO_FLAG == 0 {
+                    for i in 0..length {
+                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32)) as usize] += channel_wave[i as usize];
+                    }
+                } else {
+                    // This will only be called if 'MONO_STEREO_FLAG' is set to '2'
+                    for i in 0..length {
+                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32) + 1) as usize] += channel_wave[i as usize];
+                    }
+                }
             }
         }
 
