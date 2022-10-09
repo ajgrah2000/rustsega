@@ -40,6 +40,7 @@ impl Sega {
 
     const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 10; // Number of display updates per key press event. (reduces texture creation overhead).
     const CPU_STEPS_PER_DISPLAY_UPDATE:  u32 = 500; // Number of times to step the CPU before updating the display.
+    const CPU_STEPS_PER_AUDIO_UPDATE:    u32 = 100; // Number of times to step the CPU before updating the audio.
 
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let mut cartridge = memory::cartridge::Cartridge::new(&cartridge_name);
@@ -108,16 +109,22 @@ impl Sega {
 
         // Number of iterations to do before getting a new texture.
         // These loops will update the display, but currently events aren't checked in this time.
+        
+        let mut audio_steps = 0;
         for _k in 0..iterations {
             // Clock the CPU lots per display update.
             for _j in 0..Sega::CPU_STEPS_PER_DISPLAY_UPDATE {
                 self.core.step(self.debug, self.realtime);
+
+                if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
+                    // Top-up the audio queue
+                    sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
+                }
+                audio_steps += 1;
             }
 
             self.core.export();
 
-            // Top-up the audio queue
-            sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
 
             texture
                 .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
