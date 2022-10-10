@@ -40,12 +40,12 @@ pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
     }
 
     if c {
-        if a > 0xFF - b {
+        if a >= 0xFF - b {
             f_status.set_c(1);
         } else {
             f_status.set_c(0);
         }
-    } else if a >= 0xFF - b {
+    } else if a > 0xFF - b {
         f_status.set_c(1);
     } else {
         f_status.set_c(0);
@@ -354,6 +354,28 @@ mod tests {
     use crate::sega::cpu::pc_state;
     use crate::sega::cpu::status_flags;
 
+    #[test]
+    fn test_u8_carry() {
+        let mut f_status = pc_state::PcStatusFlagFields(0);
+        assert_eq!(status_flags::u8_carry(0xfb, 0x4, false, &mut f_status), 0xFF);
+        assert_eq!(f_status.get_c(), 0);
+
+        for a in 0..=0xFF { 
+            for b in 0..=0xFF { 
+                for c in [false, true] { 
+                    let mut f_status_1 = pc_state::PcStatusFlagFields(0);
+                    let result_1 = status_flags::i8_carry(a, b, c, &mut f_status);
+
+                    let mut f_status_2 = pc_state::PcStatusFlagFields(0);
+                    let result_2 = status_flags::u8_carry(a, !b, !c, &mut f_status);
+                    assert_eq!(result_1, result_2);
+                    assert_eq!(f_status_1.get_c(), f_status_2.get_c());
+                    assert_eq!(f_status_1.get_pv(), f_status_2.get_pv());
+                    assert_eq!(f_status_1.get_h(), f_status_2.get_h());
+                }
+            }
+        }
+    }
     #[test]
     fn test_parity() {
         assert_eq!(status_flags::calculate_parity(0b11001001), true);

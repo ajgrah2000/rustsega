@@ -1650,24 +1650,112 @@ mod tests {
         assert_eq!(test_core.clock.cycles, 10);
     }
 
+    fn check_op_code_cycle_count(
+        test_core: &mut TestCore,
+        op_code: Vec<u8>,
+        expected_pc: u16,
+        expected_cycles: u32,
+    ) {
+        simple_execute(test_core, op_code);
+        assert_eq!(test_core.pc_state.get_pc(), expected_pc);
+        assert_eq!(test_core.clock.cycles, expected_cycles);
+    }
+
     #[test]
     fn test_opcode_cycle_times() {
-        fn test_op_code_cycle_count(
-            test_core: &mut TestCore,
-            op_code: Vec<u8>,
-            expected_pc: u16,
-            expected_cycles: u32,
-        ) {
-            simple_execute(test_core, op_code);
-            assert_eq!(test_core.pc_state.get_pc(), expected_pc);
-            assert_eq!(test_core.clock.cycles, expected_cycles);
+        fn default_pc_op_code_check(op_code: Vec<u8>,
+                                    expected_cycles: u32)
+        {
+            let mut test_core = TestCore::new();
+            let expected_pc_count = op_code.len() as u16;
+            check_op_code_cycle_count(&mut test_core, op_code, expected_pc_count, expected_cycles);
         }
 
+        default_pc_op_code_check(vec![0x00], 4); // no-op
+        default_pc_op_code_check(vec![0x01, 0x10, 0x33], 10);
+        default_pc_op_code_check(vec![0xdd, 0x19], 15);
+
+        // ADC A,(HL)
+        default_pc_op_code_check(vec![0x8E], 7);
+        default_pc_op_code_check(vec![0xDD, 0x8E,0x00], 19);
+    }
+
+    #[test]
+    fn test_opcode_wild_cards_cycle_times() {
         let mut test_core = TestCore::new();
 
-        test_op_code_cycle_count(&mut test_core, vec![0x00], 1, 4); // no-op
-        test_op_code_cycle_count(&mut test_core, vec![0x01, 0x10, 0x33], 3, 10);
-        // LD dd, nn
+        // t_states,   [(op_code, op_code_mask)], [t_states]
+        // Currently not doing anything interesting with the masks
+        // op_code=0x00rrr110 -> 0b00000110 mask= 0b11000111
+        // NOTE: Only works for 'exhaustive' matches (doesn't include a filter)
+        let t_states = [(vec![(0b01000000, 0b11010010)], vec![4]), // LD r,r' // Overlapping, but excludes r=6
+                        (vec![(0b01000000, 0b11010100)], vec![4]), // LD r,r'
+                        (vec![(0b01000000, 0b11100010)], vec![4]), // LD r,r'
+                        (vec![(0b01000000, 0b11100100)], vec![4]), // LD r,r'
+                        (vec![(0b00000110, 0b11010111), (0x0, 0x0)], vec![4,3]), // LD r,n
+                        (vec![(0b00000110, 0b11100111), (0x0, 0x0)], vec![4,3]), // LD r,n
+                        (vec![(0b01000110, 0b11010111)], vec![4,3]), // LD r,(HL)
+                        (vec![(0b01000110, 0b11100111)], vec![4,3]), // LD r,(HL)
+                        (vec![(0xDD, 0xFF),(0b01000110, 0xFF),(0x0, 0x0)], vec![4,4,3,5,3]), // LD r,(IX+d)
+                        // 0xDD, 0b01rrr110, 0bdddddddd
+                        (vec![(0xFD, 0xFF),(0b01000110, 0xFF),(0x0, 0x0)], vec![4,4,3,5,3]), // LD r,(IY+d)
+                        (vec![(0b01110000, 0b11111010)], vec![4,3]), // LD (HL), r
+                        (vec![(0b01110000, 0b11111100)], vec![4,3]), // LD (HL), r
+                       ];
+
+        for check in t_states {
+            let op_codes = check.0;
+            let timing = check.1;
+            let total_t_states = timing.into_iter().fold(0, |s, x| s + x);
+
+            // Initially, just do a permutation on the first op code.
+            for mask_permutation in sequence_from_mask(!op_codes[0].1) {
+                let mut test_input = Vec::new();
+                test_input.push(op_codes[0].0 | mask_permutation);
+
+                for code in op_codes[1..].into_iter() { 
+                    test_input.push(code.0 & code.1); // Apply the mask to the op-code. 
+                }
+                // This can be used for op codes that don't manipulate 'PC'
+                let expected_pc_increment = test_input.len() as u16;
+
+                test_core.pc_state.set_hl(0);
+                test_core.pc_state.set_af(0);
+                test_core.pc_state.set_bc(0);
+                test_core.pc_state.set_de(0);
+                check_op_code_cycle_count(&mut test_core, test_input, expected_pc_increment, total_t_states);
+            }
+        }
+    }
+
+    #[test]
+    fn test_sequence_from_mask() {
+        assert_eq!(vec![0,2,8,10], sequence_from_mask(0xA));
+    }
+
+    fn sequence_from_mask(mask: u8) -> Vec<u8> {
+        let mut sequence = Vec::new();
+        let mut current_count:u16 = 1;
+
+        let mut intermediate_sums = Vec::new();
+        for shift in 0..8 {
+            if current_count & mask as u16 != 0 {
+                intermediate_sums.push(current_count as u8); 
+            }
+            current_count = current_count << 1;
+        }
+
+        // Loop over 2^(num elements), with each bit pos representing the 'value'
+        for element in 0..(1 << intermediate_sums.len()) {
+            let mut sum = 0;
+            for bit_pos in 0..intermediate_sums.len() {
+                if (1<< bit_pos) & element != 0 {
+                    sum += intermediate_sums[bit_pos];
+                }
+            }
+            sequence.push(sum);
+        }
+        sequence
     }
 
     #[test]

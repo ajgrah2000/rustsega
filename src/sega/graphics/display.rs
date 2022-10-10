@@ -145,7 +145,6 @@ mod tests {
         }
 
         pub fn update_display(&mut self) {
-            println!("update");
             // Clear the buffer
             self.display.iter_mut().for_each(|x| *x = 0);
 

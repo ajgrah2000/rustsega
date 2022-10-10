@@ -171,7 +171,7 @@ pub fn ld_r_i_d<M, F: FnMut(&mut pc_state::PcState, u8)>(
     let address = i16_value.wrapping_add(get_i8_displacement_as_u8(memory, &pc_state.pc_reg));
     dst_fn(pc_state, memory.read(address));
     pc_state.increment_pc(3);
-    clock.increment(16);
+    clock.increment(19);
 }
 
 // LD A, R
@@ -228,7 +228,7 @@ pub fn pop_i<M, R16>(
     i16_reg.set_high(memory.read(sp_reg.get()));
     pc_state::PcState::increment_reg(sp_reg, 1);
     pc_state::PcState::increment_reg(pc_reg, 2);
-    clock.increment(15);
+    clock.increment(14);
 }
 
 // PUSH I
@@ -660,9 +660,12 @@ pub fn add16<R16, F16>(
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
-    dst_reg.set(add16c(dst_reg.get(), src_value, false, af_reg));
+    let mut f_status = af_reg.get_flags();
+    dst_reg.set(status_flags::u16_no_carry(dst_reg.get(), src_value, &mut f_status));
+    f_status.set_n(0);
+    af_reg.set_flags(&f_status);
 
-    pc_state::PcState::increment_reg(pc_reg, 1);
+    pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(15);
 }
 

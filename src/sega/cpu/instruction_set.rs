@@ -193,24 +193,24 @@ fn calculate_daa_add(pc_state: &mut pc_state::PcState) {
         } else if ((upper <= 8) && (f_status.get_h() == 0) && (0xA..=0xF).contains(&lower))
             || ((upper <= 9) && (f_status.get_h() == 1) && (lower <= 0x3))
         {
-            pc_state.set_a(pc_state.get_a() + 0x06);
+            pc_state.set_a(pc_state.get_a().wrapping_add(0x06));
         } else if (0xA..=0xF).contains(&upper) && (f_status.get_h() == 0) && (lower <= 0x9) {
-            pc_state.set_a(pc_state.get_a() + 0x60);
+            pc_state.set_a(pc_state.get_a().wrapping_add(0x60));
             f_status.set_c(1);
         } else if ((0x9..=0xF).contains(&upper)
             && (f_status.get_h() == 0)
             && (0xA..=0xF).contains(&lower))
             || ((0xA..=0xF).contains(&upper) && (f_status.get_h() == 1) && (lower <= 0x3))
         {
-            pc_state.set_a(pc_state.get_a() + 0x66);
+            pc_state.set_a(pc_state.get_a().wrapping_add(0x66));
             f_status.set_c(1);
         }
     } else if (upper <= 0x2) && (f_status.get_h() == 0) && (lower <= 0x9) {
-        pc_state.set_a(pc_state.get_a() + 0x60);
+        pc_state.set_a(pc_state.get_a().wrapping_add(0x60));
     } else if ((upper <= 0x2) && (f_status.get_h() == 0) && (0xA..=0xF).contains(&lower))
         || ((upper <= 0x3) && (f_status.get_h() == 1) && (lower <= 0x3))
     {
-        pc_state.set_a(pc_state.get_a() + 0x66);
+        pc_state.set_a(pc_state.get_a().wrapping_add(0x66));
     }
 
     f_status.set_pv(u8::from(status_flags::calculate_parity(pc_state.get_a())));
@@ -228,7 +228,7 @@ fn calculate_daa_add(pc_state: &mut pc_state::PcState) {
         f_status.set_z(0);
     }
 
-    pc_state.set_f(f_status);
+    pc_state.set_f(f_status)
 }
 
 // Fcpu_state->IXME, table in z80 guide is wrong, need to check values by hand
@@ -242,16 +242,16 @@ fn calculate_daa_sub(pc_state: &mut pc_state::PcState) {
         if (upper <= 9) && (f_status.get_h() == 0) && (lower <= 9) {
             // Do nothing
         } else if (upper <= 0x8) && (f_status.get_h() == 1) && (0x6..=0xF).contains(&lower) {
-            pc_state.set_a(pc_state.get_a() + 0xFA);
+            pc_state.set_a(pc_state.get_a().wrapping_add(0xFA));
         }
     } else if (0x7..=0xF).contains(&upper) && (f_status.get_h() == 0) && (lower <= 0x9) {
-        pc_state.set_a(pc_state.get_a() + 0xA0);
+        pc_state.set_a(pc_state.get_a().wrapping_add(0xA0));
     } else if (0x6..=0xF).contains(&upper)
         && (f_status.get_h() == 1)
         && (0x6..=0xF).contains(&lower)
     {
         f_status.set_h(0);
-        pc_state.set_a(pc_state.get_a() + 0x9A);
+        pc_state.set_a(pc_state.get_a().wrapping_add(0x9A));
     }
 
     f_status.set_pv(u8::from(status_flags::calculate_parity(pc_state.get_a())));
@@ -570,7 +570,6 @@ pub fn jump_cc_nn<M>(
 {
     if condition {
         pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
-        clock.increment(5);
     } else {
         pc_state.increment_pc(3);
     }
@@ -1391,7 +1390,6 @@ where
 pub fn halt(clock: &mut clocks::Clock) {
     // Should 'loop/no-op' until an inerrupt occurs (or just immediately trigger one).
     clock.increment(4);
-    panic!("halt not correctly implemented");
 }
 
 #[cfg(test)]
