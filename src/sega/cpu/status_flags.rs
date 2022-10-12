@@ -34,7 +34,6 @@ macro_rules! overflow_flag {
                                                 (($r >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) == 0x1)) as u8}
 }
 
-
 // Calculate 'carry' flags, given two unsigned integers and the 'mask' to check for overflow.
 // eg  u8: 'max=0xFF' is full carry, 'max=0xF' is 'half carry
 //    u16: 'max=0xFFFF' is full carry, 'max=0xFFF' is 'half carry
@@ -64,25 +63,11 @@ pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
     r
 }
 pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
-    let rc = (a as i16)
-        .wrapping_sub((b as i8) as i16)
-        .wrapping_sub(c as i16) as u8;
-    let hr = ((a & 0xF) as u8)
-        .wrapping_sub((b & 0xF) as u8)
-        .wrapping_sub(c as u8);
 
-
-    if 0 != (hr & 0x10) {
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
+    f_status.set_h((if c {(b & 0xF >= a & 0xF)} else {(b & 0xF > a & 0xF)}) as u8);
 
     // overflow
-    let mut r = ((a as i16)
-        .wrapping_sub((b as i8) as i16)
-        .wrapping_sub(c as i16) as u16)
-        & 0xFFF;
+    let mut r = ((a as i8) as u16).wrapping_sub((b as i8) as u16).wrapping_sub(c as u16) & 0xFFF;
     if ((r & 0x180) != 0) && ((r & 0x180) != 0x180) {
         // Overflow
         f_status.set_pv(1);
@@ -92,16 +77,7 @@ pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
 
     f_status.set_n(1);
 
-    r = ((a as i16) & 0xFF)
-        .wrapping_sub((b as i8) as i16)
-        .wrapping_sub(c as i16) as u16;
-    if 0 != (r & 0x100) {
-        // cpu_state->Borrow (?)
-        f_status.set_c(1); // cpu_state->Borrow (?)
-    } else {
-        f_status.set_c(0); // cpu_state->Borrow (?)
-    }
-
+    f_status.set_c((if c {(b >= a)} else {(b > a)}) as u8);
     f_status.set_s(sign_flag!(r as u8, u8));
     f_status.set_z(zero_flag!(r));
 
@@ -112,38 +88,7 @@ pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
 // previous implementation (to make comparisons easier).
 // TODO: Once other issues are sorted out, revisit setting of these flags.
 pub fn i8_no_carry(a: u8, b: u8, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
-    let rc = (a as i16).wrapping_sub((b as i8) as i16) as u8;
-    let hr = ((a & 0xF) as u8).wrapping_sub((b & 0xF) as u8);
-
-    if 0 != (hr & 0x10) {
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
-
-    // overflow
-    let mut r = ((a as i8) as u16).wrapping_sub((b as i8) as u16) & 0xFFF;
-    if ((r & 0x180) != 0) && ((r & 0x180) != 0x180) {
-        // Overflow
-        f_status.set_pv(1);
-    } else {
-        f_status.set_pv(0);
-    }
-
-    f_status.set_n(1);
-
-    r = (((a as i16) & 0xFF) - ((b as i16) & 0xFF)) as u16;
-    if 0 != (r & 0x100) {
-        // cpu_state->Borrow (?)
-        f_status.set_c(1); // cpu_state->Borrow (?)
-    } else {
-        f_status.set_c(0); // cpu_state->Borrow (?)
-    }
-
-    f_status.set_s(sign_flag!(r as u8, u8));
-    f_status.set_z(zero_flag!(r));
-
-    r as u8
+    i8_carry(a, b, false, f_status)
 }
 
 pub fn u16_carry(a: u16, b: u16, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {
@@ -165,13 +110,7 @@ pub fn u16_no_carry(a: u16, b: u16, f_status: &mut pc_state::PcStatusFlagFields)
     // left to add/sub)
     let r = a.wrapping_add(b);
 
-    f_status.set_h(0);
-    if (((a & 0xFFF) + (b & 0xFFF)) & 0x1000) == 0x1000 {
-        // Half carry
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
+    f_status.set_h((b & 0xFFF > a & 0xFFF) as u8);
 
     if a >= 0xFFFF - b {
         f_status.set_c(1);
@@ -297,29 +236,6 @@ mod tests {
     use crate::sega::cpu::status_flags;
 
     #[test]
-    fn test_u8_carry_cross_check() {
-        let mut f_status = pc_state::PcStatusFlagFields(0);
-        assert_eq!(status_flags::u8_carry(0xfb, 0x4, false, &mut f_status), 0xFF);
-        assert_eq!(f_status.get_c(), 0);
-
-        for a in 0..=0xFF { 
-            for b in 0..=0xFF { 
-                for c in [false, true] { 
-                    let f_status_1 = pc_state::PcStatusFlagFields(0);
-                    let result_1 = status_flags::i8_carry(a, b, c, &mut f_status);
-
-                    let f_status_2 = pc_state::PcStatusFlagFields(0);
-                    let result_2 = status_flags::u8_carry(a, !b, !c, &mut f_status);
-                    assert_eq!(result_1, result_2);
-                    assert_eq!(f_status_1.get_c(), f_status_2.get_c());
-                    assert_eq!(f_status_1.get_pv(), f_status_2.get_pv());
-                    assert_eq!(f_status_1.get_h(), f_status_2.get_h());
-                }
-            }
-        }
-    }
-
-    #[test]
     fn test_carry_flag() {
         // For 'add'
         let test_values = [((0xFF, 0x01, false), (0x00,  true)),
@@ -346,6 +262,61 @@ mod tests {
 
         }
 
+    }
+
+    #[test]
+    fn test_icarry_flag() {
+        // For 'add'
+
+        for a in 0..=0xFF {
+          for b in 0..0xFF {
+            for c in [false, true] {
+                    let mut f_status_1 = pc_state::PcStatusFlagFields(0);
+                    let result_1 = status_flags::i8_carry(a, b, c, &mut f_status_1);
+
+                    let mut f_status_2 = pc_state::PcStatusFlagFields(0);
+//                    let result_2 = status_flags::i8_no_carry(a, b + (c as u8), &mut f_status_2);
+//                    assert_eq!(result_1, result_2);
+//                    if c {
+//                        if  b & 0x80 == a & 0x80 {
+//                            if  b & 0x80 == 0{
+//                                if b >= a {
+//                                    f_status_2.set_c(1);
+//                                }
+//                            } else {
+//                                if b < a {
+//                                    f_status_2.set_c(1);
+//                                }
+//                            }
+//                        }
+//                    } else {
+//                        if  b & 0x80 == a & 0x80 {
+//                            if  b & 0x80 == 0{
+//                                if b > a {
+//                                    f_status_2.set_c(1);
+//                                }
+//                            } else {
+//                                if b <= a {
+//                                    f_status_2.set_c(1);
+//                                }
+//                            }
+//                        }
+//                    }
+
+                    if (b & 0x80 == a & 0x80) && 
+                        (((b <  0x80) && (b + c as u8 > a)) ||
+                         ((b >= 0x80) && (b <= a - c as u8)))
+                    {
+                        f_status_2.set_c(1);
+                    }
+
+                    assert_eq!(f_status_1.get_c(), f_status_2.get_c(), "a:{:x}, b:{:x}, c:{}", a, b, c);
+//                    assert_eq!(f_status_1.get_c(), f_status_2.get_c(), "a:{:x}, b:{:x}, c:{}", a, b, c);
+//                    assert_eq!(f_status_1.get_pv(), f_status_2.get_pv());
+//                    assert_eq!(f_status_1.get_h(), f_status_2.get_h());
+            }
+          }
+        }
     }
 
     #[test]
