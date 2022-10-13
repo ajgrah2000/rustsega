@@ -96,31 +96,6 @@ mod tests {
                 colour_lookup: Vec::new(),
             }
         }
-
-        fn read_palette(&mut self, filename: &str) {
-            let file = match File::open(filename) {
-                Err(why) => panic!("couldn't open {}: {}", filename, why),
-                Ok(file) => file,
-            };
-            let reader = BufReader::new(file);
-            for line in reader.lines() {
-                match line {
-                    Ok(line) => {
-                        let values: Vec<&str> = line.split(' ').collect();
-                        let r = values[0].parse::<u8>().unwrap();
-                        let g = values[1].parse::<u8>().unwrap();
-                        let b = values[2].parse::<u8>().unwrap();
-                        // Ignore additional split (likely comment)
-                        self.colour_lookup.push(Colour::new(r, g, b));
-                    }
-                    Err(why) => panic!("parsing {}: {}", filename, why),
-                }
-            }
-
-            if self.colour_lookup.len() != Colours::PALETTE_SIZE as usize {
-                panic!("Incorrect number of colours in palette file {}", filename);
-            }
-        }
     }
 
     pub struct DisplayGenerator {
@@ -279,10 +254,5 @@ mod tests {
         let mut sdl_display = SDLDisplay::new();
         sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, &mut display_generator);
     }
-
-    #[test]
-    fn test_read_palette() {
-        let mut colours = Colours::new();
-        colours.read_palette("palette.ntsc.dat");
-    }
 }
+
