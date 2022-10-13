@@ -5,11 +5,35 @@ Conversion of a C emulator, that I'd converted to C++, that I'd converted to
 Python, that I've converted to Rust.
 
 
+    Usage:
+      target/debug/rustsega [OPTIONS] CARTRIDGE
+    
+    Rusty Sega Emulator
+    
+    Positional arguments:
+      cartridge             Name of cratridge to run
+    
+    Optional arguments:
+      -h,--help             Show this help message and exit
+      -d,--debug            Print PC State Debug Info
+      -n,--no_delay         Run the emulator with no delay (rather than real-time)
+
+
+(Current) Inputs:
+    Key mappings (Joystick 1):
+    Up: Up, Down: Down, Left: Left, Right: Right
+    Fire A: Z, Fire B: X
+    Reset: R
+
+    Quit: Escape
+
+
+
 TODO:
 
  Non-functional:
     Improve structure (current structure is shortest path to get things running).
-    Fix status flag calculations (remove repetition, tidy, ensure correctness),  Cross check with good known Z80 results.
+    Fix status flag calculations,  cross check with good known Z80 results.
 
     Clean up 'sega.rs' there's a bit too much 'glue' going on there, that should be shifted out to the submodules.
 
