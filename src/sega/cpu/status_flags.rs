@@ -27,11 +27,15 @@ macro_rules! sign_flag {
 // Basically, tread both arguments as signed numbers
 // if (((a & 0x8000) ^ (b & 0x8000)) == 0x0000) && // arguments same sign
 //    (((a & 0x8000) ^ (r & 0x8000)) == 0x8000)
-macro_rules! overflow_flag {
+macro_rules! add_overflow_flag {
     ($a:expr, $b:expr, $r:expr, $type:ty) => {(((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) ^ 
                                                 (($b >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1)) == 0 && 
                                                ((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) ^ 
                                                 (($r >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) == 0x1)) as u8}
+}
+
+macro_rules! sub_overflow_flag {
+    ($a:expr, $b:expr, $r:expr, $type:ty) => {add_overflow_flag!($a, !$b, $r, $type)}
 }
 
 // Calculate 'carry' flags, given two unsigned integers and the 'mask' to check for overflow.
@@ -50,11 +54,17 @@ macro_rules! calculate_ucarry {
     };
 }
 
+macro_rules! calculate_borrow_carry {
+    ($a:expr, $b:expr, $c:expr, $mask:expr) => {
+        (if $c {($b & $mask >= $a & $mask)} else {($b & $mask > $a & $mask)})
+    }
+}
+
 // self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
 pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
     let r = a.wrapping_add(b).wrapping_add(u8::from(c));
 
-    f_status.set_pv(overflow_flag!(a,b,r,u8)); 
+    f_status.set_pv(add_overflow_flag!(a,b,r,u8)); 
     f_status.set_h(calculate_ucarry!(a, b, c, 0xF) as u8);
     f_status.set_c(calculate_ucarry!(a, b, c, u8::MAX) as u8);
 
@@ -64,24 +74,19 @@ pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
 }
 pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
 
-    f_status.set_h((if c {(b & 0xF >= a & 0xF)} else {(b & 0xF > a & 0xF)}) as u8);
+    f_status.set_h(calculate_borrow_carry!(a, b, c, 0xF) as u8);
 
     // overflow
-    let mut r = ((a as i8) as u16).wrapping_sub((b as i8) as u16).wrapping_sub(c as u16) & 0xFFF;
-    if ((r & 0x180) != 0) && ((r & 0x180) != 0x180) {
-        // Overflow
-        f_status.set_pv(1);
-    } else {
-        f_status.set_pv(0);
-    }
+    let mut r = a.wrapping_sub(b).wrapping_sub(c as u8);
+    f_status.set_pv(sub_overflow_flag!(a, b, r, u8));
 
     f_status.set_n(1);
 
-    f_status.set_c((if c {(b >= a)} else {(b > a)}) as u8);
+    f_status.set_c(calculate_borrow_carry!(a, b, c, 0xFF) as u8);
     f_status.set_s(sign_flag!(r as u8, u8));
     f_status.set_z(zero_flag!(r));
 
-    r as u8
+    r
 }
 
 // calculate the 'sub c' flags (although carry isn't used), this matches a
@@ -98,7 +103,7 @@ pub fn u16_carry(a: u16, b: u16, c: bool, f_status: &mut pc_state::PcStatusFlagF
 
     f_status.set_s(sign_flag!(r, u16));
     f_status.set_z(zero_flag!(r));
-    f_status.set_pv(overflow_flag!(a,b,r,u16)); 
+    f_status.set_pv(add_overflow_flag!(a,b,r,u16)); 
     f_status.set_h(calculate_ucarry!(a, b, c, 0xFFF) as u8);
     f_status.set_c(calculate_ucarry!(a, b, c, 0xFFFF) as u8);
 
@@ -110,19 +115,15 @@ pub fn u16_no_carry(a: u16, b: u16, f_status: &mut pc_state::PcStatusFlagFields)
     // left to add/sub)
     let r = a.wrapping_add(b);
 
-    f_status.set_h((b & 0xFFF > a & 0xFFF) as u8);
-
-    if a >= 0xFFFF - b {
-        f_status.set_c(1);
-    } else {
-        f_status.set_c(0);
-    }
+    f_status.set_h(calculate_ucarry!(a, b, false,  0xFFF) as u8);
+    f_status.set_c(calculate_ucarry!(a, b, false, 0xFFFF) as u8);
 
     r
 }
 
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
     status.set_n(1);
+
     if (new_value & 0xF) == 0xF {
         // Half borrow
         status.set_h(1);
