@@ -43,20 +43,20 @@ macro_rules! sub_overflow_flag {
 //    u16: 'max=0xFFFF' is full carry, 'max=0xFFF' is 'half carry
 macro_rules! calculate_ucarry {
     ($a:expr, $b:expr, $max:expr) => {
-        ($max & $a) > $max - ($max & $b)  
+        ($max & $b) > $max - ($max & $a)  
     };
     ($a:expr, $b:expr, $c:expr, $max:expr) => {
         if $c {
-            ($max & $a) >= $max- ($max & $b) 
+            ($max & $b) >= $max- ($max & $a) 
         } else {
-            ($max & $a) > $max - ($max & $b)  
+            ($max & $b) > $max - ($max & $a)  
         }
     };
 }
 
 macro_rules! calculate_borrow_carry {
     ($a:expr, $b:expr, $c:expr, $mask:expr) => {
-        (if $c {($b & $mask >= $a & $mask)} else {($b & $mask > $a & $mask)})
+        calculate_ucarry!(!$a, $b, $c, $mask)
     }
 }
 
@@ -74,14 +74,12 @@ pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
 }
 pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
 
+    let r = a.wrapping_sub(b).wrapping_sub(c as u8);
+
     f_status.set_h(calculate_borrow_carry!(a, b, c, 0xF) as u8);
-
     // overflow
-    let mut r = a.wrapping_sub(b).wrapping_sub(c as u8);
     f_status.set_pv(sub_overflow_flag!(a, b, r, u8));
-
     f_status.set_n(1);
-
     f_status.set_c(calculate_borrow_carry!(a, b, c, 0xFF) as u8);
     f_status.set_s(sign_flag!(r as u8, u8));
     f_status.set_z(zero_flag!(r));
@@ -276,33 +274,6 @@ mod tests {
                     let result_1 = status_flags::i8_carry(a, b, c, &mut f_status_1);
 
                     let mut f_status_2 = pc_state::PcStatusFlagFields(0);
-//                    let result_2 = status_flags::i8_no_carry(a, b + (c as u8), &mut f_status_2);
-//                    assert_eq!(result_1, result_2);
-//                    if c {
-//                        if  b & 0x80 == a & 0x80 {
-//                            if  b & 0x80 == 0{
-//                                if b >= a {
-//                                    f_status_2.set_c(1);
-//                                }
-//                            } else {
-//                                if b < a {
-//                                    f_status_2.set_c(1);
-//                                }
-//                            }
-//                        }
-//                    } else {
-//                        if  b & 0x80 == a & 0x80 {
-//                            if  b & 0x80 == 0{
-//                                if b > a {
-//                                    f_status_2.set_c(1);
-//                                }
-//                            } else {
-//                                if b <= a {
-//                                    f_status_2.set_c(1);
-//                                }
-//                            }
-//                        }
-//                    }
 
                     if (b & 0x80 == a & 0x80) && 
                         (((b <  0x80) && (b + c as u8 > a)) ||
