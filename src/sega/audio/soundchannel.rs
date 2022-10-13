@@ -54,13 +54,11 @@ impl SoundChannel {
 
         for nextlength in 0..SoundChannel::MAX_SOUND_PATTERN {
             if r >= sample_rate {
-                r = r % sample_rate;
+                r %= sample_rate;
                 vol = self.volume - vol;
-                if vol == self.volume {
-                    if r < self.r_min {
-                        self.r_min = r;
-                        r_min_pos = nextlength;
-                    }
+                if vol == self.volume  && r < self.r_min {
+                    self.r_min = r;
+                    r_min_pos = nextlength;
                 }
             }
 

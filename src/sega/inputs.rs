@@ -136,7 +136,7 @@ impl Input {
         println!("Up: {}, Down: {}, Left: {}, Right: {}", Input::KEY_UP, Input::KEY_DOWN, Input::KEY_LEFT, Input::KEY_RIGHT);
         println!("Fire A: {}, Fire B: {}", Input::KEY_FIRE_A, Input::KEY_FIRE_B);
         println!("Reset: {}", Input::KEY_RESET);
-        println!("");
+        println!();
         println!("Quit: {}", Input::KEY_QUIT);
     }
 
