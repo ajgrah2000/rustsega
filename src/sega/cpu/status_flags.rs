@@ -43,13 +43,13 @@ macro_rules! sub_overflow_flag {
 //    u16: 'max=0xFFFF' is full carry, 'max=0xFFF' is 'half carry
 macro_rules! calculate_ucarry {
     ($a:expr, $b:expr, $max:expr) => {
-        ($max & $b) > $max - ($max & $a)  
+        ($max & $a) > ($max & !$b)  
     };
     ($a:expr, $b:expr, $c:expr, $max:expr) => {
         if $c {
-            ($max & $b) >= $max- ($max & $a) 
+            ($max & $a) >= ($max & !$b) 
         } else {
-            ($max & $b) > $max - ($max & $a)  
+            ($max & $a)  > ($max & !$b)  
         }
     };
 }
