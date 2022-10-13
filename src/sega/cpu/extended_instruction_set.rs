@@ -78,7 +78,7 @@ pub fn ld_i_nn<M, R16>(
 {
     i16_reg.set(memory.read16(pc_reg.get() + 2));
     pc_state::PcState::increment_reg(pc_reg, 4);
-    clock.increment(20);
+    clock.increment(14);
 }
 
 // LD I, (nn)
@@ -138,6 +138,19 @@ pub fn ld_dd_mem_nn<M, F: FnMut(&mut pc_state::PcState, u16)>(
 
     pc_state.increment_pc(4);
     clock.increment(20);
+}
+//
+//  LD SP, IX
+//  LD SP, IY 
+//  Load index register into SP
+pub fn ld_sp_i<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &R16)
+where
+    R16: pc_state::Reg16RW,
+{
+    sp_reg.set(i16_reg.get());
+
+    pc_state::PcState::increment_reg(pc_reg, 2);
+    clock.increment(10);
 }
 
 // LD (IX+d), n; LD (IY+d), n
@@ -356,7 +369,7 @@ pub fn ex_sp_i<M, R16>(
     i16_reg.set_high(tmp8);
 
     pc_state::PcState::increment_reg(pc_reg, 2);
-    clock.increment(15);
+    clock.increment(23);
 }
 
 ///////////////////////////////////////////////////////////////////////
@@ -547,7 +560,7 @@ pub fn cp_i_d<M, R16, AF>(
 }
 
 // CPI
-// Compare accumulator with contents of memory address HL
+// Compare accumulator with contents of memory address HL, increment HL
 pub fn cpi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
     M: memory::MemoryRW,
@@ -560,6 +573,34 @@ where
     );
 
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    let mut f_status = pc_state.get_f();
+    if pc_state.bc_reg.get() == 0 {
+        f_status.set_pv(1);
+    } else {
+        f_status.set_pv(0);
+    }
+
+    pc_state.set_f(f_status);
+
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+// CPD
+// Compare accumulator with contents of memory address HL, decrement HL
+pub fn cpd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
+where
+    M: memory::MemoryRW,
+{
+    // This function sets the 'pc_state.f'
+    instruction_set::cp_flags(
+        pc_state.get_a(),
+        memory.read(pc_state.hl_reg.get()),
+        &mut pc_state.af_reg,
+    );
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
     pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
     let mut f_status = pc_state.get_f();
     if pc_state.bc_reg.get() == 0 {
@@ -600,6 +641,33 @@ where
     clock.increment(16);
 }
 
+// LDD
+// Load, decrement HL, DE, decrement BC.
+pub fn ldd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
+where
+    M: memory::MemoryRW,
+{
+    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
+
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
+    pc_state::PcState::increment_reg(&mut pc_state.de_reg, -1);
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    let mut f_status = pc_state.get_f();
+    if pc_state.bc_reg.get() == 0 {
+        f_status.set_pv(1);
+    } else {
+        f_status.set_pv(0);
+    }
+    f_status.set_h(0);
+    f_status.set_n(0);
+
+    pc_state.set_f(f_status);
+
+    pc_state.increment_pc(2);
+    clock.increment(16);
+}
+
+
 // CPIR
 // Compare and repeat,  A with the contents of memory in HL, increment HL, decrement BC.
 pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
@@ -615,6 +683,35 @@ where
         &mut pc_state.af_reg,
     );
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
+    let mut f_status = pc_state.get_f();
+    f_status.set_c(original_carry);
+    if (pc_state.bc_reg.get() == 0) || f_status.get_z() == 1 {
+        f_status.set_pv(0);
+        pc_state.increment_pc(2);
+        clock.increment(16);
+    } else {
+        f_status.set_pv(1);
+        clock.increment(21);
+    }
+
+    pc_state.set_f(f_status);
+}
+
+// CPDR
+// Compare and repeat,  A with the contents of memory in HL, decrement HL, decrement BC.
+pub fn cpdr<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
+where
+    M: memory::MemoryRW,
+{
+    // This function sets the 'pc_state.f'
+    let original_carry = pc_state.get_f().get_c();
+    pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
+    instruction_set::cp_flags(
+        pc_state.get_a(),
+        memory.read(pc_state.hl_reg.get()),
+        &mut pc_state.af_reg,
+    );
+    pc_state::PcState::increment_reg(&mut pc_state.hl_reg, -1);
     let mut f_status = pc_state.get_f();
     f_status.set_c(original_carry);
     if (pc_state.bc_reg.get() == 0) || f_status.get_z() == 1 {
@@ -1488,6 +1585,12 @@ pub fn adc_hl_r16<R16, F16>(
     pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(15);
 }
+
+pub fn sbc_i()
+{
+    panic!("SBC A, (IX+d), SBC A, (IY+d) not implemented");
+}
+
 
 #[cfg(test)]
 mod tests {

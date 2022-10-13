@@ -265,29 +265,26 @@ mod tests {
 
     #[test]
     fn test_icarry_flag() {
-        // For 'add'
 
-        for a in 0..=0xFF {
-          for b in 0..0xFF {
-            for c in [false, true] {
-                    let mut f_status_1 = pc_state::PcStatusFlagFields(0);
-                    let result_1 = status_flags::i8_carry(a, b, c, &mut f_status_1);
+        //                  (a,b,c),            (pv, c, h, n);
+        let test_values = [((0x00, 0x00, false), (0, 0, 0, 1)),
+                           ((0x00, 0x00,  true), (0, 1, 1, 1)),
+                           ((0x01, 0x00,  true), (0, 0, 0, 1)),
+                           ((0x0F, 0x10, false), (0, 1, 0, 1)),
+                           ((0x10, 0x0F, false), (0, 0, 1, 1)),
+                           ((0x70, 0xAF, false), (1, 1, 1, 1)),
+                           ((0xAF, 0x70, false), (1, 0, 0, 1)),
+                           ((0xFF, 0xFF, false), (0, 0, 0, 1)),
+                           ((0xFF, 0xFF, true),  (0, 1, 1, 1))];
 
-                    let mut f_status_2 = pc_state::PcStatusFlagFields(0);
+        let mut f_status = pc_state::PcStatusFlagFields(0);
 
-                    if (b & 0x80 == a & 0x80) && 
-                        (((b <  0x80) && (b + c as u8 > a)) ||
-                         ((b >= 0x80) && (b <= a - c as u8)))
-                    {
-                        f_status_2.set_c(1);
-                    }
-
-                    assert_eq!(f_status_1.get_c(), f_status_2.get_c(), "a:{:x}, b:{:x}, c:{}", a, b, c);
-//                    assert_eq!(f_status_1.get_c(), f_status_2.get_c(), "a:{:x}, b:{:x}, c:{}", a, b, c);
-//                    assert_eq!(f_status_1.get_pv(), f_status_2.get_pv());
-//                    assert_eq!(f_status_1.get_h(), f_status_2.get_h());
-            }
-          }
+        for ((a,b,carry),(pv,c,h,n)) in test_values {
+            status_flags::i8_carry(a,b,carry, &mut f_status);
+            assert_eq!(f_status.get_pv(), pv, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_c(),   c, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_h(),   h, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_n(),   n, "a:{} b:{} c:{}", a, b, c);
         }
     }
 

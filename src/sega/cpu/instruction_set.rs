@@ -168,7 +168,7 @@ where
 }
 
 // Subtract two 8 bit ints and the carry bit, set flags accordingly
-fn sub8c<F16>(a: u8, b: u8, c: bool, af_reg: &mut F16) -> u8
+pub fn sub8c<F16>(a: u8, b: u8, c: bool, af_reg: &mut F16) -> u8
 where
     F16: pc_state::FlagReg,
 {
@@ -365,7 +365,7 @@ pub fn ld_r16_mem<M, R16>(
 {
     r16_reg.set(memory.read16(memory.read16(pc_reg.get() + 1)));
     pc_state::PcState::increment_reg(pc_reg, 3);
-    clock.increment(20);
+    clock.increment(16);
 }
 
 // LD (16 REG), n
@@ -1427,19 +1427,20 @@ mod tests {
             instruction_set::sub8c(0xFF, 0xFF, true, &mut pc_state.af_reg),
             0xFF
         );
+        assert_eq!(pc_state.get_f().get_c(), 1);
         assert_eq!(
             instruction_set::sub8c(0x7F, 0xFF, true, &mut pc_state.af_reg),
             0x7F
         );
         assert_eq!(pc_state.get_f().get_pv(), 0);
-        assert_eq!(pc_state.get_f().get_c(), 0);
+        assert_eq!(pc_state.get_f().get_c(), 1);
         assert_eq!(pc_state.get_f().get_n(), 1);
 
         assert_eq!(
             instruction_set::sub8c(0xFF, 0x2, true, &mut pc_state.af_reg),
             0xFC
         );
-        assert_eq!(pc_state.get_f().get_pv(), 1);
+        assert_eq!(pc_state.get_f().get_pv(), 0);
         assert_eq!(pc_state.get_f().get_c(), 0);
     }
 }
