@@ -19,7 +19,7 @@ fn parse_args(debug: &mut bool, realtime: &mut bool, cartridge_name: &mut String
         "Run the emulator with no delay (rather than real-time)",
     );
     ap.refer(cartridge_name)
-        .add_argument("cartridge", argparse::Store, "Name of cratridge to run")
+        .add_argument("cartridge", argparse::Store, "Name of cartridge to run")
         .required();
     ap.parse_args_or_exit();
 }

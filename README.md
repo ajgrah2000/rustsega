@@ -11,7 +11,7 @@ Python, that I've converted to Rust.
     Rusty Sega Emulator
     
     Positional arguments:
-      cartridge             Name of cratridge to run
+      cartridge             Name of cartridge to run
     
     Optional arguments:
       -h,--help             Show this help message and exit
