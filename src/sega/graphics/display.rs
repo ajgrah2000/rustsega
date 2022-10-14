@@ -1,6 +1,26 @@
 use sdl2::pixels;
 use sdl2::render;
 use sdl2::video;
+use sdl2::event;
+
+pub struct WindowSize {
+    pub frame_width: u16,
+    pub frame_height: u16,
+    pub console_width: u16,
+    pub console_height: u16,
+}
+
+impl WindowSize {
+    pub fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            console_width,
+            console_height,
+        }
+    }
+}
+
 
 #[derive(Clone, Copy)]
 pub struct Colour {
@@ -64,6 +84,18 @@ impl SDLUtility {
             .create_texture_streaming(pixel_format, frame_width as u32, frame_height as u32)
             .map_err(|e| e.to_string())
             .unwrap()
+    }
+
+    pub fn handle_events(event: &event::Event, window_size:&mut WindowSize) {
+        // Handle window events.
+        if let event::Event::Window {win_event, .. } = event {
+
+            // Allow resizing (
+            if let event::WindowEvent::Resized(w, h) = win_event {
+                window_size.frame_width = *w as u16;
+                window_size.frame_height = *h as u16;
+            }
+        }
     }
 }
 

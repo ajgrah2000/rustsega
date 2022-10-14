@@ -2,7 +2,6 @@ use sdl2::pixels;
 use sdl2::rect;
 use sdl2::render;
 use sdl2::video;
-use sdl2::event;
 
 use super::clocks;
 use super::cpu;
@@ -12,24 +11,6 @@ use super::inputs;
 use super::interruptor;
 use super::memory;
 use super::ports;
-
-pub struct WindowSize {
-    frame_width: u16,
-    frame_height: u16,
-    console_width: u16,
-    console_height: u16,
-}
-
-impl WindowSize {
-    fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16) -> Self {
-        Self {
-            frame_width,
-            frame_height,
-            console_width,
-            console_height,
-        }
-    }
-}
 
 pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
@@ -79,7 +60,7 @@ impl Sega {
         println!("powering on Sega Emulator.");
         inputs::Input::print_keys();
 
-        let window_size = WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SMS_WIDTH as u16, SMS_HEIGHT as u16);
+        let window_size = graphics::display::WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SMS_WIDTH as u16, SMS_HEIGHT as u16);
 
         self.main_loop(window_size, pixels::PixelFormatEnum::RGB24);
     }
@@ -93,7 +74,7 @@ impl Sega {
         &mut self,
         canvas: &mut render::Canvas<video::Window>,
         pixel_format: pixels::PixelFormatEnum,
-        window_size: &WindowSize,
+        window_size: &graphics::display::WindowSize,
         iterations: u32,
         audio_queue: &mut sound::SoundQueueType,
     ) {
@@ -168,7 +149,7 @@ impl Sega {
     }
 
     // Main entry point, intention is to call 'once'.
-    pub fn main_loop(&mut self, mut window_size: WindowSize, pixel_format: pixels::PixelFormatEnum) {
+    pub fn main_loop(&mut self, mut window_size: graphics::display::WindowSize, pixel_format: pixels::PixelFormatEnum) {
         let mut sdl_context = sdl2::init().unwrap();
 
         let mut canvas = graphics::display::SDLUtility::create_canvas(
@@ -188,15 +169,7 @@ impl Sega {
         'running: loop {
             for event in event_pump.poll_iter() {
 
-                // Handle window events.
-                if let event::Event::Window {win_event, .. } = event {
-
-                    // Allow resizing
-                    if let event::WindowEvent::Resized(w, h) = win_event {
-                        window_size.frame_width = w as u16;
-                        window_size.frame_height = h as u16;
-                    }
-                }
+                graphics::display::SDLUtility::handle_events(&event, &mut window_size);
 
                 if !inputs::Input::handle_events(event, &mut self.core.ports.joysticks) {
                     break 'running;
