@@ -16,12 +16,13 @@ pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
     debug: bool,
     realtime: bool,
+    stop_clock: u32,
 }
 
 impl Sega {
 
     const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 10; // Number of display updates per key press event. (reduces texture creation overhead).
-    const CPU_STEPS_PER_DISPLAY_UPDATE:  u32 = 500; // Number of times to step the CPU before updating the display.
+    const CPU_STEPS_PER_DISPLAY_UPDATE:  u32 = 10; // Number of times to step the CPU before updating the display.
     const CPU_STEPS_PER_AUDIO_UPDATE:    u32 = 100; // Number of times to step the CPU before updating the audio.
 
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
@@ -65,9 +66,9 @@ impl Sega {
         self.main_loop(window_size, pixels::PixelFormatEnum::RGB24);
     }
 
-    pub fn new(debug: bool, realtime: bool, cartridge_name: String) -> Self {
+    pub fn new(debug: bool, realtime: bool, stop_clock:u32, cartridge_name: String) -> Self {
         let core = Self::build_sega(cartridge_name);
-        Self { core, debug, realtime }
+        Self { core, debug, realtime, stop_clock }
     }
 
     pub fn draw_loop(
@@ -77,16 +78,7 @@ impl Sega {
         window_size: &graphics::display::WindowSize,
         iterations: u32,
         audio_queue: &mut sound::SoundQueueType,
-    ) {
-        // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
-        let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
-        let mut texture = graphics::display::SDLUtility::create_texture(
-            &texture_creator,
-            pixel_format,
-            window_size.console_width,
-            window_size.console_height,
-        );
-
+    ) -> bool {
         // Number of iterations to do before getting a new texture.
         // These loops will update the display, but currently events aren't checked in this time.
         
@@ -94,6 +86,9 @@ impl Sega {
         for _k in 0..iterations {
             // Clock the CPU lots per display update.
             for _j in 0..Sega::CPU_STEPS_PER_DISPLAY_UPDATE {
+                if self.stop_clock > 0 && self.core.clock.cycles > self.stop_clock {
+                    return false;
+                }
                 self.core.step(self.debug, self.realtime);
 
                 if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
@@ -103,49 +98,59 @@ impl Sega {
                 audio_steps += 1;
             }
 
-            self.core.export();
+            // If an 'export' occurred (buffer was draw), then update the texture.
+            if self.core.export() {
+                // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
+                let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
+                let mut texture = graphics::display::SDLUtility::create_texture(
+                    &texture_creator,
+                    pixel_format,
+                    window_size.console_width,
+                    window_size.console_height,
+                    );
 
-
-            texture
-                .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
-                    self.core.generate_display(buffer)
-                })
+                texture
+                    .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
+                        self.core.generate_display(buffer)
+                    })
                 .unwrap();
 
-            canvas.clear();
-            canvas
-                .copy(
+                canvas.clear();
+                canvas
+                    .copy(
+                        &texture,
+                        None,
+                        Some(rect::Rect::new(
+                                0,
+                                0,
+                                window_size.console_width as u32,
+                                window_size.console_height as u32,
+                                )),
+                                )
+                    .unwrap();
+                match canvas.copy_ex(
                     &texture,
                     None,
                     Some(rect::Rect::new(
-                        0,
-                        0,
-                        window_size.console_width as u32,
-                        window_size.console_height as u32,
-                    )),
-                )
-                .unwrap();
-            match canvas.copy_ex(
-                &texture,
-                None,
-                Some(rect::Rect::new(
-                    0,
-                    0,
-                    window_size.frame_width as u32,
-                    window_size.frame_height as u32,
-                )),
-                0.0,
-                None,
-                false,
-                false,
-            ) {
-                Ok(()) => {}
-                _ => {
-                    println!("Error translating texture.");
+                            0,
+                            0,
+                            window_size.frame_width as u32,
+                            window_size.frame_height as u32,
+                            )),
+                            0.0,
+                            None,
+                            false,
+                            false,
+                            ) {
+                    Ok(()) => {}
+                    _ => {
+                        println!("Error translating texture.");
+                    }
                 }
+                canvas.present();
             }
-            canvas.present();
         }
+        true
     }
 
     // Main entry point, intention is to call 'once'.
@@ -177,7 +182,9 @@ impl Sega {
             }
 
             // First loop, draw FRAMES_PER_KEY_EVENT frames at a time.
-            self.draw_loop(&mut canvas, pixel_format, &window_size, Sega::DISPLAY_UPDATES_PER_KEY_EVENT, &mut audio_queue);
+            if !self.draw_loop(&mut canvas, pixel_format, &window_size, Sega::DISPLAY_UPDATES_PER_KEY_EVENT, &mut audio_queue) {
+                break 'running;
+            }
         }
     }
 }

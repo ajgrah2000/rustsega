@@ -19,7 +19,7 @@ pub trait Device {
     fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool;
     fn port_write(&mut self, clock: &clocks::Clock, port_address: u8, value: u8);
     fn port_read(&mut self, clock: &clocks::Clock, port_address: u8) -> Option<u8>;
-    fn export(&mut self, raw_display: &mut Vec<u8>);
+    fn export(&mut self, raw_display: &mut Vec<u8>) -> bool;
 }
 
 impl Port for NullPort {
@@ -89,10 +89,12 @@ impl Ports {
         }
     }
 
-    pub fn export(&mut self, raw_display: &mut Vec<u8>) {
+    pub fn export(&mut self, raw_display: &mut Vec<u8>) -> bool {
+        let mut result = false;
         for i in 0..self.devices.len() {
-            self.devices[i].export(raw_display);
+            result |= self.devices[i].export(raw_display);
         }
+        result
     }
 
     pub fn poll_interrupts(&mut self, raw_display: &mut Vec<u8>, clock: &clocks::Clock) -> bool {

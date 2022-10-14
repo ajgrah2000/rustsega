@@ -9,7 +9,7 @@ use std::time;
 use std::thread;
 
 pub struct Core<M> {
-    clock: clocks::Clock,
+    pub clock: clocks::Clock,
     memory: M,
     pc_state: pc_state::PcState,
     pub ports: ports::Ports,
@@ -74,8 +74,8 @@ impl<M: memory::MemoryRW> Core<M> {
         }
     }
 
-    pub fn export(&mut self) {
-        self.ports.export(&mut self.raw_display);
+    pub fn export(&mut self) -> bool {
+        self.ports.export(&mut self.raw_display)
     }
 
     pub fn step(&mut self, debug: bool, realtime:bool) {

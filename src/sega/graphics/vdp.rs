@@ -361,6 +361,8 @@ pub struct Vdp {
 
     vdp_register: [u8; Constants::NUMVDPREGISTERS as usize],
 
+    screen_buffer_pending: bool,
+
     horizontal_scroll_info: Vec<HorizontalScroll>,
     vertical_scroll_info: Vec<u8>,
 
@@ -436,6 +438,7 @@ impl Vdp {
             ram: vec![0; Constants::RAMSIZE as usize],
             c_ram: vec![0; Constants::CRAMSIZE as usize],
             vdp_register: [0; Constants::NUMVDPREGISTERS as usize],
+            screen_buffer_pending: false,
 
             // One entry per scan line for horizontal and vertical scroll info.
             horizontal_scroll_info: vec![
@@ -1065,6 +1068,7 @@ impl Vdp {
     fn draw_buffer(&mut self) {
         self.draw_background();
         self.draw_sprites();
+        self.screen_buffer_pending = true;
 
         //        self.draw_patterns() // For debuging purposes
     }
@@ -1098,8 +1102,6 @@ impl Vdp {
                 .step_by(Constants::PATTERNWIDTH as usize)
             {
                 let mut tile_attribute = self.tile_attributes[tile as usize];
-                let patterns16_palette =
-                    self.patterns16[tile_attribute.palette_select as usize].to_vec();
 
                 if !self.display_buffers.forground_scan_lines[y as usize].has_priority
                     && (tile_attribute.priority != 0)
@@ -1111,6 +1113,9 @@ impl Vdp {
 
                 {
                     self.update_screen_pattern(tile_attribute.tile_number);
+
+                    let patterns16_palette =
+                        &self.patterns16[tile_attribute.palette_select as usize];
 
                     let mut patterns16_offset: i16 = (tile_attribute.tile_number as i16) << 6;
                     let mut pattern_y_delta: i16 = 0;
@@ -1351,14 +1356,23 @@ impl ports::Device for Vdp {
         self.interrupt_handler.poll_interrupts()
     }
 
-    fn export(&mut self, raw_display: &mut Vec<u8>) {
-        if self.mode_2_control.enable_display {
-            // Only draw if 'enable_display' has been set.
-            for y in 0..self.interrupt_handler.y_end {
-                self.single_scan(y);
+    fn export(&mut self, raw_display: &mut Vec<u8>) -> bool {
+        if self.screen_buffer_pending {
+            if self.mode_2_control.enable_display {
+                // Only draw if 'enable_display' has been set.
+                for y in 0..self.interrupt_handler.y_end {
+                    self.single_scan(y);
+                }
             }
+            self.driver_update_display(raw_display);
+
+            // Clear the pending flag.
+            self.screen_buffer_pending = false;
+
+            true // Return an indication that the buffer was updated
+        } else {
+            false
         }
-        self.driver_update_display(raw_display);
     }
 }
 
