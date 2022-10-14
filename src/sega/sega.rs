@@ -22,8 +22,6 @@ pub struct Sega {
 impl Sega {
 
     const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 10; // Number of display updates per key press event. (reduces texture creation overhead).
-    const CPU_STEPS_PER_DISPLAY_UPDATE:  u32 = 10; // Number of times to step the CPU before updating the display.
-    const CPU_STEPS_PER_AUDIO_UPDATE:    u32 = 100; // Number of times to step the CPU before updating the audio.
 
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let mut cartridge = memory::cartridge::Cartridge::new(&cartridge_name);
@@ -82,33 +80,28 @@ impl Sega {
         // Number of iterations to do before getting a new texture.
         // These loops will update the display, but currently events aren't checked in this time.
         
-        let mut audio_steps = 0;
-        for _k in 0..iterations {
-            // Clock the CPU lots per display update.
-            for _j in 0..Sega::CPU_STEPS_PER_DISPLAY_UPDATE {
-                if self.stop_clock > 0 && self.core.clock.cycles > self.stop_clock {
-                    return false;
-                }
-                self.core.step(self.debug, self.realtime);
+        // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
+        let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
+        let mut texture = graphics::display::SDLUtility::create_texture(
+            &texture_creator,
+            pixel_format,
+            window_size.console_width,
+            window_size.console_height,
+            );
 
-                if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
-                    // Top-up the audio queue
-                    sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
-                }
-                audio_steps += 1;
+        let mut display_refreshes = 0;
+        while display_refreshes < iterations {
+
+            if self.stop_clock > 0 && self.core.clock.cycles > self.stop_clock {
+                return false;
             }
+            self.core.step(self.debug, self.realtime);
+
+            // Top-up the audio queue
+            sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
 
             // If an 'export' occurred (buffer was draw), then update the texture.
             if self.core.export() {
-                // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
-                let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
-                let mut texture = graphics::display::SDLUtility::create_texture(
-                    &texture_creator,
-                    pixel_format,
-                    window_size.console_width,
-                    window_size.console_height,
-                    );
-
                 texture
                     .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                         self.core.generate_display(buffer)
@@ -148,6 +141,8 @@ impl Sega {
                     }
                 }
                 canvas.present();
+
+                display_refreshes += 1;
             }
         }
         true
