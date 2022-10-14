@@ -35,6 +35,7 @@ impl SDLUtility {
         let window = video_subsystem
             .window(name, frame_width as u32, frame_height as u32)
             .position_centered()
+            .resizable()
             .opengl()
             .build()
             .map_err(|e| e.to_string())
