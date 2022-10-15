@@ -9,6 +9,8 @@ pub struct SoundChannel {
     next: Vec<PlaybackType>,
     updated: bool,
 
+    pub ch4_shift_register: u16,
+
     r_min: u32,
     play_count: u32,
 }
@@ -21,6 +23,8 @@ impl SoundChannel {
     const NUM_CHANNELS: u8 = 4;
     const NEUTRAL_SOUND_LEVEL: u32 = 0x7F/SoundChannel::NUM_CHANNELS as u32;
 
+    const NOISE_SHIFT_REGISTER_RESET: u16 = 0x4000;
+
     pub fn new() -> Self {
         Self {
             volume: 0,
@@ -31,6 +35,8 @@ impl SoundChannel {
             next: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
             updated: false,
 
+            ch4_shift_register: SoundChannel::NOISE_SHIFT_REGISTER_RESET,
+
             r_min: 0,
             play_count: SoundChannel::MAX_PLAY_FADE_COUNT,
         }
@@ -38,6 +44,38 @@ impl SoundChannel {
 
     pub fn set_volume(&mut self, volume: u8) {
         self.volume = volume / SoundChannel::NUM_CHANNELS;
+    }
+
+    // Outputs  '1' or '0' on each 'clock'
+    pub fn get_shiff_register_output(&mut self, freq: u32, noise: bool, sample_rate: u32) -> u8 {
+        let output = self.ch4_shift_register & 0x1;
+
+        if 0 == self.ch4_shift_register {
+            self.ch4_shift_register = 0x8000;
+        }
+
+        let mut r = self.r_min;
+
+        // Shift the register
+        r += freq * 32; // TODO: fudge factor, not sure if this is correct.
+        if r >= sample_rate {
+            r %= sample_rate;
+
+            if noise {
+                let feed_back = (self.ch4_shift_register >> 3) & 0x1;
+                self.ch4_shift_register = (self.ch4_shift_register >> 1) | ((output ^ feed_back) << 15);
+            } else {
+                self.ch4_shift_register = (self.ch4_shift_register >> 1) | (output << 15);
+            }
+        }
+
+        self.r_min = r;
+
+        if output == 0x1 {
+            0
+        } else {
+            self.volume
+        }
     }
 
     pub fn set_frequency(&mut self, freq: u32, sample_rate: u32) {

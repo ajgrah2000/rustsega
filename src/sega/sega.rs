@@ -21,7 +21,8 @@ pub struct Sega {
 
 impl Sega {
 
-    const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 10; // Number of display updates per key press event. (reduces texture creation overhead).
+    const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 1; // Number of display updates per key press event. (reduces texture creation overhead).
+    const CPU_STEPS_PER_AUDIO_UPDATE:    u32 = 50; // Number of times to step the CPU before updating the audio.
 
     pub fn build_sega(cartridge_name: String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let mut cartridge = memory::cartridge::Cartridge::new(&cartridge_name);
@@ -89,6 +90,7 @@ impl Sega {
             window_size.console_height,
             );
 
+        let mut audio_steps = 0;
         let mut display_refreshes = 0;
         while display_refreshes < iterations {
 
@@ -97,8 +99,11 @@ impl Sega {
             }
             self.core.step(self.debug, self.realtime);
 
-            // Top-up the audio queue
-            sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
+            if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
+                // Top-up the audio queue
+                sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {self.core.ports.audio.get_next_audio_chunk(fill_size)});
+            }
+            audio_steps += 1;
 
             // If an 'export' occurred (buffer was draw), then update the texture.
             if self.core.export() {

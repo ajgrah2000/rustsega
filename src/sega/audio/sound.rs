@@ -42,12 +42,18 @@ pub struct Sound {
     channels: Vec<soundchannel::SoundChannel>,
     freq: Vec<u32>,
     chan_freq: u8,
+
+    current_channel: u8,
+    current_type: u8,
+
+    shift_rate: u16, // 0b00 - N/512, 0b01 - N/1024, 0b10 - N/2048, 0b11 - Tone Generator #3 Output
+    noise_period_select: bool, // true - noise
 }
 
 impl Sound {
     const FREQMULTIPLIER: u32 = 125000;
     //    const SAMPLERATE:u32 = 32050;
-    const SAMPLERATE: u32 = 22050;
+    const SAMPLERATE: u32 = 44100;
     const CHANNELS: u8 = 4;
     const BITS: u8 = 8;
     const MAX_VOLUME_MASK: u8 = 0xF;
@@ -62,6 +68,10 @@ impl Sound {
             ],
             freq: vec![0x0; Sound::CHANNELS as usize],
             chan_freq: 0,
+            current_channel: 0,
+            current_type: 0,
+            shift_rate: 0,
+            noise_period_select: false,
         }
     }
     fn get_hertz(frequency: u32) -> u32 {
@@ -79,7 +89,14 @@ impl Sound {
             for c in 0..Sound::CHANNELS {
                 self.channels[c as usize].set_volume((Sound::MAX_VOLUME_MASK - self.volume[c as usize]) << 4);
                 self.channels[c as usize].set_frequency(Sound::get_hertz(self.freq[c as usize]), Sound::SAMPLERATE);
-                let channel_wave = self.channels[c as usize].get_wave(length);
+                let mut channel_wave = self.channels[c as usize].get_wave(length);
+
+                if 3 == c {
+                    for i in 0..length {
+                        // Channel 4:
+                        channel_wave[i as usize] = self.channels[c as usize].get_shiff_register_output(Sound::get_hertz(self.freq[c as usize]), self.noise_period_select, Sound::SAMPLERATE);
+                    }
+                }
 
                 if c % SDLUtility::MONO_STERO_FLAG == 0 {
                     for i in 0..length {
@@ -92,6 +109,7 @@ impl Sound {
                     }
                 }
             }
+
         }
 
         stream
@@ -101,6 +119,11 @@ impl Sound {
         // Dispatch the data to perform the specified audio function (frequency,
         // channel frequency, volume).
 
+        if (data & 0x80) == 0x80 {
+            self.current_channel = (data >> 5) & 0x3;
+            self.current_type    = (data >> 4) & 0x1;
+        }
+
         if (data & 0x90) == 0x90 {
             self.volume[((data >> 5) & 0x3) as usize] = data & Sound::MAX_VOLUME_MASK;
         }
@@ -109,8 +132,35 @@ impl Sound {
             self.chan_freq = data;
         }
 
+        // For the 'noise' channel, the same setting appear from LATCH/DATA or DATA. 
+        if 3 == self.current_channel {
+            if (data & 0x3) < 3 {
+                // Reset the noise shift register:
+                self.channels[self.current_channel as usize].ch4_shift_register = 0; // Clear the register (will be set on first get).
+
+                self.freq[self.current_channel as usize] = match data & 0x3
+                {
+                    0 => {0x10},
+                    1 => {0x20},
+                    2 => {0x40},
+                    3 => {self.freq[2 as usize]}, // TODO: Not sure how this works
+                    _ => {panic!("Match for noise frequency not possible");}
+                };
+
+                // TODO: Not sure how the 'periodic' should sound.
+                // Superficially, it sounds better if noise is forced to 'true'
+//                self.noise_period_select = 0x1 == (data >> 2) & 0x1; // If (---trr) -> t = 1 -> white noise
+                self.noise_period_select = true; // Disable 'periodic'
+            } else {
+                // TODO: Figure out what 'Tone 3' means
+                self.freq[self.current_channel as usize] = 0;
+            }
+        }
+
         if (data & 0x80) == 0x00 {
-            self.freq[((self.chan_freq >> 5) & 0x3) as usize] = (((data & 0x3F) as u32) << 4) | (self.chan_freq & 0xF) as u32;
+            if 3 != self.current_channel || 3 == (data & 0x3) {
+                self.freq[((self.chan_freq >> 5) & 0x3) as usize] = (((data & 0x3F) as u32) << 4) | (self.chan_freq & 0xF) as u32;
+            }
         }
     }
 }

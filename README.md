@@ -50,6 +50,12 @@ Add more tests
 
 Sound
   - Set a better/dynamic audio queue length (based on speed/current buffer size, for better sound.)
+  - Fix noise/periodic channel. When 'periodic' mode is enabled, it sounds
+    worse.  Unsure what 'correct' sounds like (but superficially seems like it
+    should have more noise, rather than high pitch pings). The 'noise' sounds
+    reasonable, but not sure how accurate it is (currently have a frequency
+    multiplier that probably isn't correct).
+
   
 Constants
   - Make SMS Height/Width available to remove magic numbers
