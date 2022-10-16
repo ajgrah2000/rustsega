@@ -397,7 +397,6 @@ pub struct Vdp {
     read_be_latch: u8,
     address_latch: bool,
 
-    last_v_sync_clock: clocks::Clock,
     display_mode: u8,
 
     interrupt_handler: VDPInterrupts,
@@ -481,7 +480,6 @@ impl Vdp {
             write_bf_low_address: 0,
             border_colour: 0,
             address_latch: false,
-            last_v_sync_clock: clocks::Clock::new(),
             display_mode: 0,
             interrupt_handler: VDPInterrupts::new(),
 
@@ -497,9 +495,9 @@ impl Vdp {
     pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
         self.address_latch = false; // Address is unlatched during port read
 
-        let v_counter: u8 = ((clock.cycles - self.last_v_sync_clock.cycles)
+        let v_counter: u8 = ((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles)
             / Constants::HSYNCCYCLETIME as u32) as u8;
-        self.interrupt_handler.current_y_pos = (((clock.cycles - self.last_v_sync_clock.cycles)
+        self.interrupt_handler.current_y_pos = (((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles)
             / Constants::HSYNCCYCLETIME as u32)
             + 1) as u16;
 
@@ -746,7 +744,7 @@ impl Vdp {
         let x_offset = if pattern_offset > fine_scroll as u16 {
             (pattern_offset - (fine_scroll as u16)) % Constants::SMS_WIDTH
         } else {
-            0
+            ((pattern_offset + Constants::SMS_WIDTH) - (fine_scroll as u16)) % Constants::SMS_WIDTH
         };
 
         for y in
@@ -1065,9 +1063,22 @@ impl Vdp {
         }
     }
 
+    fn draw_scan_lines(&mut self) {
+        if self.mode_2_control.enable_display {
+            // Only draw if 'enable_display' has been set.
+            for y in 0..self.interrupt_handler.y_end {
+                self.single_scan(y);
+            }
+        }
+    }
+
     fn draw_buffer(&mut self) {
         self.draw_background();
         self.draw_sprites();
+
+        // Draw the scan lines here (not in export), so scroll locations are locked in.
+        self.draw_scan_lines();
+
         self.screen_buffer_pending = true;
 
         //        self.draw_patterns() // For debuging purposes
@@ -1358,12 +1369,6 @@ impl ports::Device for Vdp {
 
     fn export(&mut self, raw_display: &mut Vec<u8>) -> bool {
         if self.screen_buffer_pending {
-            if self.mode_2_control.enable_display {
-                // Only draw if 'enable_display' has been set.
-                for y in 0..self.interrupt_handler.y_end {
-                    self.single_scan(y);
-                }
-            }
             self.driver_update_display(raw_display);
 
             // Clear the pending flag.

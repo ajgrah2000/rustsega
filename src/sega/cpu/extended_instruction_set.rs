@@ -325,8 +325,6 @@ pub fn otir<M>(
 ) where
     M: memory::MemoryRW,
 {
-    memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
-
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
     pc_state::PcState::increment_reg(&mut pc_state.hl_reg, 1);
@@ -783,52 +781,11 @@ where
     F16: pc_state::FlagReg,
 {
     let mut f_status = af_reg.get_flags();
-
-    let mut r = a.wrapping_sub(b).wrapping_sub(c as u16) as u32;
-    if 0 != (r & 0x8000) {
-        // Negative
-        f_status.set_s(1);
-    } else {
-        f_status.set_s(0);
-    }
-
-    if r == 0 {
-        // Zero
-        f_status.set_z(1);
-    } else {
-        f_status.set_z(0);
-    }
-
-    if ((r & 0x18000) != 0) && (r & 0x18000) != 0x18000 {
-        // Overflow
-        f_status.set_pv(1);
-    } else {
-        f_status.set_pv(0);
-    }
-
-    r = (((a & 0xFFF) as i16) - ((b & 0xFFF) as i16) - (c as i16)) as u32;
-    if 0 != (r & 0x1000) {
-        // Half carry
-        f_status.set_h(1);
-    } else {
-        f_status.set_h(0);
-    }
-
-    f_status.set_n(1);
-
-    r = ((a as i16) as u32)
-        .wrapping_sub(b as u32)
-        .wrapping_sub(c as u32) as u32;
-    if 0 != (r & 0x10000) {
-        // Carry
-        f_status.set_c(1);
-    } else {
-        f_status.set_c(0);
-    }
+    let result = status_flags::i16_carry(a, b, c, &mut f_status);
 
     af_reg.set_flags(&f_status);
 
-    a.wrapping_sub(b).wrapping_sub(c as u16)
+    result
 }
 
 // INC I

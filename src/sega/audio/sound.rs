@@ -135,9 +135,6 @@ impl Sound {
         // For the 'noise' channel, the same setting appear from LATCH/DATA or DATA. 
         if 3 == self.current_channel {
             if (data & 0x3) < 3 {
-                // Reset the noise shift register:
-                self.channels[self.current_channel as usize].ch4_shift_register = 0; // Clear the register (will be set on first get).
-
                 self.freq[self.current_channel as usize] = match data & 0x3
                 {
                     0 => {0x10},
@@ -151,6 +148,9 @@ impl Sound {
                 // Superficially, it sounds better if noise is forced to 'true'
 //                self.noise_period_select = 0x1 == (data >> 2) & 0x1; // If (---trr) -> t = 1 -> white noise
                 self.noise_period_select = true; // Disable 'periodic'
+
+                // Reset the noise shift register:
+                self.channels[self.current_channel as usize].ch4_shift_register = 0; // Clear the register (will be set on first get).
             } else {
                 // TODO: Figure out what 'Tone 3' means
                 self.freq[self.current_channel as usize] = 0;

@@ -119,6 +119,20 @@ pub fn u16_no_carry(a: u16, b: u16, f_status: &mut pc_state::PcStatusFlagFields)
     r
 }
 
+pub fn i16_carry(a: u16, b: u16, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u16 {
+    let r = a.wrapping_sub(b).wrapping_sub(c as u16);
+
+    f_status.set_h(calculate_borrow_carry!(a, b, c, 0xFFF) as u8);
+    // overflow
+    f_status.set_pv(sub_overflow_flag!(a, b, r, u16));
+    f_status.set_n(1);
+    f_status.set_c(calculate_borrow_carry!(a, b, c, 0xFFFF) as u8);
+    f_status.set_s(sign_flag!(r, u16));
+    f_status.set_z(zero_flag!(r));
+
+    r
+}
+
 pub fn calculate_dec_flags(status: &mut pc_state::PcStatusFlagFields, new_value: u8) {
     status.set_n(1);
 
