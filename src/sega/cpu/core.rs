@@ -104,6 +104,7 @@ impl<M: memory::MemoryRW> Core<M> {
             );
             println!("{}", self.pc_state);
         }
+        self.pc_state.increment_pc(1);
         instructions::Instruction::execute(
             op_code,
             &mut self.clock,

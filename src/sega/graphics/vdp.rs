@@ -730,7 +730,7 @@ impl Vdp {
                         [scan_line_number as usize]
                         .sprites[(i + shift) as usize];
                 } else {
-                    panic!("Index exceeds range of MAXSPRITES");
+                    println!("Index exceeds range of MAXSPRITES");
                 }
             }
         }

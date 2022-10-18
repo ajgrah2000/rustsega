@@ -127,9 +127,9 @@ impl Instruction {
             }
 
             0xfb => {
-                pc_state.increment_pc(1);
                 // Perform a 'step' before enabling interrupts.
                 let next_op_code = memory.read(pc_state.get_pc());
+                pc_state.increment_pc(1);
                 Self::execute(next_op_code, clock, memory, pc_state, ports, interruptor);
 
                 instruction_set::ei(clock, pc_state);
@@ -514,7 +514,7 @@ impl Instruction {
                 instruction_set::ccf(clock, &mut pc_state.pc_reg, &mut pc_state.af_reg);
             }
             0x76 => {
-                instruction_set::halt(clock);
+                instruction_set::halt(clock, &mut pc_state.pc_reg);
             }
             0x86 => {
                 instruction_set::add_hl(clock, memory, pc_state);
@@ -724,7 +724,7 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-        let op_code = memory.read(pc_state.get_pc() + 1);
+        let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
 
         match op_code {
@@ -927,7 +927,7 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-        let op_code = memory.read(pc_state.get_pc() + 1);
+        let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
         match op_code {
             0xcb => {
@@ -1139,7 +1139,7 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-        let op_code = memory.read(pc_state.get_pc() + 1);
+        let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
 
         match op_code {

@@ -6,7 +6,6 @@ use super::status_flags;
 
 //0x00
 pub fn noop(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -20,8 +19,8 @@ pub fn in_a_n<M>(
 ) where
     M: memory::MemoryRW,
 {
-    pc_state.set_a(ports.port_read(clock, memory.read(pc_state.get_pc() + 1)));
-    pc_state.increment_pc(2);
+    pc_state.set_a(ports.port_read(clock, memory.read(pc_state.get_pc())));
+    pc_state.increment_pc(1);
     clock.increment(11);
 }
 
@@ -37,10 +36,10 @@ pub fn out_n_a<M>(
 {
     ports.port_write(
         clock,
-        memory.read(pc_state.pc_reg.get() + 1),
+        memory.read(pc_state.pc_reg.get()),
         pc_state.get_a(),
     );
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(11);
 }
 
@@ -58,7 +57,6 @@ pub fn ei(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
 pub fn di(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
     pc_state.set_iff1(false);
     pc_state.set_iff2(false);
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -286,9 +284,9 @@ pub fn ld_16_nn<M, R16>(
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
 {
-    r16_reg.set(memory.read16(pc_reg.get() + 1));
+    r16_reg.set(memory.read16(pc_reg.get()));
 
-    pc_state::PcState::increment_reg(pc_reg, 3);
+    pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(10);
 }
 
@@ -306,7 +304,6 @@ pub fn ld_mem_r<M, R16>(
     R16: pc_state::Reg16RW,
 {
     memory.write(address_reg.get(), r);
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(7);
 }
 
@@ -318,7 +315,6 @@ pub fn ld_r_r<F: FnMut(&mut pc_state::PcState, u8)>(
     mut dst_fn: F,
 ) {
     dst_fn(pc_state, src);
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -334,7 +330,6 @@ pub fn ld_r_mem<M, F: FnMut(&mut pc_state::PcState, u8)>(
     M: memory::MemoryRW,
 {
     dst_fn(pc_state, memory.read(addr_reg_value));
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -347,8 +342,8 @@ pub fn ld_r<M, F: FnMut(&mut pc_state::PcState, u8)>(
 ) where
     M: memory::MemoryRW,
 {
-    dst_fn(pc_state, memory.read(pc_state.get_pc() + 1));
-    pc_state.increment_pc(2);
+    dst_fn(pc_state, memory.read(pc_state.get_pc()));
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -363,8 +358,8 @@ pub fn ld_r16_mem<M, R16>(
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
 {
-    r16_reg.set(memory.read16(memory.read16(pc_reg.get() + 1)));
-    pc_state::PcState::increment_reg(pc_reg, 3);
+    r16_reg.set(memory.read16(memory.read16(pc_reg.get())));
+    pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(16);
 }
 
@@ -381,8 +376,8 @@ pub fn ld_mem_n<M, R16>(
     R16: pc_state::Reg16RW,
 {
     // Load the 8 bit value 'n' into memory.
-    memory.write(r16_reg.get(), memory.read(pc_reg.get() + 1));
-    pc_state::PcState::increment_reg(pc_reg, 2);
+    memory.write(r16_reg.get(), memory.read(pc_reg.get()));
+    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(10);
 }
 
@@ -398,8 +393,8 @@ pub fn ld_r8_mem<M, F: FnMut(&mut pc_state::PcState, u8)>(
 ) where
     M: memory::MemoryRW,
 {
-    dst_fn(pc_state, memory.read(memory.read16(pc_state.get_pc() + 1)));
-    pc_state.increment_pc(3);
+    dst_fn(pc_state, memory.read(memory.read16(pc_state.get_pc())));
+    pc_state.increment_pc(2);
     clock.increment(13);
 }
 
@@ -410,8 +405,6 @@ where
     R16: pc_state::Reg16RW,
 {
     sp_reg.set(hl_reg.get());
-
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(6);
 }
 
@@ -422,8 +415,8 @@ where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
 {
-    memory.write(memory.read16(pc_reg.get() + 1), r);
-    pc_state::PcState::increment_reg(pc_reg, 3);
+    memory.write(memory.read16(pc_reg.get()), r);
+    pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(13);
 }
 
@@ -440,11 +433,11 @@ where
     // This function sets the 'pc_state.f'
     cp_flags(
         pc_state.get_a(),
-        memory.read(pc_state.get_pc() + 1),
+        memory.read(pc_state.get_pc()),
         &mut pc_state.af_reg,
     );
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -453,8 +446,6 @@ where
 pub fn cp_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) {
     // This function sets the 'pc_state.f'
     cp_flags(pc_state.get_a(), r, &mut pc_state.af_reg);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -470,8 +461,6 @@ where
         memory.read(pc_state.get_hl()),
         &mut pc_state.af_reg,
     );
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -483,7 +472,7 @@ pub fn jp_nn<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_sta
 where
     M: memory::MemoryRW,
 {
-    pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+    pc_state.set_pc(memory.read16(pc_state.get_pc()));
     clock.increment(10);
 }
 
@@ -510,10 +499,10 @@ pub fn jr_cc_e<M>(
     clock.increment(7);
 
     if condition {
-        pc_state.increment_pc(memory.read(pc_state.get_pc() + 1) as i8);
+        pc_state.increment_pc(memory.read(pc_state.get_pc()) as i8);
         clock.increment(5);
     }
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
 }
 
 // JR NZ, e
@@ -569,9 +558,9 @@ pub fn jump_cc_nn<M>(
     M: memory::MemoryRW,
 {
     if condition {
-        pc_state.set_pc(memory.read16(pc_state.get_pc() + 1));
+        pc_state.set_pc(memory.read16(pc_state.get_pc()));
     } else {
-        pc_state.increment_pc(3);
+        pc_state.increment_pc(2);
     }
 
     clock.increment(10);
@@ -583,13 +572,13 @@ where
 {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     if pc_state.get_b() != 0 {
-        pc_state.increment_pc(memory.read(pc_state.pc_reg.get() + 1) as i8);
+        pc_state.increment_pc(memory.read(pc_state.pc_reg.get()) as i8);
         clock.increment(13);
     } else {
         clock.increment(8);
     }
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
 }
 
 // Note, could also add '#[derive(Copy, Clone)]' to 'Reg16'
@@ -612,7 +601,6 @@ pub fn exx(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
     exchange_reg(&mut pc_state.de_reg, &mut pc_state.shadow_de_reg);
     exchange_reg(&mut pc_state.hl_reg, &mut pc_state.shadow_hl_reg);
 
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -624,7 +612,6 @@ where
     R2: pc_state::Reg16RW,
 {
     exchange_reg(first, second);
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(4);
 }
 
@@ -641,7 +628,6 @@ where
     memory.write(pc_state.sp_reg.get() + 1, pc_state.get_h());
     pc_state.set_h(tmp8);
 
-    pc_state.increment_pc(1);
     clock.increment(19);
 }
 
@@ -655,7 +641,7 @@ pub fn call_cc_nn<M>(
 ) where
     M: memory::MemoryRW,
 {
-    pc_state.increment_pc(3);
+    pc_state.increment_pc(2);
     if condition {
         pc_state.increment_sp(-1);
         memory.write(pc_state.sp_reg.get(), pc_state.pc_reg.high);
@@ -689,7 +675,6 @@ pub fn rst<M>(
 ) where
     M: memory::MemoryRW,
 {
-    pc_state.increment_pc(1);
     pc_state.increment_sp(-1);
     memory.write(pc_state.sp_reg.get(), pc_state.get_pc_high());
     pc_state.increment_sp(-1);
@@ -720,7 +705,6 @@ pub fn dec_r<F: FnMut(&mut pc_state::PcState, u8)>(
     status_flags::calculate_dec_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -732,7 +716,6 @@ pub fn dec_16<F: FnMut(&mut pc_state::PcState, u16)>(
     original: u16,
 ) {
     reg16(pc_state, original.wrapping_sub(1));
-    pc_state.increment_pc(1);
     clock.increment(6);
 }
 
@@ -749,7 +732,6 @@ where
     status_flags::calculate_dec_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
 
-    pc_state.increment_pc(1);
     clock.increment(11);
 }
 
@@ -767,7 +749,7 @@ pub fn dec_i_d<M, F16, R16>(
 {
     let address = i16_reg
         .get()
-        .wrapping_add(memory.read(pc_reg.get() + 2) as u16);
+        .wrapping_add(memory.read(pc_reg.get() + 1) as u16);
     let new_value = memory.read(address).wrapping_sub(1);
 
     memory.write(address, new_value);
@@ -776,7 +758,7 @@ pub fn dec_i_d<M, F16, R16>(
     status_flags::calculate_dec_flags(&mut f_value, new_value);
     af_reg.set_flags(&f_value);
 
-    pc_state::PcState::increment_reg(pc_reg, 3);
+    pc_state::PcState::increment_reg(pc_reg, 2);
     clock.increment(23);
 }
 
@@ -794,8 +776,6 @@ pub fn inc_r<F: FnMut(&mut pc_state::PcState, u8)>(
     let mut f_value = pc_state.get_f();
     status_flags::calculate_inc_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -807,7 +787,6 @@ pub fn inc_16<F: FnMut(&mut pc_state::PcState, u16)>(
     original: u16,
 ) {
     reg16(pc_state, original.wrapping_add(1));
-    pc_state.increment_pc(1);
     clock.increment(6);
 }
 
@@ -823,8 +802,6 @@ where
     let mut f_value = pc_state.get_f();
     status_flags::calculate_inc_flags(&mut f_value, new_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(11);
 }
 
@@ -833,27 +810,11 @@ pub fn ld_mem_nn_hl<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut
 where
     M: memory::MemoryRW,
 {
-    memory.write(memory.read16(pc_state.get_pc() + 1), pc_state.get_l());
-    memory.write(memory.read16(pc_state.get_pc() + 1) + 1, pc_state.get_h());
+    memory.write(memory.read16(pc_state.get_pc()), pc_state.get_l());
+    memory.write(memory.read16(pc_state.get_pc()) + 1, pc_state.get_h());
 
-    pc_state.increment_pc(3);
+    pc_state.increment_pc(2);
     clock.increment(16);
-}
-
-// LD (nn), HL (Extended)
-// same as ld_mem_nn_hl, but part of the extended group?
-pub fn ld_mem_nn_hl_extended<M>(
-    clock: &mut clocks::Clock,
-    memory: &mut M,
-    pc_state: &mut pc_state::PcState,
-) where
-    M: memory::MemoryRW,
-{
-    memory.write(memory.read16(pc_state.get_pc() + 2), pc_state.get_l());
-    memory.write(memory.read16(pc_state.get_pc() + 2) + 1, pc_state.get_h());
-
-    pc_state.increment_pc(4);
-    clock.increment(20);
 }
 
 ////////////////////////////////////////////////////
@@ -863,8 +824,6 @@ pub fn ld_mem_nn_hl_extended<M>(
 pub fn add_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) {
     let result = add8(pc_state.get_a(), r, &mut pc_state.af_reg);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -872,8 +831,6 @@ pub fn adc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     let carry = pc_state.get_f().get_c();
     let result = add8c(pc_state.get_a(), r, carry == 1, &mut pc_state.af_reg);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -887,8 +844,6 @@ where
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -904,8 +859,6 @@ where
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -915,12 +868,12 @@ where
 {
     let result = add8(
         pc_state.get_a(),
-        memory.read(pc_state.pc_reg.get() + 1),
+        memory.read(pc_state.pc_reg.get()),
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -931,21 +884,19 @@ where
     let carry = pc_state.get_f().get_c();
     let result = add8c(
         pc_state.get_a(),
-        memory.read(pc_state.pc_reg.get() + 1),
+        memory.read(pc_state.pc_reg.get()),
         carry == 1,
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
 pub fn sub_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) {
     let result = sub8(pc_state.get_a(), r, &mut pc_state.af_reg);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -953,8 +904,6 @@ pub fn sbc_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     let carry = pc_state.get_f().get_c();
     let result = sub8c(pc_state.get_a(), r, carry == 1, &mut pc_state.af_reg);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -968,8 +917,6 @@ where
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -985,8 +932,6 @@ where
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -996,12 +941,12 @@ where
 {
     let result = sub8(
         pc_state.get_a(),
-        memory.read(pc_state.pc_reg.get() + 1),
+        memory.read(pc_state.pc_reg.get()),
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1012,13 +957,13 @@ where
     let carry = pc_state.get_f().get_c();
     let result = sub8c(
         pc_state.get_a(),
-        memory.read(pc_state.pc_reg.get() + 1),
+        memory.read(pc_state.pc_reg.get()),
         carry == 1,
         &mut pc_state.af_reg,
     );
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1028,8 +973,6 @@ pub fn and_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     status_flags::and_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1042,8 +985,6 @@ where
     status_flags::and_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1053,8 +994,6 @@ pub fn xor_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState)
     status_flags::xor_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1067,8 +1006,6 @@ where
     status_flags::xor_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1078,8 +1015,6 @@ pub fn or_r(clock: &mut clocks::Clock, r: u8, pc_state: &mut pc_state::PcState) 
     status_flags::or_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1092,8 +1027,6 @@ where
     status_flags::or_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
-
-    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1101,13 +1034,13 @@ pub fn and_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_sta
 where
     M: memory::MemoryRW,
 {
-    let result = pc_state.get_a() & memory.read(pc_state.pc_reg.get() + 1);
+    let result = pc_state.get_a() & memory.read(pc_state.pc_reg.get());
     let mut f_status = pc_state.get_f();
     status_flags::and_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1115,13 +1048,13 @@ pub fn xor_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_sta
 where
     M: memory::MemoryRW,
 {
-    let result = pc_state.get_a() ^ memory.read(pc_state.pc_reg.get() + 1);
+    let result = pc_state.get_a() ^ memory.read(pc_state.pc_reg.get());
     let mut f_status = pc_state.get_f();
     status_flags::xor_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1129,13 +1062,13 @@ pub fn or_n<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_stat
 where
     M: memory::MemoryRW,
 {
-    let result = pc_state.get_a() | memory.read(pc_state.pc_reg.get() + 1);
+    let result = pc_state.get_a() | memory.read(pc_state.pc_reg.get());
     let mut f_status = pc_state.get_f();
     status_flags::or_flags(&mut f_status, result);
     pc_state.set_f(f_status);
     pc_state.set_a(result);
 
-    pc_state.increment_pc(2);
+    pc_state.increment_pc(1);
     clock.increment(7);
 }
 
@@ -1162,8 +1095,6 @@ pub fn add16<R16, F16>(
     ));
     f_status.set_n(0);
     af_reg.set_flags(&f_status);
-
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(11);
 }
 
@@ -1185,8 +1116,6 @@ pub fn rrca<F: FnMut(&mut pc_state::PcState, u8)>(
     let mut f_value = pc_state.get_f();
     status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1204,8 +1133,6 @@ pub fn rra<F: FnMut(&mut pc_state::PcState, u8)>(
     dst_fn(pc_state, new_value);
     status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1223,8 +1150,6 @@ pub fn rlca<F: FnMut(&mut pc_state::PcState, u8)>(
     let mut f_value = pc_state.get_f();
     status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1242,8 +1167,6 @@ pub fn rla<F: FnMut(&mut pc_state::PcState, u8)>(
     dst_fn(pc_state, new_value);
     status_flags::set_rotate_accumulator_flags(carry, &mut f_value);
     pc_state.set_f(f_value);
-
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1276,7 +1199,6 @@ pub fn ret_cc<M>(
         pc_state.increment_sp(1);
         clock.increment(11);
     } else {
-        pc_state.increment_pc(1);
         clock.increment(5);
     }
 }
@@ -1298,7 +1220,6 @@ pub fn pop<M, R1, R2>(
     pc_state::PcState::increment_reg(sp_reg, 1);
     dst_reg.set_high(memory.read(sp_reg.get()));
     pc_state::PcState::increment_reg(sp_reg, 1);
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(10);
 }
 
@@ -1320,7 +1241,6 @@ pub fn push<M, R1, R2>(
     pc_state::PcState::increment_reg(sp_reg, -1);
     memory.write(sp_reg.get(), src_reg.get_low());
 
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(11);
 }
 
@@ -1333,7 +1253,6 @@ pub fn daa(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
         calculate_daa_sub(pc_state);
     }
 
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 /*************************************************************************************/
@@ -1349,7 +1268,6 @@ pub fn cpl(clock: &mut clocks::Clock, pc_state: &mut pc_state::PcState) {
     pc_state.set_f(f_status);
     pc_state.set_a(pc_state.get_a() ^ 0xFF);
 
-    pc_state.increment_pc(1);
     clock.increment(4);
 }
 
@@ -1366,7 +1284,6 @@ where
     f_status.set_c(1);
     af_reg.set_flags(&f_status);
 
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(4);
 }
 
@@ -1383,13 +1300,16 @@ where
     f_status.set_c(f_status.get_c() ^ 1);
     af_reg.set_flags(&f_status);
 
-    pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(4);
 }
 
-pub fn halt(clock: &mut clocks::Clock) {
+pub fn halt<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16)
+where
+    R16: pc_state::Reg16RW,
+{
     // Should 'loop/no-op' until an inerrupt occurs (or just immediately trigger one).
     clock.increment(4);
+    pc_state::PcState::increment_reg(pc_reg, -1);
 }
 
 #[cfg(test)]
