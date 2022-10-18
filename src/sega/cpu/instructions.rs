@@ -1369,6 +1369,7 @@ mod tests {
         test_core.pc_state.set_pc(0);
         test_core.clock.cycles = 0;
         let initial_op_code = op_code[0];
+        test_core.pc_state.increment_pc(1);
         test_core.memory.dummy_memory = op_code; // Op-code to test
         instructions::Instruction::execute(
             initial_op_code,
@@ -1491,6 +1492,7 @@ mod tests {
         let mut test_core = TestCore::new();
 
         test_core.memory.dummy_memory = vec![0x00];
+        test_core.pc_state.increment_pc(1);
         instructions::Instruction::execute(
             0x00,
             &mut test_core.clock,
@@ -1508,6 +1510,7 @@ mod tests {
         test_core.clock.cycles = 0;
         let test_op_code = 0x01;
         test_core.memory.dummy_memory = vec![test_op_code, 0x10, 0x33]; // Op-code to test
+        test_core.pc_state.increment_pc(1);
         instructions::Instruction::execute(
             test_op_code,
             &mut test_core.clock,
