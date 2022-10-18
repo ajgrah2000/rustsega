@@ -725,6 +725,7 @@ impl Instruction {
         M: memory::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc() + 1);
+        pc_state.increment_pc(1);
 
         match op_code {
             // BIT b, r
@@ -927,6 +928,7 @@ impl Instruction {
         M: memory::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc() + 1);
+        pc_state.increment_pc(1);
         match op_code {
             0xcb => {
                 extended_instruction_set::bit_res_set_b_i_d(
@@ -1047,7 +1049,7 @@ impl Instruction {
                     index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
-            0x8E => {
+            0x8e => {
                 extended_instruction_set::adc_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0x96 => {
@@ -1138,6 +1140,7 @@ impl Instruction {
         M: memory::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc() + 1);
+        pc_state.increment_pc(1);
 
         match op_code {
             0x00 => {
