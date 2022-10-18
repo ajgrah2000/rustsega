@@ -104,10 +104,6 @@ mod tests {
     use super::*;
     use sdl2::pixels;
 
-    use std::fs::File;
-    use std::io::BufRead;
-    use std::io::BufReader;
-
     use sdl2::event;
     use sdl2::keyboard;
     use sdl2::rect;

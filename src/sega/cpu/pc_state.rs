@@ -52,6 +52,17 @@ pub struct FlagReg16 {
     reg16: Reg16,
 }
 
+pub struct IndexRegisters {
+    pub ix_reg: Reg16,
+    pub iy_reg: Reg16,
+}
+
+impl IndexRegisters {
+    fn new() -> Self {
+        Self { ix_reg: Reg16::new(), iy_reg: Reg16::new() }
+    }
+}
+
 pub struct PcState {
     // Register overlays
     pub bc_reg: Reg16,
@@ -61,8 +72,7 @@ pub struct PcState {
 
     pub pc_reg: Reg16,
     pub sp_reg: Reg16,
-    pub ix_reg: Reg16,
-    pub iy_reg: Reg16,
+    pub index_registers: IndexRegisters,
 
     // Shadow registers
     pub shadow_bc_reg: Reg16,
@@ -116,6 +126,8 @@ pub trait FlagReg {
 pub trait AfRegister {
     fn get_a(&self) -> u8;
     fn get_f(&self) -> u8;
+    fn set_a(&mut self, value:u8);
+    fn set_f(&mut self, value:u8);
 }
 
 impl Reg16RW for Reg16 {
@@ -167,6 +179,14 @@ impl AfRegister for FlagReg16 {
     fn get_f(&self) -> u8 {
         self.reg16.low
     }
+
+    fn set_a(&mut self, value:u8) {
+        self.reg16.high = value;
+    }
+
+    fn set_f(&mut self, value:u8) {
+        self.reg16.low = value;
+    }
 }
 
 impl Reg16RW for FlagReg16 {
@@ -203,8 +223,7 @@ impl PcState {
 
             pc_reg: Reg16::new(),
             sp_reg: Reg16::new(),
-            ix_reg: Reg16::new(),
-            iy_reg: Reg16::new(),
+            index_registers: IndexRegisters::new(),
 
             // Shadow registers
             shadow_bc_reg: Reg16::new(),
@@ -271,16 +290,16 @@ impl PcState {
         self.sp_reg.low
     }
     pub fn get_ix_high(&self) -> u8 {
-        self.ix_reg.high
+        self.index_registers.ix_reg.high
     }
     pub fn get_ix_low(&self) -> u8 {
-        self.ix_reg.low
+        self.index_registers.ix_reg.low
     }
     pub fn get_iy_high(&self) -> u8 {
-        self.iy_reg.high
+        self.index_registers.iy_reg.high
     }
     pub fn get_iy_low(&self) -> u8 {
-        self.iy_reg.low
+        self.index_registers.iy_reg.low
     }
 
     pub fn get_pc(&self) -> u16 {

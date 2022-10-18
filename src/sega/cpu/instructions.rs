@@ -917,15 +917,16 @@ impl Instruction {
     }
 
     // Extended instructions
-    pub fn execute_dd<M>(
+    pub fn execute_index<M,F: Fn(&pc_state::IndexRegisters)-> &pc_state::Reg16,FM: FnMut(&mut pc_state::IndexRegisters)-> &mut pc_state::Reg16 >(
         clock: &mut clocks::Clock,
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
+        index_reg_fn: F,
+        mut index_reg_fn_mut: FM,
     ) where
         M: memory::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc() + 1);
-
         match op_code {
             0xcb => {
                 extended_instruction_set::bit_res_set_b_i_d(
@@ -933,7 +934,7 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.af_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn(&mut pc_state.index_registers),
                 );
             }
             0x22 => {
@@ -941,7 +942,7 @@ impl Instruction {
                     clock,
                     memory,
                     &mut pc_state.pc_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0x2A => {
@@ -949,7 +950,7 @@ impl Instruction {
                     clock,
                     memory,
                     &mut pc_state.pc_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0x36 => {
@@ -957,7 +958,7 @@ impl Instruction {
                     clock,
                     memory,
                     &mut pc_state.pc_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
 
@@ -972,7 +973,7 @@ impl Instruction {
                     clock,
                     memory,
                     pc_state,
-                    pc_state.ix_reg.get(),
+                    index_reg_fn(&pc_state.index_registers).get(),
                     dst_fn,
                 );
             }
@@ -986,19 +987,19 @@ impl Instruction {
                     memory,
                     select_8_bit_read_register(pc_state, reg_index),
                     &mut pc_state.pc_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
 
             0xE9 => {
-                extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.ix_reg);
+                extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
             }
             0x21 => {
                 extended_instruction_set::ld_i_nn(
                     clock,
                     memory,
                     &mut pc_state.pc_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0xBE => {
@@ -1006,7 +1007,7 @@ impl Instruction {
                     clock,
                     memory,
                     &mut pc_state.pc_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                     &mut pc_state.af_reg,
                 );
             }
@@ -1017,16 +1018,16 @@ impl Instruction {
                     clock,
                     select_16_bit_read_register(pc_state, ss),
                     &mut pc_state.pc_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                     &mut pc_state.af_reg,
                 );
             }
 
             0x23 => {
-                extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);
+                extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
             }
             0x2B => {
-                extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.ix_reg);
+                extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
             }
             0x34 => {
                 extended_instruction_set::inc_i_d(
@@ -1034,7 +1035,7 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.af_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0x35 => {
@@ -1043,26 +1044,26 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.af_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0x8E => {
-                extended_instruction_set::adc_ix_d(clock, memory, pc_state);
+                extended_instruction_set::adc_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0x96 => {
-                extended_instruction_set::sub_ix_d(clock, memory, pc_state);
+                extended_instruction_set::sub_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0xA6 => {
-                extended_instruction_set::and_ix_d(clock, memory, pc_state);
+                extended_instruction_set::and_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0xAE => {
-                extended_instruction_set::xor_ix_d(clock, memory, pc_state);
+                extended_instruction_set::xor_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0xB6 => {
-                extended_instruction_set::or_ix_d(clock, memory, pc_state);
+                extended_instruction_set::or_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0x86 => {
-                extended_instruction_set::add_ix_d(clock, memory, pc_state);
+                extended_instruction_set::add_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
             }
             0xE1 => {
                 extended_instruction_set::pop_i(
@@ -1070,7 +1071,7 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.sp_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0xE5 => {
@@ -1079,7 +1080,7 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.sp_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0xE3 => {
@@ -1088,7 +1089,7 @@ impl Instruction {
                     memory,
                     &mut pc_state.pc_reg,
                     &mut pc_state.sp_reg,
-                    &mut pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
             0xF9 => {
@@ -1096,7 +1097,7 @@ impl Instruction {
                     clock,
                     &mut pc_state.pc_reg,
                     &mut pc_state.sp_reg,
-                    &pc_state.ix_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
                 );
             }
 
@@ -1106,6 +1107,17 @@ impl Instruction {
         }
     }
     // Extended instructions
+    pub fn execute_dd<M>(
+        clock: &mut clocks::Clock,
+        memory: &mut M,
+        pc_state: &mut pc_state::PcState,
+    ) where
+        M: memory::MemoryRW,
+    {
+         Self::execute_index(clock, memory, pc_state, |x| {&x.ix_reg}, |x| {&mut x.ix_reg});
+    }
+
+    // Extended instructions
     pub fn execute_fd<M>(
         clock: &mut clocks::Clock,
         memory: &mut M,
@@ -1113,188 +1125,9 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-        let op_code = memory.read(pc_state.get_pc() + 1);
-
-        match op_code {
-            0xcb => {
-                extended_instruction_set::bit_res_set_b_i_d(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.af_reg,
-                    &pc_state.iy_reg,
-                );
-            }
-            0x22 => {
-                extended_instruction_set::ld_mem_nn_reg16(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &pc_state.iy_reg,
-                );
-            }
-            0x2A => {
-                extended_instruction_set::ld_i_mem_nn(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-            0x36 => {
-                extended_instruction_set::ld_i_d_n(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-
-            0x9e => {
-                extended_instruction_set::sbc_i();
-            }
-
-
-            n if (n & 0b11000111 == 0b01000110) && ((n >> 3) & 0b111 != 0b110) => {
-                let reg_index = (n >> 3) & 0x7;
-                let dst_fn = get_8_bit_register_set_function(reg_index);
-                extended_instruction_set::ld_r_i_d(
-                    clock,
-                    memory,
-                    pc_state,
-                    pc_state.iy_reg.get(),
-                    dst_fn,
-                );
-            }
-
-            // LD (IY+d)
-            // op code:  0xFD, 0b01110rrr, 0bdddddddd
-            n if (n & 0b11111000 == 0b01110000) && (n & 0b111 != 0b110) => {
-                let reg_index = n & 0x7;
-                extended_instruction_set::ld_i_d_r(
-                    clock,
-                    memory,
-                    select_8_bit_read_register(pc_state, reg_index),
-                    &mut pc_state.pc_reg,
-                    &pc_state.iy_reg,
-                );
-            }
-
-            0xE9 => {
-                extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, &pc_state.iy_reg);
-            }
-            0x21 => {
-                extended_instruction_set::ld_i_nn(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-            0xBE => {
-                extended_instruction_set::cp_i_d(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.iy_reg,
-                    &mut pc_state.af_reg,
-                );
-            }
-            n if (n & 0b11001111 == 0b00001001) => {
-                let ss = (n >> 4) & 0x3;
-                extended_instruction_set::add16(
-                    clock,
-                    select_16_bit_read_register(pc_state, ss),
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.iy_reg,
-                    &mut pc_state.af_reg,
-                );
-            }
-
-            0x23 => {
-                extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);
-            }
-            0x2B => {
-                extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, &mut pc_state.iy_reg);
-            }
-            0x34 => {
-                extended_instruction_set::inc_i_d(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.af_reg,
-                    &pc_state.iy_reg,
-                );
-            }
-            0x35 => {
-                extended_instruction_set::dec_i_d(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.af_reg,
-                    &pc_state.iy_reg,
-                );
-            }
-            0x8E => {
-                extended_instruction_set::adc_iy_d(clock, memory, pc_state);
-            }
-            0x96 => {
-                extended_instruction_set::sub_iy_d(clock, memory, pc_state);
-            }
-            0xA6 => {
-                extended_instruction_set::and_iy_d(clock, memory, pc_state);
-            }
-            0xAE => {
-                extended_instruction_set::xor_iy_d(clock, memory, pc_state);
-            }
-            0xB6 => {
-                extended_instruction_set::or_iy_d(clock, memory, pc_state);
-            }
-            0x86 => {
-                extended_instruction_set::add_iy_d(clock, memory, pc_state);
-            }
-            0xE1 => {
-                extended_instruction_set::pop_i(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.sp_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-            0xE5 => {
-                extended_instruction_set::push_i(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.sp_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-            0xE3 => {
-                extended_instruction_set::ex_sp_i(
-                    clock,
-                    memory,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.sp_reg,
-                    &mut pc_state.iy_reg,
-                );
-            }
-
-            0xF9 => {
-                extended_instruction_set::ld_sp_i(
-                    clock,
-                    &mut pc_state.pc_reg,
-                    &mut pc_state.sp_reg,
-                    &pc_state.ix_reg,
-                );
-            }
-
-            _ => {
-                panic!("Extended(0xFD) Opcode not implemented: {:x}", op_code);
-            }
-        }
+         Self::execute_index(clock, memory, pc_state, |x| {&x.iy_reg}, |x| {&mut x.iy_reg});
     }
+
     // Extended instructions
     pub fn execute_ed<M>(
         clock: &mut clocks::Clock,
@@ -1961,11 +1794,11 @@ mod tests {
         assert_eq!(test_core.pc_state.get_a(), 0xAC);
         assert_eq!(test_core.memory.dummy_memory[2], 0xDB);
 
-        test_core.pc_state.ix_reg.set(0x04);
+        test_core.pc_state.index_registers.ix_reg.set(0x04);
         test_op_code_cycle_count(&mut test_core, vec![0xDD, 0x34, 0xFF, 0x09], 3, 23); // INC (IX+d) (d = -1)
         assert_eq!(test_core.memory.dummy_memory[3], 0xA);
 
-        test_core.pc_state.iy_reg.set(0x06);
+        test_core.pc_state.index_registers.iy_reg.set(0x06);
         test_op_code_cycle_count(&mut test_core, vec![0xFD, 0x35, 0xFD, 0x09], 3, 23); // DEC (IY+d) (d = -3)
         assert_eq!(test_core.memory.dummy_memory[3], 0x8);
     }
