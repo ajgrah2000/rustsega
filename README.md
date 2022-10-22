@@ -4,6 +4,19 @@ Rust Sega Emulator
 Conversion of a C emulator, that I'd converted to C++, that I'd converted to
 Python, that I've converted to Rust.
 
+Building/Running
+    Install Rust:
+	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh	
+    Install SDL:
+	linux (debian based): 
+		apt-get install libsdl2-dev
+	rasbian (64-bit): 
+		apt-get install libsdl2-dev
+	OSX: 
+		brew install sdl2
+    Build and run:
+        cargo run --release <rom_file>
+
 
     Usage:
       target/debug/rustsega [OPTIONS] CARTRIDGE
@@ -27,7 +40,7 @@ Python, that I've converted to Rust.
 
     Quit: Escape
 
-
+Note: Currently 'Quit' doesn't appear to work on Rasbian if audio output is set to HMI, when headphones are connected to the AV Jack (it just hangs).
 
 TODO:
 
@@ -63,7 +76,14 @@ Constants
 Rust General
   - cargo clippy
   - profiling
-        - cargo flamegraph
+	cargo install flamegraph
+
+        cargo flamegraph
+	#
+	# Raspberry pi:
+	#
+	# sudo apt-install -y linux-perf
+
   - remove all warnigns
 
 vim setup
@@ -87,4 +107,15 @@ vim setup
       git clone --depth 1 https://github.com/preservim/nerdtree.git  ~/.vim/pack/vendor/start/nerdtree
       git clone --depth 1 https://github.com/dense-analysis/ale.git ~/.vim/pack/git-plugins/start/ale
       git clone --depth 1 https://github.com/timonv/vim-cargo ~/.vim/pack/git-plugins/start/vim-cargo
+
+Compilation errors:
+
+SDL2:
+
+      = note: /usr/bin/ld: cannot find -lSDL2
+              collect2: error: ld returned 1 exit status
+              
+    error: could not compile `rustsega` due to previous error
+
+Fix: Install SDL2:
 
