@@ -35,16 +35,34 @@ impl Colour {
         Self { r, g, b }
     }
 
-    pub fn convert_rgb23(&self, dst: &mut [u8]) {
+    pub fn convert_rgb444(&self, dst: &mut [u8]) {
+        // RGB444
+        dst[0] = (self.g & 0xF0) | (self.b >> 4);
+        dst[1] = self.r >> 4;
+    }
+
+    pub fn convert_rgb24(&self, dst: &mut [u8]) {
         dst[0] = self.r;
         dst[1] = self.g;
         dst[2] = self.b;
+    }
+
+    pub fn convert_rgb888(&self, dst: &mut [u8]) {
+        dst[0] = self.b;
+        dst[1] = self.g;
+        dst[2] = self.r;
     }
 }
 
 pub struct SDLUtility {}
 
 impl SDLUtility {
+    pub const PIXEL_FORMAT:pixels::PixelFormatEnum = pixels::PixelFormatEnum::RGB888;
+
+    pub fn bytes_per_pixel() -> u16 {
+        SDLUtility::PIXEL_FORMAT.byte_size_per_pixel() as u16
+    }
+
     pub fn create_canvas(
         sdl_context: &mut sdl2::Sdl,
         name: &str,
@@ -62,7 +80,7 @@ impl SDLUtility {
             .unwrap();
 
         window
-            .into_canvas()
+            .into_canvas().accelerated()
             .build()
             .map_err(|e| e.to_string())
             .unwrap()
@@ -131,26 +149,24 @@ mod tests {
         current_k: u16,
         pub pixel_format: pixels::PixelFormatEnum,
         pitch: u16,
-        display: Vec<u8>,
     }
 
     impl DisplayGenerator {
         pub fn new(width: u16, height: u16, pixel_format: pixels::PixelFormatEnum) -> Self {
             let pitch = match pixel_format {
-                pixels::PixelFormatEnum::RGB24 => width * 3,
+                SDLUtility::PIXEL_FORMAT => width * SDLUtility::bytes_per_pixel(),
                 _ => 0,
             };
             Self {
                 current_k: 0,
                 pixel_format,
                 pitch,
-                display: vec![0; ((height as u32) * (pitch as u32)) as usize],
             }
         }
 
-        pub fn update_display(&mut self) {
+        pub fn update_display(&mut self, buffer: &mut [u8]) {
             // Clear the buffer
-            self.display.iter_mut().for_each(|x| *x = 0);
+            buffer.iter_mut().for_each(|x| *x = 0);
 
             // Draw the display
             for i in 0..0xFF {
@@ -158,9 +174,9 @@ mod tests {
                     let offset = (i + 100 + (self.current_k as usize % 200))
                         * (self.pitch as usize)
                         + (j + 100 + (self.current_k as usize % 200)) * 3_usize;
-                    self.display[offset] = 0xFF * (self.current_k as usize & 0x0) as u8;
-                    self.display[offset + 1] = j as u8;
-                    self.display[offset + 2] = i as u8;
+                    buffer[offset] = 0xFF * (self.current_k as usize & 0x0) as u8;
+                    buffer[offset + 1] = j as u8;
+                    buffer[offset + 2] = i as u8;
                 }
             }
             self.current_k += 1;
@@ -169,10 +185,7 @@ mod tests {
         pub fn new_generate_display(&mut self, buffer: &mut [u8], pitch: usize) {
             assert_eq!(self.pitch as usize, pitch);
             // Update the graphics.
-            self.update_display();
-
-            // Copy the graphics to the buffer
-            buffer.clone_from_slice(self.display.as_slice());
+            self.update_display(buffer);
         }
 
         pub fn get_generate_display_closure<'l>(&'l mut self) -> impl FnMut(&mut [u8], usize) + 'l {
@@ -204,8 +217,11 @@ mod tests {
                 frame_width,
                 frame_height,
             );
+//            let mut dummy_buffer:[u8;800*600*3] = [0;800*600*3];
 
             for _k in 0..iterations {
+//                generate_display(&mut dummy_buffer, 800*3);
+//                texture.update(None, &dummy_buffer, 800*3);
                 texture
                     .with_lock(None, |buffer: &mut [u8], pitch: usize| {
                         generate_display(buffer, pitch)
@@ -266,7 +282,7 @@ mod tests {
                     frame_width,
                     frame_height,
                     generator.get_generate_display_closure(),
-                    30,
+                    60,
                 );
             }
         }
@@ -278,7 +294,7 @@ mod tests {
         const WINDOW_HEIGHT: u16 = 600; // MAX HEIGHT
 
         let mut display_generator =
-            DisplayGenerator::new(WINDOW_WIDTH, WINDOW_HEIGHT, pixels::PixelFormatEnum::RGB24);
+            DisplayGenerator::new(WINDOW_WIDTH, WINDOW_HEIGHT, SDLUtility::PIXEL_FORMAT);
 
         let mut sdl_display = SDLDisplay::new();
         sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, &mut display_generator);

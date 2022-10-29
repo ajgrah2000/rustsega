@@ -48,7 +48,7 @@ impl<M: memory::MemoryRW> Core<M> {
                 0;
                 (graphics::vdp::Constants::SMS_WIDTH as usize)
                     * (graphics::vdp::Constants::SMS_HEIGHT as usize)
-                    * (graphics::vdp::Constants::BYTES_PER_PIXEL as usize)
+                    * (graphics::display::SDLUtility::bytes_per_pixel() as usize)
             ],
             start_time: time::SystemTime::now(),
         }

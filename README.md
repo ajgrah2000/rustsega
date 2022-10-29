@@ -12,11 +12,17 @@ Building/Running
 		apt-get install libsdl2-dev
 	rasbian (64-bit): 
 		apt-get install libsdl2-dev
+	rasberry pi (ubuntu mate 64-bit): 
+		# Release 22.04 LTS (Jammy Jellyfish) 64-bit
+		# Need to upgrade so 'sdl2' will install.
+		apt-get update
+		apt-get upgrade
+		apt-get install git curl libsdl2-dev
 	OSX: 
 		brew install sdl2
+
     Build and run:
         cargo run --release <rom_file>
-
 
     Usage:
       target/debug/rustsega [OPTIONS] CARTRIDGE
@@ -80,9 +86,9 @@ Rust General
 
         cargo flamegraph
 	#
-	# Raspberry pi:
+	# Raspberry pi (ubuntu mate):
+	# sudo apt-get install linux-tools-raspi
 	#
-	# sudo apt-install -y linux-perf
 
   - remove all warnigns
 
@@ -118,4 +124,16 @@ SDL2:
     error: could not compile `rustsega` due to previous error
 
 Fix: Install SDL2:
+
+perf setup (for flamegraph, see https://docs.kernel.org/admin-guide/perf-security.html):
+   which perf
+   # as root/sudo:
+   cd /usr/bin
+   ls -l perf 
+   chgrp perf_users perf
+   chmod o-rwx perf
+   setcap "cap_perfmon,cap_sys_ptrace,cap_syslog=ep" perf 
+   setcap -v "cap_perfmon,cap_sys_ptrace,cap_syslog=ep" perf 
+   getcap perf 
+   usermod -a -G perf_users <username>
 

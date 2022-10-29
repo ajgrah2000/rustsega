@@ -220,7 +220,6 @@ impl Constants {
 
     const NUMSPRITES: u8 = 64;
 
-    pub const BYTES_PER_PIXEL: u16 = 3; // TODO: Get the bytes per pixel from the display setup.
     pub const SMS_WIDTH: u16 = 256;
     pub const SMS_HEIGHT: u16 = 192; // MAX HEIGHT, TODO: Consider changing to 'u8'.
     const SMS_COLOR_DEPTH: u8 = 16;
@@ -1057,8 +1056,8 @@ impl Vdp {
         let mut index = 0;
         for y in &self.display_buffers.scan_lines {
             for x in &y.scan_line {
-                x.convert_rgb23(&mut raw_display[index..(index + 3)]);
-                index += 3; // TODO: Change to 'pitch'
+                x.convert_rgb888(&mut raw_display[index..(index + display::SDLUtility::bytes_per_pixel() as usize)]);
+                index += display::SDLUtility::bytes_per_pixel() as usize;
             }
         }
     }
