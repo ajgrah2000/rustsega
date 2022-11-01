@@ -1,4 +1,4 @@
-type ClockType = u32;
+pub type ClockType = u64;
 
 //#[derive(Copy)]
 pub struct Clock {
@@ -11,6 +11,6 @@ impl Clock {
     }
 
     pub fn increment(&mut self, inc: u32) {
-        self.cycles += inc;
+        self.cycles = self.cycles.wrapping_add(inc as u64);
     }
 }

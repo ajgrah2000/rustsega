@@ -1,115 +1,65 @@
-type SoundPatternType = u16;
+
+pub trait SoundGenerator {
+    // Data may be from latched or data
+    fn set_volume(&mut self, data: u8);
+    // Data is from both 'latched' and 'data', may represent noise or tone (depending on channel).
+    // It's only updated on a 'data' write.
+    fn set_tone(&mut self, latched_data: u8, data: u8);
+    fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType>;
+}
 
 pub struct SoundChannel {
-    volume: u8,
-    playlength: SoundPatternType,
-    nextlength: SoundPatternType,
-    playpos: SoundPatternType,
-    playbuf: Vec<PlaybackType>,
-    next: Vec<PlaybackType>,
-    updated: bool,
-
-    pub ch4_shift_register: u16,
-
-    r_min: u32,
-    play_count: u32,
 }
 
 pub type PlaybackType = u8;  // Only 8-bit playback is currently supported.
 impl SoundChannel {
-    const MAX_SOUND_PATTERN: SoundPatternType = 512;
+    const FREQMULTIPLIER: u32 = 125000;
 
-    const MAX_PLAY_FADE_COUNT: u32 = 100;
+    pub const MAX_VOLUME_MASK: u8 = 0xF;
+    pub const MAX_VOLUME:PlaybackType = 0xFF;
+
     const NUM_CHANNELS: u8 = 4;
-    const NEUTRAL_SOUND_LEVEL: u32 = 0x7F/SoundChannel::NUM_CHANNELS as u32;
 
-    const NOISE_SHIFT_REGISTER_RESET: u16 = 0x4000;
+    pub fn get_hertz(frequency: u16) -> u32 {
+        SoundChannel::FREQMULTIPLIER / (frequency as u32 + 1)
+    }
+
+    pub fn get_volume(volume_reg: u8) -> PlaybackType {
+        // Min volume when volume_reg = 0xF
+        // Max volume when volume_reg = 0x0
+        ((SoundChannel::MAX_VOLUME_MASK ^ volume_reg) << 4)/SoundChannel::NUM_CHANNELS
+    }
+}
+
+pub struct ToneSoundChannel {
+    freq_reg: u16, // DDDDDDddd/(---trr)-trr)
+    volume_reg: u8,
+    current_level: bool, // Square wave is 0 or 1
+    frequency_counter: u32, // counter remaining before toggle (counts up, as audio isn't at 125000Hz, it can have a remainder).
+}
+
+pub struct NoiseSoundChannel {
+    noise_period_select: bool,
+    noise_shift_register: u16,
+    freq_reg: u16,
+    volume_reg: u8,
+    frequency_counter: u32, // counter remaining before toggle (counts up, as audio isn't at 125000Hz, it can have a remainder).
+}
+
+impl ToneSoundChannel {
+    const LATCHED_UPPER_FREQ_MASK:u8 = 0x3F;
+    const LATCHED_LOWER_FREQ_MASK:u8 = 0x0F;
 
     pub fn new() -> Self {
         Self {
-            volume: 0,
-            playlength: 0, //SoundChannel::MAX_SOUND_PATTERN,
-            nextlength: 0, //SoundChannel::MAX_SOUND_PATTERN,
-            playpos: 0,
-            playbuf: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
-            next: vec![0; SoundChannel::MAX_SOUND_PATTERN as usize],
-            updated: false,
+            freq_reg: 0,
+            volume_reg: SoundChannel::MAX_VOLUME_MASK, // Initialise as 'silent'
 
-            ch4_shift_register: SoundChannel::NOISE_SHIFT_REGISTER_RESET,
-
-            r_min: 0,
-            play_count: SoundChannel::MAX_PLAY_FADE_COUNT,
+            current_level: false, // Square wave is 0 or 1
+            frequency_counter: 0, // counter remaining before toggle.
         }
     }
-
-    pub fn set_volume(&mut self, volume: u8) {
-        self.volume = volume / SoundChannel::NUM_CHANNELS;
-    }
-
-    // Outputs  '1' or '0' on each 'clock'
-    pub fn get_shiff_register_output(&mut self, freq: u32, noise: bool, sample_rate: u32) -> u8 {
-        let output = self.ch4_shift_register & 0x1;
-
-        if 0 == self.ch4_shift_register {
-            self.ch4_shift_register = 0x8000;
-        }
-
-        let mut r = self.r_min;
-
-        // Shift the register
-        r += freq * 32; // TODO: fudge factor, not sure if this is correct.
-        if r >= sample_rate {
-            r %= sample_rate;
-
-            if noise {
-                let feed_back = (self.ch4_shift_register >> 3) & 0x1;
-                self.ch4_shift_register = (self.ch4_shift_register >> 1) | ((output ^ feed_back) << 15);
-            } else {
-                self.ch4_shift_register = (self.ch4_shift_register >> 1) | (output << 15);
-            }
-        }
-
-        self.r_min = r;
-
-        if output == 0x1 {
-            0
-        } else {
-            self.volume
-        }
-    }
-
-    pub fn set_frequency(&mut self, freq: u32, sample_rate: u32) {
-        // Generate a particular frequency for the channel.
-        // Generates a square waves at the specified frequency, for the length
-        //'MAX_SOUND_PATTERN'.
-
-        let mut vol = self.volume;
-
-        let d = freq * 2;
-        let mut r = self.r_min;
-        self.r_min = sample_rate;
-        let mut r_min_pos = SoundChannel::MAX_SOUND_PATTERN;
-
-        for nextlength in 0..SoundChannel::MAX_SOUND_PATTERN {
-            if r >= sample_rate {
-                r %= sample_rate;
-                vol = self.volume - vol;
-                if vol == self.volume  && r < self.r_min {
-                    self.r_min = r;
-                    r_min_pos = nextlength;
-                }
-            }
-
-            self.next[nextlength as usize] = vol as PlaybackType;
-            r += d;
-        }
-
-        self.nextlength = r_min_pos;
-
-        self.updated = true;
-    }
-
-    pub fn get_wave(&mut self, length: u32) -> Vec<PlaybackType> {
+    pub fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType> {
         // Generate the 'wave' output buffer.
         // First copy what's left of the current 'play buffer', update to the
         // new buffer, if it's changed and copy that until the wave buffer has
@@ -117,42 +67,126 @@ impl SoundChannel {
 
         let mut wave = Vec::with_capacity(length as usize);
 
-        while (self.playpos < self.playlength) && (wave.len() < length as usize) {
-            wave.push(self.playbuf[self.playpos as usize]);
-
-            self.playpos += 1;
-        }
-
-        if self.playpos >= self.playlength {
-            // Swap buffers if updated
-            if self.updated {
-                self.updated = false;
-
-                std::mem::swap(&mut self.next, &mut self.playbuf);
-                std::mem::swap(&mut self.playlength, &mut self.nextlength);
-            }
-            if self.playlength == 0 {
-                while wave.len() < length as usize {
-                    wave.push(0);
-                }
+        for i in 0..length {
+            // If the counter has reached zero, then toggle the level.
+            if self.frequency_counter > sample_rate {
+                self.current_level = !self.current_level;
+                self.frequency_counter %= sample_rate;
             } else {
-                self.playpos = 0;
-                while wave.len() < length as usize {
-                    self.playpos = 0;
-                    while (self.playpos < self.playlength) && (wave.len() < length as usize) {
-                        wave.push(self.playbuf[self.playpos as usize]);
-                        self.playpos += 1;
-                    }
-                }
+                self.frequency_counter += SoundChannel::get_hertz(self.freq_reg) * 2;
             }
+            let volume = if self.current_level { SoundChannel::get_volume(self.volume_reg) } else { 0x0 };
+            wave.push(volume);
         }
 
-        // TODO: Improve 'fade in' of audio, to avoid 'snap/crackle/pop'
-        if self.play_count > 0 { 
-            wave.iter_mut().for_each(|x| {if self.play_count > 0 {self.play_count -= 1;} 
-                                                *x = (((self.play_count * SoundChannel::NEUTRAL_SOUND_LEVEL) + 
-                                                     (*x as u32 * (SoundChannel::MAX_PLAY_FADE_COUNT - self.play_count)))/SoundChannel::MAX_PLAY_FADE_COUNT) as u8});
-        }
         wave
     }
 }
+
+impl NoiseSoundChannel {
+    const NOISE_SHIFT_REGISTER_RESET: u16 = 0x4000;
+
+    pub fn new() -> Self {
+        Self {
+            noise_period_select: false,
+            noise_shift_register: NoiseSoundChannel::NOISE_SHIFT_REGISTER_RESET,
+            freq_reg: 0,
+            volume_reg: SoundChannel::MAX_VOLUME_MASK, // Initialise as 'silent'
+            frequency_counter: 0,
+        }
+    }
+
+    fn set_data(&mut self, data: u8) {
+        if (data & 0x3) < 3 {
+            self.freq_reg = match data & 0x3
+            {
+                0 => {0x10},
+                1 => {0x20},
+                2 => {0x40},
+                _ => {panic!("Match for noise frequency not possible");}
+            };
+
+            // TODO: Not sure how the 'periodic' should sound.
+            // Superficially, it sounds better if noise is forced to 'true'
+            self.noise_period_select = 0x1 == (data >> 2) & 0x1; // If (---trr) -> t = 1 -> white noise
+
+            // Reset the noise shift register:
+            self.noise_shift_register = 0; // Clear the register (will be set on first get).
+        } else {
+            // TODO: Figure out what 'Tone 3' means
+            self.freq_reg = 0;
+            println!("Tone 3 not supported for noise channel");
+        }
+    }
+
+    // Outputs  '1' or '0' on each 'clock'
+    pub fn get_shiff_register_output(&mut self, noise: bool, sample_rate: u32) -> PlaybackType {
+        let output = self.noise_shift_register & 0x1;
+
+        if 0 == self.noise_shift_register {
+            self.noise_shift_register = 0x8000;
+        }
+
+        // Shift the register
+        self.frequency_counter += SoundChannel::get_hertz(self.freq_reg) * 32; // TODO: fudge factor, not sure if this is correct.
+        if self.frequency_counter >= sample_rate {
+            self.frequency_counter %= sample_rate;
+
+            if noise {
+                let feed_back = (self.noise_shift_register >> 3) & 0x1;
+                self.noise_shift_register = (self.noise_shift_register >> 1) | ((output ^ feed_back) << 15);
+            } else {
+                self.noise_shift_register = (self.noise_shift_register >> 1) | (output << 15);
+            }
+        }
+
+        if output == 0x1 {
+            0
+        } else {
+            SoundChannel::get_volume(self.volume_reg)
+        }
+    }
+}
+
+impl SoundGenerator for ToneSoundChannel {
+    // Data may be from latched or data
+    fn set_volume(&mut self, data: u8) {
+        self.volume_reg = data & SoundChannel::MAX_VOLUME_MASK;
+    }
+
+    // Data is from both 'latched' and 'data', may represent noise or tone (depending on channel).
+    // It's only updated on a 'data' write.
+    fn set_tone(&mut self, latched_data: u8, data: u8) {
+        if (data & 0x80) == 0x00 {
+            // Only update the frequencey if the 'data' is non-latch data.
+            self.freq_reg = (((data & ToneSoundChannel::LATCHED_UPPER_FREQ_MASK) as u16) << 4) | 
+                (latched_data & ToneSoundChannel::LATCHED_LOWER_FREQ_MASK) as u16;
+        }
+    }
+
+    fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType> {
+        self.get_wave(length, sample_rate)
+    }
+}
+
+impl SoundGenerator for NoiseSoundChannel {
+    fn set_volume(&mut self, data: u8) {
+        self.volume_reg = data & SoundChannel::MAX_VOLUME_MASK;
+    }
+
+    // Data is from both 'latched' and 'data', may represent noise or tone (depending on channel).
+    // It's only updated on a 'data' write.
+    fn set_tone(&mut self, latched_data: u8, data: u8) {
+        self.set_data(data);
+    }
+
+    fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType> {
+        let mut channel_wave =  Vec::<PlaybackType>::new();
+        for i in 0..length {
+            channel_wave.push(self.get_shiff_register_output( self.noise_period_select, sample_rate));
+        }
+
+        channel_wave
+    }
+}
+

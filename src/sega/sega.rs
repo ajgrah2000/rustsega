@@ -16,7 +16,7 @@ pub struct Sega {
     core: cpu::core::Core<memory::memory::MemoryAbsolute>,
     debug: bool,
     realtime: bool,
-    stop_clock: u32,
+    stop_clock: clocks::ClockType,
 }
 
 impl Sega {
@@ -52,20 +52,18 @@ impl Sega {
     }
 
     pub fn power_sega(&mut self) {
-        const SMS_WIDTH: u16 = 256;
-        const SMS_HEIGHT: u16 = 192; // MAX HEIGHT
-        const FRAME_WIDTH: u16 = SMS_WIDTH;
-        const FRAME_HEIGHT: u16 = ((FRAME_WIDTH as u32) * (SMS_HEIGHT as u32) / (SMS_WIDTH as u32)) as u16;
+        const FRAME_WIDTH: u16 = graphics::vdp::Constants::SMS_WIDTH * 3;
+        const FRAME_HEIGHT: u16 = ((FRAME_WIDTH as u32) * (graphics::vdp::Constants::SMS_HEIGHT as u32) / (graphics::vdp::Constants::SMS_WIDTH as u32)) as u16;
 
         println!("powering on Sega Emulator.");
         inputs::Input::print_keys();
 
-        let window_size = graphics::display::WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, SMS_WIDTH as u16, SMS_HEIGHT as u16);
+        let window_size = graphics::display::WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, graphics::vdp::Constants::SMS_WIDTH as u16, graphics::vdp::Constants::SMS_HEIGHT as u16);
 
         self.main_loop(window_size, graphics::display::SDLUtility::PIXEL_FORMAT);
     }
 
-    pub fn new(debug: bool, realtime: bool, stop_clock:u32, cartridge_name: String) -> Self {
+    pub fn new(debug: bool, realtime: bool, stop_clock:clocks::ClockType, cartridge_name: String) -> Self {
         let core = Self::build_sega(cartridge_name);
         Self { core, debug, realtime, stop_clock }
     }

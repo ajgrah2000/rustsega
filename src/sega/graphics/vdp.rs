@@ -77,7 +77,8 @@ impl Mode1Settings {
         }
 
         // Set last scrolling position
-        if 0 != (mode_1_input & Constants::VDP0DISHSCROLL) {
+        // TODO: disable vertical scroll flag not used/implemented
+        if 0 != (mode_1_input & Constants::VDP0DISVSCROLL) {
             *x_scroll = 192;
         } else {
             *x_scroll = Constants::SMS_WIDTH;
@@ -188,7 +189,7 @@ impl Constants {
     // 3Mhz CPU, 50Hz refresh ~= 60000 ticks
     const VSYNCCYCLETIME: u16 = 65232;
     const BLANKTIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * 72) / 262) as u16;
-    const VFRAMETIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * 192) / 262) as u16;
+    const VFRAMETIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * Constants::SMS_HEIGHT as u32) / 262) as u16;
     const HSYNCCYCLETIME: u16 = 216;
 
     const REGISTERMASK: u8 = 0x0F;
@@ -201,6 +202,7 @@ impl Constants {
 
     // Vdp register 0
     const MODE_CONTROL_NO_1: u8 = 0x0;
+    const VDP0DISVSCROLL: u8 = 0x80;
     const VDP0DISHSCROLL: u8 = 0x40;
     const VDP0COL0OVERSCAN: u8 = 0x20;
     const VDP0LINEINTENABLE: u8 = 0x10;
@@ -494,9 +496,9 @@ impl Vdp {
     pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
         self.address_latch = false; // Address is unlatched during port read
 
-        let v_counter: u8 = ((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles)
+        let v_counter: u8 = ((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles) as u32
             / Constants::HSYNCCYCLETIME as u32) as u8;
-        self.interrupt_handler.current_y_pos = (((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles)
+        self.interrupt_handler.current_y_pos = (((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles) as u32
             / Constants::HSYNCCYCLETIME as u32)
             + 1) as u16;
 
@@ -940,7 +942,7 @@ impl Vdp {
 
         // Need to see what the modes do/mean.
         if (self.display_mode == 0x8) || (self.display_mode == 0xA) {
-            self.interrupt_handler.y_end = 192;
+            self.interrupt_handler.y_end = Constants::SMS_HEIGHT;
         } else {
             self.interrupt_handler.y_end = 0;
             println!("Mode not supported");
@@ -1408,7 +1410,7 @@ impl VDPInterrupts {
         if (self.line_int_time < Constants::VFRAMETIME as u32)
             && (self.v_sync as u32 >= self.line_int_time)
         {
-            self.current_y_pos = (((clock.cycles - self.last_v_sync_clock.cycles)
+            self.current_y_pos = (((clock.cycles - self.last_v_sync_clock.cycles) as u32
                 / Constants::HSYNCCYCLETIME as u32)
                 + 1) as u16;
 
