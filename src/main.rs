@@ -4,7 +4,7 @@
 
 mod sega;
 
-fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u32, cartridge_name: &mut String) {
+fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u64, cartridge_name: &mut String) {
     // Handle command line arguments.
     let mut ap = argparse::ArgumentParser::new();
     ap.set_description("Rusty Sega Emulator");

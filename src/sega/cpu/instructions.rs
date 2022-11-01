@@ -1528,7 +1528,7 @@ mod tests {
         test_core: &mut TestCore,
         op_code: Vec<u8>,
         expected_pc: u16,
-        expected_cycles: u32,
+        expected_cycles: clocks::ClockType,
     ) {
         simple_execute(test_core, op_code);
         assert_eq!(test_core.pc_state.get_pc(), expected_pc);
@@ -1549,7 +1549,7 @@ mod tests {
             let mut test_core = TestCore::new();
             test_core.pc_state = pc_state;
             let expected_pc_count = op_code.len() as u16;
-            check_op_code_cycle_count(&mut test_core, op_code, expected_pc_count, t_states.into_iter().fold(0, |s, x| s + x as u32));
+            check_op_code_cycle_count(&mut test_core, op_code, expected_pc_count, t_states.into_iter().fold(0, |s, x| s + x as clocks::ClockType));
         }
 
         // Page 71
@@ -1779,7 +1779,7 @@ mod tests {
             test_core: &mut TestCore,
             op_code: Vec<u8>,
             expected_pc: u16,
-            expected_cycles: u32,
+            expected_cycles: clocks::ClockType,
         ) {
             simple_execute(test_core, op_code);
             assert_eq!(test_core.pc_state.get_pc(), expected_pc);

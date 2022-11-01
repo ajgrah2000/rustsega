@@ -23,7 +23,7 @@ impl Interruptor {
         Self { next_interrupt: 0 }
     }
     // TODO: Add the actual interruptor trait/implementation (previously VDU).
-    pub fn set_cycle(&mut self, _cycles: u32) {
+    pub fn set_cycle(&mut self, _cycles: clocks::ClockType) {
         // TODO: Do something
     }
 }

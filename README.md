@@ -4,6 +4,13 @@ Rust Sega Emulator
 Conversion of a C emulator, that I'd converted to C++, that I'd converted to
 Python, that I've converted to Rust.
 
+Original implementation was based on sega master system technical information from:
+
+        SEGA MASTER SYSTEM TECHNICAL INFORMATION, by Richard Talbot-Watkins, 10th June 1998
+
+        Z80 Instructions
+        https://www.zilog.com/docs/z80/um0080.pdf
+
 Building/Running
     Install Rust:
 	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh	
@@ -50,13 +57,12 @@ TODO:
 
     Clean up 'sega.rs' there's a bit too much 'glue' going on there, that should be shifted out to the submodules.
 
- Add references to documentation used for VDP (need to track it down from an old PC). 
+  Update vdp/cycle comparisons so they support clock rollover (currently just set cycles to 64-bit, but I doubt that's how the master system did it).
 
  Optimise:
  - Don't do full VDP processing per byte update (check for changes, isolate).
  - Look for CPU cycles
  - Profile
-
 
 Add more tests
   - Capture Timing, put in fairly full set of op code checks, so op codes can be tidied up (there's currently a lot of repetition).
