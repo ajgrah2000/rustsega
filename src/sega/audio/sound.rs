@@ -37,47 +37,88 @@ impl SDLUtility {
     }
 }
 
+pub enum ChannelTypeEnum {
+    ToneType,
+    VolumeType,
+}
+
+impl From<u8> for ChannelTypeEnum {
+    fn from(orig: u8) -> Self {
+        match (orig >> 4) & 0x1 {
+            0 => ChannelTypeEnum::ToneType,
+            1 => ChannelTypeEnum::VolumeType,
+            _ => panic!("Invalid sound channel type.  This case shouldn't be possible."),
+        }
+    }
+}
+
+pub enum ChannelEnum {
+    Channel0,
+    Channel1,
+    Channel2,
+    Channel3,
+}
+
+impl From<u8> for ChannelEnum {
+    fn from(orig: u8) -> Self {
+        match (orig >> 5) & 0x3 {
+            0 => ChannelEnum::Channel0,
+            1 => ChannelEnum::Channel1,
+            2 => ChannelEnum::Channel2,
+            3 => ChannelEnum::Channel3,
+            _ => panic!("Invalid sound channel.  This case shouldn't be possible."),
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct LatchSoundReg {
+    data: u8,
+}
+
+impl LatchSoundReg {
+    const LATCH_DATA_MASK: u8 = 0xF;
+
+    pub fn set_reg_value(&mut self, data: u8) {
+        self.data = data;
+    }
+
+    pub fn get_channel(&self) -> ChannelEnum {
+        ChannelEnum::from(self.data) 
+    }
+
+    pub fn get_channel_type(&self) -> ChannelTypeEnum {
+        ChannelTypeEnum::from(self.data) 
+    }
+
+    pub fn get_data(&self) -> u8 {
+        self.data & LatchSoundReg::LATCH_DATA_MASK
+    }
+}
+
 pub struct Sound {
-    volume: Vec<u8>,
-    channels: Vec<soundchannel::SoundChannel>,
-    freq: Vec<u32>,
-    chan_freq: u8,
+//    channels: Vec<soundchannel::SoundChannelEnum>,
+    channels: Vec<Box<dyn soundchannel::SoundGenerator>>,
 
-    current_channel: u8,
-    current_type: u8,
-
-    shift_rate: u16, // 0b00 - N/512, 0b01 - N/1024, 0b10 - N/2048, 0b11 - Tone Generator #3 Output
-    noise_period_select: bool, // true - noise
+    latched_reg: LatchSoundReg,
 }
 
 impl Sound {
-    const FREQMULTIPLIER: u32 = 125000;
     //    const SAMPLERATE:u32 = 32050;
     const SAMPLERATE: u32 = 44100;
     const CHANNELS: u8 = 4;
     const BITS: u8 = 8;
-    const MAX_VOLUME_MASK: u8 = 0xF;
     pub fn new() -> Self {
         Self {
-            volume: vec![Sound::MAX_VOLUME_MASK; Sound::CHANNELS as usize],
             channels: vec![
-                soundchannel::SoundChannel::new(),
-                soundchannel::SoundChannel::new(),
-                soundchannel::SoundChannel::new(),
-                soundchannel::SoundChannel::new(),
+                Box::new(soundchannel::ToneSoundChannel::new()),
+                Box::new(soundchannel::ToneSoundChannel::new()),
+                Box::new(soundchannel::ToneSoundChannel::new()),
+                Box::new(soundchannel::NoiseSoundChannel::new()),
             ],
-            freq: vec![0x0; Sound::CHANNELS as usize],
-            chan_freq: 0,
-            current_channel: 0,
-            current_type: 0,
-            shift_rate: 0,
-            noise_period_select: false,
+            latched_reg: LatchSoundReg::default(), 
         }
     }
-    fn get_hertz(frequency: u32) -> u32 {
-        Sound::FREQMULTIPLIER / (frequency + 1)
-    }
-
 
     pub fn get_next_audio_chunk(&mut self, length: u32) -> Vec<soundchannel::PlaybackType> {
         let mut stream = Vec::with_capacity((2*length) as usize);
@@ -87,16 +128,7 @@ impl Sound {
             }
 
             for c in 0..Sound::CHANNELS {
-                self.channels[c as usize].set_volume((Sound::MAX_VOLUME_MASK - self.volume[c as usize]) << 4);
-                self.channels[c as usize].set_frequency(Sound::get_hertz(self.freq[c as usize]), Sound::SAMPLERATE);
-                let mut channel_wave = self.channels[c as usize].get_wave(length);
-
-                if 3 == c {
-                    for i in 0..length {
-                        // Channel 4:
-                        channel_wave[i as usize] = self.channels[c as usize].get_shiff_register_output(Sound::get_hertz(self.freq[c as usize]), self.noise_period_select, Sound::SAMPLERATE);
-                    }
-                }
+                let channel_wave = self.channels[c as usize].get_wave(length, Sound::SAMPLERATE);
 
                 if c % SDLUtility::MONO_STERO_FLAG == 0 {
                     for i in 0..length {
@@ -109,7 +141,6 @@ impl Sound {
                     }
                 }
             }
-
         }
 
         stream
@@ -120,46 +151,19 @@ impl Sound {
         // channel frequency, volume).
 
         if (data & 0x80) == 0x80 {
-            self.current_channel = (data >> 5) & 0x3;
-            self.current_type    = (data >> 4) & 0x1;
+            // Set the 'latched' register information.
+            self.latched_reg.set_reg_value(data);
         }
 
-        if (data & 0x90) == 0x90 {
-            self.volume[((data >> 5) & 0x3) as usize] = data & Sound::MAX_VOLUME_MASK;
-        }
-
-        if (data & 0x90) == 0x80 {
-            self.chan_freq = data;
-        }
-
-        // For the 'noise' channel, the same setting appear from LATCH/DATA or DATA. 
-        if 3 == self.current_channel {
-            if (data & 0x3) < 3 {
-                self.freq[self.current_channel as usize] = match data & 0x3
-                {
-                    0 => {0x10},
-                    1 => {0x20},
-                    2 => {0x40},
-                    3 => {self.freq[2 as usize]}, // TODO: Not sure how this works
-                    _ => {panic!("Match for noise frequency not possible");}
-                };
-
-                // TODO: Not sure how the 'periodic' should sound.
-                // Superficially, it sounds better if noise is forced to 'true'
-//                self.noise_period_select = 0x1 == (data >> 2) & 0x1; // If (---trr) -> t = 1 -> white noise
-                self.noise_period_select = true; // Disable 'periodic'
-
-                // Reset the noise shift register:
-                self.channels[self.current_channel as usize].ch4_shift_register = 0; // Clear the register (will be set on first get).
-            } else {
-                // TODO: Figure out what 'Tone 3' means
-                self.freq[self.current_channel as usize] = 0;
+        match self.latched_reg.get_channel_type() {
+            ChannelTypeEnum::VolumeType => { 
+                // set volume: 1rr1dddd
+                // or          0-DDDDDD
+                self.channels[self.latched_reg.get_channel() as usize].set_volume(data & soundchannel::SoundChannel::MAX_VOLUME_MASK); 
             }
-        }
-
-        if (data & 0x80) == 0x00 {
-            if 3 != self.current_channel || 3 == (data & 0x3) {
-                self.freq[((self.chan_freq >> 5) & 0x3) as usize] = (((data & 0x3F) as u32) << 4) | (self.chan_freq & 0xF) as u32;
+            ChannelTypeEnum::ToneType => { 
+                // The 'set tone' needs needs to handle if 'data' is data or latched.
+                self.channels[self.latched_reg.get_channel() as usize].set_tone(self.latched_reg.get_data(), data); 
             }
         }
     }
