@@ -97,7 +97,6 @@ impl LatchSoundReg {
 }
 
 pub struct Sound {
-//    channels: Vec<soundchannel::SoundChannelEnum>,
     channels: Vec<Box<dyn soundchannel::SoundGenerator>>,
 
     latched_reg: LatchSoundReg,
