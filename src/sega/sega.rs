@@ -17,6 +17,7 @@ pub struct Sega {
     debug: bool,
     realtime: bool,
     stop_clock: clocks::ClockType,
+    fullscreen: bool,
 }
 
 impl Sega {
@@ -52,20 +53,23 @@ impl Sega {
     }
 
     pub fn power_sega(&mut self) {
-        const FRAME_WIDTH: u16 = graphics::vdp::Constants::SMS_WIDTH * 3;
-        const FRAME_HEIGHT: u16 = ((FRAME_WIDTH as u32) * (graphics::vdp::Constants::SMS_HEIGHT as u32) / (graphics::vdp::Constants::SMS_WIDTH as u32)) as u16;
+        let mut frame_width = graphics::vdp::Constants::SMS_WIDTH;
+        // If not in full screen, default to using a bigger window.
+        if !self.fullscreen {frame_width *= 3;}
+        let frame_height = ((frame_width as u32) * (graphics::vdp::Constants::SMS_HEIGHT as u32) / (graphics::vdp::Constants::SMS_WIDTH as u32)) as u16;
 
         println!("powering on Sega Emulator.");
         inputs::Input::print_keys();
 
-        let window_size = graphics::display::WindowSize::new(FRAME_WIDTH, FRAME_HEIGHT, graphics::vdp::Constants::SMS_WIDTH as u16, graphics::vdp::Constants::SMS_HEIGHT as u16);
+        let window_size = graphics::display::WindowSize::new(frame_width, frame_height, graphics::vdp::Constants::SMS_WIDTH as u16, graphics::vdp::Constants::SMS_HEIGHT as u16, self.fullscreen);
 
         self.main_loop(window_size, graphics::display::SDLUtility::PIXEL_FORMAT);
     }
 
-    pub fn new(debug: bool, realtime: bool, stop_clock:clocks::ClockType, cartridge_name: String) -> Self {
+    pub fn new(debug: bool, realtime: bool, stop_clock:clocks::ClockType, cartridge_name: String, fullscreen: bool) -> Self {
+    
         let core = Self::build_sega(cartridge_name);
-        Self { core, debug, realtime, stop_clock }
+        Self { core, debug, realtime, stop_clock, fullscreen }
     }
 
     pub fn draw_loop(
@@ -142,6 +146,7 @@ impl Sega {
             "rust-sega emulator",
             window_size.frame_width,
             window_size.frame_height,
+            window_size.fullscreen,
         );
         canvas.set_integer_scale(true).unwrap();
         canvas.set_logical_size(window_size.console_width as u32, window_size.console_height as u32).unwrap();

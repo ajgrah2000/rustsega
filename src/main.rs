@@ -4,7 +4,7 @@
 
 mod sega;
 
-fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u64, cartridge_name: &mut String) {
+fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u64, cartridge_name: &mut String, fullscreen: &mut bool) {
     // Handle command line arguments.
     let mut ap = argparse::ArgumentParser::new();
     ap.set_description("Rusty Sega Emulator");
@@ -23,6 +23,11 @@ fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u64, cartr
         argparse::StoreFalse,
         "Run the emulator with no delay (rather than real-time)",
     );
+    ap.refer(fullscreen).add_option(
+        &["-f", "--fullscreen"],
+        argparse::StoreTrue,
+        "Run the emulator in full screen mode.",
+    );
     ap.refer(cartridge_name)
         .add_argument("cartridge", argparse::Store, "Name of cartridge to run")
         .required();
@@ -34,10 +39,11 @@ fn main() {
     let mut realtime = true;
     let mut stop_clock = 0;
     let mut cartridge_name = String::new();
+    let mut fullscreen = false;
 
-    parse_args(&mut debug, &mut realtime, &mut stop_clock, &mut cartridge_name);
+    parse_args(&mut debug, &mut realtime, &mut stop_clock, &mut cartridge_name, &mut fullscreen);
 
-    let mut sega_machine = sega::sega::Sega::new(debug, realtime, stop_clock, cartridge_name);
+    let mut sega_machine = sega::sega::Sega::new(debug, realtime, stop_clock, cartridge_name, fullscreen);
 
     sega_machine.power_sega();
 

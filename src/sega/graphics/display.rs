@@ -8,15 +8,17 @@ pub struct WindowSize {
     pub frame_height: u16,
     pub console_width: u16,
     pub console_height: u16,
+    pub fullscreen: bool,
 }
 
 impl WindowSize {
-    pub fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16) -> Self {
+    pub fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16, fullscreen: bool) -> Self {
         Self {
             frame_width,
             frame_height,
             console_width,
             console_height,
+            fullscreen,
         }
     }
 }
@@ -68,22 +70,21 @@ impl SDLUtility {
         name: &str,
         frame_width: u16,
         frame_height: u16,
+        fullscreen: bool,
     ) -> render::Canvas<video::Window> {
         let video_subsystem = sdl_context.video().unwrap();
-        let window = video_subsystem
-            .window(name, frame_width as u32, frame_height as u32)
-            .position_centered()
-            .resizable()
-            .opengl()
-            .build()
-            .map_err(|e| e.to_string())
-            .unwrap();
+        let mut renderer = video_subsystem
+            .window(name, frame_width as u32, frame_height as u32);
 
-        window
-            .into_canvas().accelerated()
-            .build()
-            .map_err(|e| e.to_string())
-            .unwrap()
+        // Just playing with if statement (to toggle full screen)
+        let window = if fullscreen { renderer.fullscreen()} else { renderer.position_centered().resizable() };
+
+        window.build()
+              .map_err(|e| e.to_string()).unwrap()
+              .into_canvas().accelerated()
+              .build()
+              .map_err(|e| e.to_string())
+              .unwrap()
     }
 
     pub fn texture_creator(
@@ -250,6 +251,7 @@ mod tests {
             &'a mut self,
             frame_width: u16,
             frame_height: u16,
+            fullscreen: bool,
             generator: &mut DisplayGenerator,
         ) {
             let mut sdl_context = sdl2::init().unwrap();
@@ -259,6 +261,7 @@ mod tests {
                 "rust-sdl2 demo: Video",
                 frame_width,
                 frame_height,
+                fullscreen
             );
 
             let mut event_pump = sdl_context.event_pump().unwrap();
@@ -297,7 +300,7 @@ mod tests {
             DisplayGenerator::new(WINDOW_WIDTH, WINDOW_HEIGHT, SDLUtility::PIXEL_FORMAT);
 
         let mut sdl_display = SDLDisplay::new();
-        sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, &mut display_generator);
+        sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, false, &mut display_generator);
     }
 }
 
