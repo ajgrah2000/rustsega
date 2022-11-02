@@ -4,28 +4,38 @@
 
 mod sega;
 
-use clap::Parser;
+use argh::FromArgs;
 
-#[derive(clap::Parser, Debug)]
-#[command(author, version, about, long_about=None)]
+#[derive(FromArgs)]
+/// Rusty Sega Emulator.
 struct RustSegaArgs {
-    #[arg(short, long, help="Print PC State Debug Info")]
+    /// print PC State Debug Info
+    #[argh(switch, short='d')]
     debug: bool,
-    #[arg(short, long, action=clap::ArgAction::SetTrue, help="Run the emulator with no delay (rather than real-time)")]
+
+    /// run the emulator with no delay (rather than real-time)
+    #[argh(switch, short='n')]
     no_delay: bool,
-    #[arg(short, long, default_value_t = 0, help="Number of clock cycles to stop the emulator (for benchmarking)")]
-    stop_clock: u64,
-    #[arg(short, long, help="Run the emulator in full screen mode.")]
+
+    /// number of clock cycles to stop the emulator (for benchmarking)
+    #[argh(option, short='s')]
+    stop_clock: Option<u64>,
+
+    /// run the emulator in full screen mode.
+    #[argh(switch, short='f')]
     fullscreen: bool,
-    #[arg(short, long, help="List SDL drivers")]
+
+    /// list SDL drivers
+    #[argh(switch, short='l')]
     list_drivers: bool,
-    #[arg(help="Name of cartridge to run")]
+
+    /// name of cartridge to run
+    #[argh(positional)]
     cartridge_name: String,
 }
 
 fn full_description_string() -> String {
-    let mut description = format!("Rusty Sega Emulator. ");
-    description += &format!("Possible audio drivers, to use prefix command with: SDL_AUDIODRIVER=<driver> ");
+    let mut description = format!("Possible audio drivers, to use prefix command with: SDL_AUDIODRIVER=<driver> ");
     for i in sdl2::audio::drivers() {
         description += &(format!("{}", i) + "\n");
     }
@@ -41,12 +51,12 @@ fn full_description_string() -> String {
 
 fn main() {
 
-    let args = RustSegaArgs::parse();
+    let args:RustSegaArgs = argh::from_env();
 
     if args.list_drivers {
         println!("{}", full_description_string());
     }
-    let mut sega_machine = sega::sega::Sega::new(args.debug, !args.no_delay, args.stop_clock, args.cartridge_name, args.fullscreen);
+    let mut sega_machine = sega::sega::Sega::new(args.debug, !args.no_delay, args.stop_clock.unwrap_or(0), args.cartridge_name, args.fullscreen);
 
     sega_machine.power_sega();
 

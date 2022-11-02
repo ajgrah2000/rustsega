@@ -19,4 +19,4 @@ panic="abort"
 bitfield = "0.14.0"
 sdl2 = "0.35"
 rand = "0.8.4"
-clap = { version = "4.0.18", features = ["derive"] }
+argh = "0.1.9"
