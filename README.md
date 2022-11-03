@@ -25,25 +25,31 @@ Building/Running
 		apt-get update
 		apt-get upgrade
 		apt-get install git curl libsdl2-dev
+
+		# 'pipewire' appears to be a good sound driver on the raspberry pi
+		# SDL_AUDIODRIVER=pipewire 
 	OSX: 
 		brew install sdl2
 
     Build and run:
         cargo run --release <rom_file>
 
-    Usage:
-      target/debug/rustsega [OPTIONS] CARTRIDGE
+    Usage: rustsega <cartridge_name> [-d] [-n] [-s <stop-clock>] [-f] [-l]
     
-    Rusty Sega Emulator
+    Rusty Sega Emulator.
     
-    Positional arguments:
-      cartridge             Name of cartridge to run
+    Positional Arguments:
+      cartridge_name    name of cartridge to run
     
-    Optional arguments:
-      -h,--help             Show this help message and exit
-      -d,--debug            Print PC State Debug Info
-      -n,--no_delay         Run the emulator with no delay (rather than real-time)
-
+    Options:
+      -d, --debug       print PC State Debug Info
+      -n, --no-delay    run the emulator with no delay (rather than real-time)
+      -s, --stop-clock  number of clock cycles to stop the emulator (for
+                        benchmarking)
+      -f, --fullscreen  run the emulator in full screen mode.
+      -l, --list-drivers
+                        list SDL drivers
+      --help            display usage information
 
 (Current) Inputs:
     Key mappings (Joystick 1):
