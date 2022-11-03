@@ -4,46 +4,59 @@
 
 mod sega;
 
-fn parse_args(debug: &mut bool, realtime: &mut bool, stop_clock: &mut u64, cartridge_name: &mut String, fullscreen: &mut bool) {
-    // Handle command line arguments.
-    let mut ap = argparse::ArgumentParser::new();
-    ap.set_description("Rusty Sega Emulator");
-    ap.refer(debug).add_option(
-        &["-d", "--debug"],
-        argparse::StoreTrue,
-        "Print PC State Debug Info",
-    );
-    ap.refer(stop_clock).add_option(
-        &["-s", "--stop_clock"],
-        argparse::Store,
-        "Number of clock cycles to stop the emulator (for benchmarking)",
-    );
-    ap.refer(realtime).add_option(
-        &["-n", "--no_delay"],
-        argparse::StoreFalse,
-        "Run the emulator with no delay (rather than real-time)",
-    );
-    ap.refer(fullscreen).add_option(
-        &["-f", "--fullscreen"],
-        argparse::StoreTrue,
-        "Run the emulator in full screen mode.",
-    );
-    ap.refer(cartridge_name)
-        .add_argument("cartridge", argparse::Store, "Name of cartridge to run")
-        .required();
-    ap.parse_args_or_exit();
+use argh::FromArgs;
+
+#[derive(FromArgs)]
+/// Rusty Sega Emulator.
+struct RustSegaArgs {
+    /// print PC State Debug Info
+    #[argh(switch, short='d')]
+    debug: bool,
+
+    /// run the emulator with no delay (rather than real-time)
+    #[argh(switch, short='n')]
+    no_delay: bool,
+
+    /// number of clock cycles to stop the emulator (for benchmarking)
+    #[argh(option, short='s')]
+    stop_clock: Option<u64>,
+
+    /// run the emulator in full screen mode.
+    #[argh(switch, short='f')]
+    fullscreen: bool,
+
+    /// list SDL drivers
+    #[argh(switch, short='l')]
+    list_drivers: bool,
+
+    /// name of cartridge to run
+    #[argh(positional)]
+    cartridge_name: String,
+}
+
+fn full_description_string() -> String {
+    let mut description = format!("Possible audio drivers, to use prefix command with: SDL_AUDIODRIVER=<driver> ");
+    for i in sdl2::audio::drivers() {
+        description += &(format!("{}", i) + "\n");
+    }
+
+    description += "\n";
+    description += &format!("Possible video drivers, to use prefix command with: SDL_VIDEODRIVER=<driver> ");
+    for i in sdl2::video::drivers() {
+        description += &(format!("{}", i) + "\n");
+    }
+
+    description
 }
 
 fn main() {
-    let mut debug = false;
-    let mut realtime = true;
-    let mut stop_clock = 0;
-    let mut cartridge_name = String::new();
-    let mut fullscreen = false;
 
-    parse_args(&mut debug, &mut realtime, &mut stop_clock, &mut cartridge_name, &mut fullscreen);
+    let args:RustSegaArgs = argh::from_env();
 
-    let mut sega_machine = sega::sega::Sega::new(debug, realtime, stop_clock, cartridge_name, fullscreen);
+    if args.list_drivers {
+        println!("{}", full_description_string());
+    }
+    let mut sega_machine = sega::sega::Sega::new(args.debug, !args.no_delay, args.stop_clock.unwrap_or(0), args.cartridge_name, args.fullscreen);
 
     sega_machine.power_sega();
 

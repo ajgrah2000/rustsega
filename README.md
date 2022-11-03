@@ -55,6 +55,10 @@ Building/Running
 
 Note: Currently 'Quit' doesn't appear to work on Rasbian if audio output is set to HMI, when headphones are connected to the AV Jack (it just hangs).
 
+Dependencies:
+   Argument parsing dependency added via:
+       cargo add clap --features derive
+
 TODO:
 
  Non-functional:

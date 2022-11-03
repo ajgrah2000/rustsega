@@ -17,6 +17,6 @@ panic="abort"
 
 [dependencies]
 bitfield = "0.14.0"
-argparse = "0.2.2"
 sdl2 = "0.35"
 rand = "0.8.4"
+argh = "0.1.9"
