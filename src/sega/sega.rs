@@ -116,6 +116,7 @@ impl Sega {
                     })
                 .unwrap();
 
+                canvas.clear();
                 canvas
                     .copy(
                         &texture,

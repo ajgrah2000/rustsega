@@ -35,18 +35,14 @@ struct RustSegaArgs {
 }
 
 fn full_description_string() -> String {
-    let mut description = format!("Possible audio drivers, to use prefix command with: SDL_AUDIODRIVER=<driver> ");
-    for i in sdl2::audio::drivers() {
-        description += &(format!("{}", i) + "\n");
-    }
-
+    let mut description = "Possible audio drivers, to use prefix command with: SDL_AUDIODRIVER=<driver>\n".to_owned();
+    description += &sdl2::audio::drivers().map(|s| s.to_string()).reduce(|cur: String, nxt:String| cur + ", " + &nxt).unwrap();
     description += "\n";
-    description += &format!("Possible video drivers, to use prefix command with: SDL_VIDEODRIVER=<driver> ");
-    for i in sdl2::video::drivers() {
-        description += &(format!("{}", i) + "\n");
-    }
+    description += "Possible video drivers, to use prefix command with: SDL_VIDEODRIVER=<driver>\n";
+    description += &sdl2::video::drivers().map(|s| s.to_string()).reduce(|cur: String, nxt:String| cur + ", " + &nxt).unwrap();
+    description += "\n";
 
-    description
+    description.to_string()
 }
 
 fn main() {
