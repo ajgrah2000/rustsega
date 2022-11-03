@@ -147,48 +147,7 @@ impl Sega {
             window_size.frame_height,
             window_size.fullscreen,
         );
-        canvas.set_integer_scale(true).unwrap();
         canvas.set_logical_size(window_size.console_width as u32, window_size.console_height as u32).unwrap();
-
-            canvas.info().texture_formats.iter().for_each(|x|
-                                          match x {
-    pixels::PixelFormatEnum::Unknown        => {println!("Unknown");},
-    pixels::PixelFormatEnum::Index1LSB      => {println!("Index1LSB");},
-    pixels::PixelFormatEnum::Index1MSB      => {println!("Index1MSB");},
-    pixels::PixelFormatEnum::Index4LSB      => {println!("Index4LSB");},
-    pixels::PixelFormatEnum::Index4MSB      => {println!("Index4MSB");},
-    pixels::PixelFormatEnum::Index8         => {println!("Index8");},
-    pixels::PixelFormatEnum::RGB332         => {println!("RGB332");},
-    pixels::PixelFormatEnum::RGB444         => {println!("RGB444");},
-    pixels::PixelFormatEnum::RGB555         => {println!("RGB555");},
-    pixels::PixelFormatEnum::BGR555         => {println!("BGR555");},
-    pixels::PixelFormatEnum::ARGB4444       => {println!("ARGB4444");},
-    pixels::PixelFormatEnum::RGBA4444       => {println!("RGBA4444");},
-    pixels::PixelFormatEnum::ABGR4444       => {println!("ABGR4444");},
-    pixels::PixelFormatEnum::BGRA4444       => {println!("BGRA4444");},
-    pixels::PixelFormatEnum::ARGB1555       => {println!("ARGB1555");},
-    pixels::PixelFormatEnum::RGBA5551       => {println!("RGBA5551");},
-    pixels::PixelFormatEnum::ABGR1555       => {println!("ABGR1555");},
-    pixels::PixelFormatEnum::BGRA5551       => {println!("BGRA5551");},
-    pixels::PixelFormatEnum::RGB565         => {println!("RGB565");},
-    pixels::PixelFormatEnum::BGR565         => {println!("BGR565");},
-    pixels::PixelFormatEnum::RGB24          => {println!("RGB24");},
-    pixels::PixelFormatEnum::BGR24          => {println!("BGR24");},
-    pixels::PixelFormatEnum::RGB888         => {println!("RGB888");},
-    pixels::PixelFormatEnum::RGBX8888       => {println!("RGBX8888");},
-    pixels::PixelFormatEnum::BGR888         => {println!("BGR888");},
-    pixels::PixelFormatEnum::BGRX8888       => {println!("BGRX8888");},
-    pixels::PixelFormatEnum::ARGB8888       => {println!("ARGB8888");},
-    pixels::PixelFormatEnum::RGBA8888       => {println!("RGBA8888");},
-    pixels::PixelFormatEnum::ABGR8888       => {println!("ABGR8888");},
-    pixels::PixelFormatEnum::BGRA8888       => {println!("BGRA8888");},
-    pixels::PixelFormatEnum::ARGB2101010    => {println!("ARGB2101010");},
-    pixels::PixelFormatEnum::YV12           => {println!("YV12");},
-    pixels::PixelFormatEnum::IYUV           => {println!("IYUV");},
-    pixels::PixelFormatEnum::YUY2           => {println!("YUY2");},
-    pixels::PixelFormatEnum::UYVY           => {println!("UYVY");},
-    pixels::PixelFormatEnum::YVYU           => {println!("YVYU");},
-                                          });
 
         let mut audio_queue = sound::SDLUtility::get_audio_queue(&mut sdl_context).unwrap();
 
