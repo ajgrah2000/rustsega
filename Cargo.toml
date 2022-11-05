@@ -17,6 +17,7 @@ panic="abort"
 
 [dependencies]
 bitfield = "0.14.0"
-sdl2 = "0.35"
+sdl2 = { git = "https://github.com/Rust-SDL2/rust-sdl2.git" }
 rand = "0.8.4"
+getrandom = { version = "0.2", features = ["js"] }
 argh = "0.1.9"

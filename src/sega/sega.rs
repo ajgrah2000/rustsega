@@ -157,20 +157,30 @@ impl Sega {
 
         let mut event_pump = sdl_context.event_pump().unwrap();
 
-        'running: loop {
+        let mut main_loop = || {
             for event in event_pump.poll_iter() {
 
                 graphics::display::SDLUtility::handle_events(&event, &mut window_size);
 
                 if !inputs::Input::handle_events(event, &mut self.core.ports.joysticks) {
-                    break 'running;
+                    return false;
                 };
             }
 
             // First loop, draw FRAMES_PER_KEY_EVENT frames at a time.
             if !self.draw_loop(&mut canvas, pixel_format, &window_size, Sega::DISPLAY_UPDATES_PER_KEY_EVENT, &mut audio_queue) {
-                break 'running;
+                return false;
             }
-        }
+            true
+        };
+
+        #[cfg(target_os = "emscripten")]
+        use super::super::emscripten::{emscripten};
+
+        #[cfg(target_os = "emscripten")]
+        emscripten::set_main_loop_callback(||{main_loop();});
+
+        #[cfg(not(target_os = "emscripten"))]
+        loop {if !main_loop() { break;}} 
     }
 }

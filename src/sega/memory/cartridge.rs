@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::Read;
-
 type BankSizeType = u16;
 type NumBanksType = u8;
 
@@ -37,16 +34,31 @@ impl Cartridge {
     }
 
     pub fn load(&mut self) -> std::io::Result<()> {
-        let mut file = File::open(&self.filename)?;
+        let mut buffer;
 
-        self.load_banks(&mut file);
+        #[cfg(not(target_os = "emscripten"))]
+        { 
+            use std::fs::File;
+            use std::io::Read;
+
+            buffer = Vec::new();
+            let mut file = File::open(&self.filename)?;
+            file.read_to_end(&mut buffer)?;
+        }
+
+        #[cfg(target_os = "emscripten")]
+        {
+            buffer = include_bytes!("/tmp/test_file.rom").to_vec();
+        }
+
+        self.load_banks(&mut buffer);
 
         print(self);
 
         Ok(())
     }
 
-    fn load_banks(&mut self, source: &mut dyn Read) {
+    fn load_banks(&mut self, source: &mut Vec<u8>) {
         self.rom = Box::new(
             [Bank {
                 data: [0; BANK_SIZE as usize],
@@ -54,10 +66,11 @@ impl Cartridge {
         );
 
         for i in 0..MAX_BANKS {
-            if let (Some(bank), _n) = load_bank(source) {
-                self.rom[i as usize] = bank;
-                self.num_banks += 1
-            }
+            let (bank, n) = load_bank(source);
+
+            self.rom[i as usize] = bank;
+            source.drain(0..n as usize);
+            self.num_banks += 1
         }
     }
 
@@ -66,23 +79,21 @@ impl Cartridge {
     }
 }
 
-fn load_bank(source: &mut dyn Read) -> (Option<Bank>, NumBanksType) {
+fn load_bank(source: &mut Vec::<u8>) -> (Bank, BankSizeType) {
     let mut bank = Bank {
         data: [0; BANK_SIZE as usize],
     };
 
     // Try to read an entire bank.
-    match source.read(&mut bank.data) {
-        Ok(0) => (None, 0),
-        Ok(n) if n < BANK_SIZE as usize => {
-            println!(
-                "Bank incomplete ({} bytes found in last bank), will be padded with zeros",
-                n
-            );
-            (Some(bank), n as NumBanksType)
+    if source.len() >= BANK_SIZE as usize {
+        bank.data = source[0..BANK_SIZE as usize].try_into().unwrap();
+        (bank, BANK_SIZE as BankSizeType)
+    } else {
+        let length = source.len();
+        if length > 0 {
+            bank.data = source[0..length].try_into().unwrap();
         }
-        Ok(n) => (Some(bank), n as NumBanksType),
-        _ => (None, 0),
+        (bank, source.len() as BankSizeType)
     }
 }
 

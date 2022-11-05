@@ -31,6 +31,20 @@ Building/Running
 	OSX: 
 		brew install sdl2
 
+        Webassembly
+                From: https://puddleofcode.com/story/definitive-guide-to-rust-sdl2-and-emscriptem
+                sudo apt-get install emscripten
+                cargo install cargo-web
+                rustup target add asmjs-unknown-emscripten
+                export EMMAKEN_CFLAGS="-s USE_SDL=2"
+                cargo build --target asmjs-unknown-emscripten
+
+                # Start a web server and load in browser
+                python3 -m http.server
+
+                Note, rom file is statically included in the build (not as a command line argument).
+                Place a file in "/tmp/test_file.rom" before building.
+
     Build and run:
         cargo run --release <rom_file>
 
@@ -152,4 +166,5 @@ perf setup (for flamegraph, see https://docs.kernel.org/admin-guide/perf-securit
    setcap -v "cap_perfmon,cap_sys_ptrace,cap_syslog=ep" perf 
    getcap perf 
    usermod -a -G perf_users <username>
+
 
