@@ -36,14 +36,17 @@ Building/Running
                 sudo apt-get install emscripten
                 cargo install cargo-web
                 rustup target add asmjs-unknown-emscripten
-                export EMMAKEN_CFLAGS="-s USE_SDL=2"
-                cargo build --target asmjs-unknown-emscripten
+                (cd projects/emscripten/ && cargo build --release)
 
                 # Start a web server and load in browser
                 python3 -m http.server
 
                 Note, rom file is statically included in the build (not as a command line argument).
                 Place a file in "/tmp/test_file.rom" before building.
+
+                # Note, the configuration file in 'projects/emscripten' are the same as running:
+                export EMCC_CFLAGS="-s USE_SDL=2"
+                cargo build --target asmjs-unknown-emscripten
 
     Build and run:
         cargo run --release <rom_file>
