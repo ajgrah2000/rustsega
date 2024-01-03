@@ -118,12 +118,10 @@ impl SDLUtility {
 
     pub fn handle_events(event: &event::Event, window_size: &mut WindowSize) {
         // Handle window events.
-        if let event::Event::Window { win_event, .. } = event {
+        if let event::Event::Window { win_event:event::WindowEvent::Resized(w, h), .. } = event {
             // Allow resizing (
-            if let event::WindowEvent::Resized(w, h) = win_event {
                 window_size.frame_width = *w as u16;
                 window_size.frame_height = *h as u16;
-            }
         }
     }
 }

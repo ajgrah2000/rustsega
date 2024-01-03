@@ -107,7 +107,7 @@ impl Instruction {
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
         ports: &mut ports::Ports,
-        interruptor: &mut interruptor::Interruptor,
+        _interruptor: &mut interruptor::Interruptor,
     ) where
         M: memory::MemoryRW,
     {
@@ -130,7 +130,7 @@ impl Instruction {
                 // Perform a 'step' before enabling interrupts.
                 let next_op_code = memory.read(pc_state.get_pc());
                 pc_state.increment_pc(1);
-                Self::execute(next_op_code, clock, memory, pc_state, ports, interruptor);
+                Self::execute(next_op_code, clock, memory, pc_state, ports, _interruptor);
 
                 instruction_set::ei(clock, pc_state);
                 // TODO: Add polling as part of ei. Currently leaving it to outside of this call.

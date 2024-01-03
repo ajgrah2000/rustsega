@@ -66,8 +66,8 @@ impl Sega {
         let window_size = graphics::display::WindowSize::new(
             frame_width,
             frame_height,
-            graphics::vdp::Constants::SMS_WIDTH as u16,
-            graphics::vdp::Constants::SMS_HEIGHT as u16,
+            graphics::vdp::Constants::SMS_WIDTH,
+            graphics::vdp::Constants::SMS_HEIGHT,
             self.fullscreen,
         );
 

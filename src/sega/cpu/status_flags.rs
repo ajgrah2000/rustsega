@@ -94,7 +94,7 @@ pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
     f_status.set_pv(sub_overflow_flag!(a, b, r, u8));
     f_status.set_n(1);
     f_status.set_c(calculate_borrow_carry!(a, b, c, 0xFF) as u8);
-    f_status.set_s(sign_flag!(r as u8, u8));
+    f_status.set_s(sign_flag!(r, u8));
     f_status.set_z(zero_flag!(r));
 
     r
