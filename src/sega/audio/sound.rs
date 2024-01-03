@@ -1,5 +1,5 @@
-use sdl2::audio;
 use super::soundchannel;
+use sdl2::audio;
 
 pub type SoundQueueType = audio::AudioQueue<soundchannel::PlaybackType>;
 pub struct SDLUtility {}
@@ -7,15 +7,13 @@ pub struct SDLUtility {}
 impl SDLUtility {
     // TODO: Fix up values, make them more dynamic, do better comparisons
     // Not sure how they compare on different PCs
-    const TARGET_QUEUE_LENGTH:u32 = 2048; // This drives the 'delay' in audio, but too small for the speed and they aren't filled fast enough
-    const AUDIO_SAMPLE_SIZE:u16 = 1024; // 'Desired' sample size, too small and SDL buffer doesn't stay filled (pops/crackles).
-    const FRACTION_FILL:f32 = 0.05; // TODO: FUDGE FACTOR.  Don't completely fill, samples a removed 1 at a time, don't fill them immediately.
+    const TARGET_QUEUE_LENGTH: u32 = 8192; // This drives the 'delay' in audio, but too small for the speed and they aren't filled fast enough
+    const AUDIO_SAMPLE_SIZE: u16 = 1024; // 'Desired' sample size, too small and SDL buffer doesn't stay filled (pops/crackles).
+    const FRACTION_FILL: f32 = 0.05; // TODO: FUDGE FACTOR.  Don't completely fill, samples a removed 1 at a time, don't fill them immediately.
 
-    const MONO_STERO_FLAG:u8 = 1; // TODO: Make this configurable 1 - mono, 2 - stereo
+    const MONO_STERO_FLAG: u8 = 2; // TODO: Make this configurable 1 - mono, 2 - stereo
 
-    pub fn get_audio_queue (
-        sdl_context: &mut sdl2::Sdl,
-    ) -> Result<SoundQueueType, String> {
+    pub fn get_audio_queue(sdl_context: &mut sdl2::Sdl) -> Result<SoundQueueType, String> {
         let audio_subsystem = sdl_context.audio().unwrap();
 
         let desired_spec = audio::AudioSpecDesired {
@@ -24,16 +22,19 @@ impl SDLUtility {
             samples: Some(SDLUtility::AUDIO_SAMPLE_SIZE),
         };
 
-        audio_subsystem.open_queue::<soundchannel::PlaybackType,_>(None, &desired_spec)
+        audio_subsystem.open_queue::<soundchannel::PlaybackType, _>(None, &desired_spec)
     }
 
-    pub fn top_up_audio_queue<F>(audio_queue: &mut SoundQueueType, mut get_additional_buffer:F)
-        where F: FnMut(u32) ->Vec<soundchannel::PlaybackType> {
-            assert!(audio_queue.size() <= SDLUtility::TARGET_QUEUE_LENGTH as u32);
-            let fill_size = ((SDLUtility::TARGET_QUEUE_LENGTH - audio_queue.size()) as f32 * SDLUtility::FRACTION_FILL) as u32;
-            // If 'stereo' the buffer is twice as large, so just as for half as much.
-            let sound_buffer = get_additional_buffer(fill_size/(SDLUtility::MONO_STERO_FLAG as u32));
-            audio_queue.queue_audio(&sound_buffer).unwrap();
+    pub fn top_up_audio_queue<F>(audio_queue: &mut SoundQueueType, mut get_additional_buffer: F)
+    where
+        F: FnMut(u32) -> Vec<soundchannel::PlaybackType>,
+    {
+        assert!(audio_queue.size() <= SDLUtility::TARGET_QUEUE_LENGTH as u32);
+        let fill_size = ((SDLUtility::TARGET_QUEUE_LENGTH - audio_queue.size()) as f32
+            * SDLUtility::FRACTION_FILL) as u32;
+        // If 'stereo' the buffer is twice as large, so just as for half as much.
+        let sound_buffer = get_additional_buffer(fill_size / (SDLUtility::MONO_STERO_FLAG as u32));
+        audio_queue.queue_audio(&sound_buffer).unwrap();
     }
 }
 
@@ -84,11 +85,11 @@ impl LatchSoundReg {
     }
 
     pub fn get_channel(&self) -> ChannelEnum {
-        ChannelEnum::from(self.data) 
+        ChannelEnum::from(self.data)
     }
 
     pub fn get_channel_type(&self) -> ChannelTypeEnum {
-        ChannelTypeEnum::from(self.data) 
+        ChannelTypeEnum::from(self.data)
     }
 
     pub fn get_data(&self) -> u8 {
@@ -115,12 +116,12 @@ impl Sound {
                 Box::new(soundchannel::ToneSoundChannel::new()),
                 Box::new(soundchannel::NoiseSoundChannel::new()),
             ],
-            latched_reg: LatchSoundReg::default(), 
+            latched_reg: LatchSoundReg::default(),
         }
     }
 
     pub fn get_next_audio_chunk(&mut self, length: u32) -> Vec<soundchannel::PlaybackType> {
-        let mut stream = Vec::with_capacity((2*length) as usize);
+        let mut stream = Vec::with_capacity((2 * length) as usize);
         if length > 0 {
             for i in 0..(length * (SDLUtility::MONO_STERO_FLAG as u32)) {
                 stream.push(0x0); // Neutral volume
@@ -131,12 +132,14 @@ impl Sound {
 
                 if c % SDLUtility::MONO_STERO_FLAG == 0 {
                     for i in 0..length {
-                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32)) as usize] += channel_wave[i as usize];
+                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32)) as usize] +=
+                            channel_wave[i as usize];
                     }
                 } else {
                     // This will only be called if 'MONO_STEREO_FLAG' is set to '2'
                     for i in 0..length {
-                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32) + 1) as usize] += channel_wave[i as usize];
+                        stream[(i * (SDLUtility::MONO_STERO_FLAG as u32) + 1) as usize] +=
+                            channel_wave[i as usize];
                     }
                 }
             }
@@ -145,7 +148,7 @@ impl Sound {
         stream
     }
 
-    pub fn write_port(&mut self, data:u8) {
+    pub fn write_port(&mut self, data: u8) {
         // Dispatch the data to perform the specified audio function (frequency,
         // channel frequency, volume).
 
@@ -155,16 +158,17 @@ impl Sound {
         }
 
         match self.latched_reg.get_channel_type() {
-            ChannelTypeEnum::VolumeType => { 
+            ChannelTypeEnum::VolumeType => {
                 // set volume: 1rr1dddd
                 // or          0-DDDDDD
-                self.channels[self.latched_reg.get_channel() as usize].set_volume(data & soundchannel::SoundChannel::MAX_VOLUME_MASK); 
+                self.channels[self.latched_reg.get_channel() as usize]
+                    .set_volume(data & soundchannel::SoundChannel::MAX_VOLUME_MASK);
             }
-            ChannelTypeEnum::ToneType => { 
+            ChannelTypeEnum::ToneType => {
                 // The 'set tone' needs needs to handle if 'data' is data or latched.
-                self.channels[self.latched_reg.get_channel() as usize].set_tone(self.latched_reg.get_data(), data); 
+                self.channels[self.latched_reg.get_channel() as usize]
+                    .set_tone(self.latched_reg.get_data(), data);
             }
         }
     }
 }
-

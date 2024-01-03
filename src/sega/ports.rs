@@ -1,6 +1,6 @@
+use super::audio::sound;
 use super::clocks;
 use super::inputs;
-use super::audio::sound;
 
 struct NullPort {}
 

@@ -189,7 +189,8 @@ impl Constants {
     // 3Mhz CPU, 50Hz refresh ~= 60000 ticks
     const VSYNCCYCLETIME: u16 = 65232;
     const BLANKTIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * 72) / 262) as u16;
-    const VFRAMETIME: u16 = ((Constants::VSYNCCYCLETIME as u32 * Constants::SMS_HEIGHT as u32) / 262) as u16;
+    const VFRAMETIME: u16 =
+        ((Constants::VSYNCCYCLETIME as u32 * Constants::SMS_HEIGHT as u32) / 262) as u16;
     const HSYNCCYCLETIME: u16 = 216;
 
     const REGISTERMASK: u8 = 0x0F;
@@ -496,11 +497,13 @@ impl Vdp {
     pub fn read_port_7e(&mut self, clock: &clocks::Clock) -> u8 {
         self.address_latch = false; // Address is unlatched during port read
 
-        let v_counter: u8 = ((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles) as u32
+        let v_counter: u8 = ((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles)
+            as u32
             / Constants::HSYNCCYCLETIME as u32) as u8;
-        self.interrupt_handler.current_y_pos = (((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles) as u32
-            / Constants::HSYNCCYCLETIME as u32)
-            + 1) as u16;
+        self.interrupt_handler.current_y_pos =
+            (((clock.cycles - self.interrupt_handler.last_v_sync_clock.cycles) as u32
+                / Constants::HSYNCCYCLETIME as u32)
+                + 1) as u16;
 
         // I can't think of an ellegant solution, so this is as good as it gets
         // for now (fudge factor and all)
@@ -1058,7 +1061,10 @@ impl Vdp {
         let mut index = 0;
         for y in &self.display_buffers.scan_lines {
             for x in &y.scan_line {
-                x.convert_rgb888(&mut raw_display[index..(index + display::SDLUtility::bytes_per_pixel() as usize)]);
+                x.convert_rgb888(
+                    &mut raw_display
+                        [index..(index + display::SDLUtility::bytes_per_pixel() as usize)],
+                );
                 index += display::SDLUtility::bytes_per_pixel() as usize;
             }
         }

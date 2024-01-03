@@ -918,7 +918,11 @@ impl Instruction {
     }
 
     // Extended instructions
-    pub fn execute_index<M,F: Fn(&pc_state::IndexRegisters)-> &pc_state::Reg16,FM: FnMut(&mut pc_state::IndexRegisters)-> &mut pc_state::Reg16 >(
+    pub fn execute_index<
+        M,
+        F: Fn(&pc_state::IndexRegisters) -> &pc_state::Reg16,
+        FM: FnMut(&mut pc_state::IndexRegisters) -> &mut pc_state::Reg16,
+    >(
         clock: &mut clocks::Clock,
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
@@ -994,7 +998,11 @@ impl Instruction {
             }
 
             0xE9 => {
-                extended_instruction_set::jp_i(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
+                extended_instruction_set::jp_i(
+                    clock,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                );
             }
             0x21 => {
                 extended_instruction_set::ld_i_nn(
@@ -1026,10 +1034,18 @@ impl Instruction {
             }
 
             0x23 => {
-                extended_instruction_set::inc_16(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
+                extended_instruction_set::inc_16(
+                    clock,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                );
             }
             0x2B => {
-                extended_instruction_set::dec_16(clock, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers));
+                extended_instruction_set::dec_16(
+                    clock,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                );
             }
             0x34 => {
                 extended_instruction_set::inc_i_d(
@@ -1050,22 +1066,58 @@ impl Instruction {
                 );
             }
             0x8e => {
-                extended_instruction_set::adc_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::adc_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0x96 => {
-                extended_instruction_set::sub_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::sub_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0xA6 => {
-                extended_instruction_set::and_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::and_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0xAE => {
-                extended_instruction_set::xor_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::xor_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0xB6 => {
-                extended_instruction_set::or_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::or_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0x86 => {
-                extended_instruction_set::add_i_d(clock, memory, &mut pc_state.pc_reg, index_reg_fn_mut(&mut pc_state.index_registers), &mut pc_state.af_reg);
+                extended_instruction_set::add_i_d(
+                    clock,
+                    memory,
+                    &mut pc_state.pc_reg,
+                    index_reg_fn_mut(&mut pc_state.index_registers),
+                    &mut pc_state.af_reg,
+                );
             }
             0xE1 => {
                 extended_instruction_set::pop_i(
@@ -1116,7 +1168,7 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-         Self::execute_index(clock, memory, pc_state, |x| {&x.ix_reg}, |x| {&mut x.ix_reg});
+        Self::execute_index(clock, memory, pc_state, |x| &x.ix_reg, |x| &mut x.ix_reg);
     }
 
     // Extended instructions
@@ -1127,7 +1179,7 @@ impl Instruction {
     ) where
         M: memory::MemoryRW,
     {
-         Self::execute_index(clock, memory, pc_state, |x| {&x.iy_reg}, |x| {&mut x.iy_reg});
+        Self::execute_index(clock, memory, pc_state, |x| &x.iy_reg, |x| &mut x.iy_reg);
     }
 
     // Extended instructions
@@ -1537,159 +1589,209 @@ mod tests {
 
     #[test]
     fn test_opcode_cycle_times() {
-        fn default_pc_op_code_check(op_code: Vec<u8>,
-                                    t_states: Vec<u8>, _op_name: &str)
-        {
+        fn default_pc_op_code_check(op_code: Vec<u8>, t_states: Vec<u8>, _op_name: &str) {
             non_default_pc_op_code_check(op_code, t_states, _op_name, pc_state::PcState::new())
         }
 
-        fn non_default_pc_op_code_check(op_code: Vec<u8>,
-                                    t_states: Vec<u8>, _op_name: &str, pc_state: pc_state::PcState)
-        {
+        fn non_default_pc_op_code_check(
+            op_code: Vec<u8>,
+            t_states: Vec<u8>,
+            _op_name: &str,
+            pc_state: pc_state::PcState,
+        ) {
             let mut test_core = TestCore::new();
             test_core.pc_state = pc_state;
             let expected_pc_count = op_code.len() as u16;
-            check_op_code_cycle_count(&mut test_core, op_code, expected_pc_count, t_states.into_iter().fold(0, |s, x| s + x as clocks::ClockType));
+            check_op_code_cycle_count(
+                &mut test_core,
+                op_code,
+                expected_pc_count,
+                t_states
+                    .into_iter()
+                    .fold(0, |s, x| s + x as clocks::ClockType),
+            );
         }
 
         // Page 71
         // 8-bit loads
-        default_pc_op_code_check(vec![0x40], vec![4],   "LD r,r'");
-        default_pc_op_code_check(vec![0x06,0x00], vec![4,3], "LD r,n");
-        default_pc_op_code_check(vec![0x46], vec![4,3], "LD r,(HL)");
-        default_pc_op_code_check(vec![0xDD, 0x46,0x00], vec![4,4,3,5,3], "LD r,(IX+d)");
-        default_pc_op_code_check(vec![0xFD, 0x46,0x00], vec![4,4,3,5,3], "LD r,(IY+d)");
-        default_pc_op_code_check(vec![0x70], vec![4,3], "LD (HL), r");
-        default_pc_op_code_check(vec![0xDD, 0x70, 0x0], vec![4,4,3,5,3], "LD (IX+d), r");
-        default_pc_op_code_check(vec![0xFD, 0x70, 0x0], vec![4,4,3,5,3], "LD (IY+d), r");
-        default_pc_op_code_check(vec![0x36, 0x00], vec![4,3,3], "LD (HL), n");
-        default_pc_op_code_check(vec![0xDD, 0x36, 0x00, 0x00], vec![4,4,3,5,3], "LD (IX+d),n");
-        default_pc_op_code_check(vec![0xFD, 0x36, 0x00, 0x00], vec![4,4,3,5,3], "LD (IY+d),n");
-        default_pc_op_code_check(vec![0x0A], vec![4,3], "LD A, (BC)");
-        default_pc_op_code_check(vec![0x1A], vec![4,3], "LD A, (DE)");
-        default_pc_op_code_check(vec![0x3A,0x00,0x00], vec![4,3,3,3], "LD A, (nn)");
-        default_pc_op_code_check(vec![0x02], vec![4,3], "LD (BC),A");
-        default_pc_op_code_check(vec![0x12], vec![4,3], "LD (DE),A");
-        default_pc_op_code_check(vec![0x32,0x00,0x00], vec![4,3,3,3], "LD (nn),A");
-        default_pc_op_code_check(vec![0xED,0x57], vec![4,5], "LD A,I");
-        default_pc_op_code_check(vec![0xED,0x5F], vec![4,5], "LD A,R");
-        default_pc_op_code_check(vec![0xED,0x47], vec![4,5], "LD I,A");
-        default_pc_op_code_check(vec![0xED,0x4F], vec![4,5], "LD R,A");
+        default_pc_op_code_check(vec![0x40], vec![4], "LD r,r'");
+        default_pc_op_code_check(vec![0x06, 0x00], vec![4, 3], "LD r,n");
+        default_pc_op_code_check(vec![0x46], vec![4, 3], "LD r,(HL)");
+        default_pc_op_code_check(vec![0xDD, 0x46, 0x00], vec![4, 4, 3, 5, 3], "LD r,(IX+d)");
+        default_pc_op_code_check(vec![0xFD, 0x46, 0x00], vec![4, 4, 3, 5, 3], "LD r,(IY+d)");
+        default_pc_op_code_check(vec![0x70], vec![4, 3], "LD (HL), r");
+        default_pc_op_code_check(vec![0xDD, 0x70, 0x0], vec![4, 4, 3, 5, 3], "LD (IX+d), r");
+        default_pc_op_code_check(vec![0xFD, 0x70, 0x0], vec![4, 4, 3, 5, 3], "LD (IY+d), r");
+        default_pc_op_code_check(vec![0x36, 0x00], vec![4, 3, 3], "LD (HL), n");
+        default_pc_op_code_check(
+            vec![0xDD, 0x36, 0x00, 0x00],
+            vec![4, 4, 3, 5, 3],
+            "LD (IX+d),n",
+        );
+        default_pc_op_code_check(
+            vec![0xFD, 0x36, 0x00, 0x00],
+            vec![4, 4, 3, 5, 3],
+            "LD (IY+d),n",
+        );
+        default_pc_op_code_check(vec![0x0A], vec![4, 3], "LD A, (BC)");
+        default_pc_op_code_check(vec![0x1A], vec![4, 3], "LD A, (DE)");
+        default_pc_op_code_check(vec![0x3A, 0x00, 0x00], vec![4, 3, 3, 3], "LD A, (nn)");
+        default_pc_op_code_check(vec![0x02], vec![4, 3], "LD (BC),A");
+        default_pc_op_code_check(vec![0x12], vec![4, 3], "LD (DE),A");
+        default_pc_op_code_check(vec![0x32, 0x00, 0x00], vec![4, 3, 3, 3], "LD (nn),A");
+        default_pc_op_code_check(vec![0xED, 0x57], vec![4, 5], "LD A,I");
+        default_pc_op_code_check(vec![0xED, 0x5F], vec![4, 5], "LD A,R");
+        default_pc_op_code_check(vec![0xED, 0x47], vec![4, 5], "LD I,A");
+        default_pc_op_code_check(vec![0xED, 0x4F], vec![4, 5], "LD R,A");
 
         // 16-bit loads
         // Page 99
-        default_pc_op_code_check(vec![0x01,0x00,0x00], vec![4,3,3], "LD dd, nn");
-        default_pc_op_code_check(vec![0xDD,0x21,0x00,0x00], vec![4,4,3,3], "LD IX, nn");
-        default_pc_op_code_check(vec![0xFD,0x21,0x00,0x00], vec![4,4,3,3], "LD IY, nn");
-        default_pc_op_code_check(vec![0x2A,0x00,0x00], vec![4,3,3,3,3], "LD HL, (nn)");
-        default_pc_op_code_check(vec![0xED, 0x4B,0x00,0x00], vec![4,4,3,3,3,3], "LD dd, (nn)");
-        default_pc_op_code_check(vec![0xDD, 0x2A,0x00,0x00], vec![4,4,3,3,3,3], "LD IX, (nn)");
-        default_pc_op_code_check(vec![0xFD, 0x2A,0x00,0x00], vec![4,4,3,3,3,3], "LD IY, (nn)");
-        default_pc_op_code_check(vec![0x22,0x00,0x00], vec![4,3,3,3,3], "LD (nn), HL");
-        default_pc_op_code_check(vec![0xED,0x43,0x00,0x00], vec![4,4,3,3,3,3], "LD (nn), dd");
-        default_pc_op_code_check(vec![0xDD,0x22,0x00,0x00], vec![4,4,3,3,3,3], "LD (nn), IX");
-        default_pc_op_code_check(vec![0xFD,0x22,0x00,0x00], vec![4,4,3,3,3,3], "LD (nn), IY");
+        default_pc_op_code_check(vec![0x01, 0x00, 0x00], vec![4, 3, 3], "LD dd, nn");
+        default_pc_op_code_check(vec![0xDD, 0x21, 0x00, 0x00], vec![4, 4, 3, 3], "LD IX, nn");
+        default_pc_op_code_check(vec![0xFD, 0x21, 0x00, 0x00], vec![4, 4, 3, 3], "LD IY, nn");
+        default_pc_op_code_check(vec![0x2A, 0x00, 0x00], vec![4, 3, 3, 3, 3], "LD HL, (nn)");
+        default_pc_op_code_check(
+            vec![0xED, 0x4B, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD dd, (nn)",
+        );
+        default_pc_op_code_check(
+            vec![0xDD, 0x2A, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD IX, (nn)",
+        );
+        default_pc_op_code_check(
+            vec![0xFD, 0x2A, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD IY, (nn)",
+        );
+        default_pc_op_code_check(vec![0x22, 0x00, 0x00], vec![4, 3, 3, 3, 3], "LD (nn), HL");
+        default_pc_op_code_check(
+            vec![0xED, 0x43, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD (nn), dd",
+        );
+        default_pc_op_code_check(
+            vec![0xDD, 0x22, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD (nn), IX",
+        );
+        default_pc_op_code_check(
+            vec![0xFD, 0x22, 0x00, 0x00],
+            vec![4, 4, 3, 3, 3, 3],
+            "LD (nn), IY",
+        );
         default_pc_op_code_check(vec![0xF9], vec![6], "LD SP,HL");
-        default_pc_op_code_check(vec![0xDD, 0xF9], vec![4,6], "LD SP,IX");
-        default_pc_op_code_check(vec![0xFD, 0xF9], vec![4,6], "LD SP,IY");
+        default_pc_op_code_check(vec![0xDD, 0xF9], vec![4, 6], "LD SP,IX");
+        default_pc_op_code_check(vec![0xFD, 0xF9], vec![4, 6], "LD SP,IY");
 
-// Currently 'dummy memory' is just the opcode (so there's not enough memory to run this push).
-//        // Need to set SP to at least '2' for this.
-//        let mut initial_pc_state = pc_state::PcState::new(); 
-//        initial_pc_state.sp_reg.set(2);
-//        non_default_pc_op_code_check(vec![0xC5], vec![5,3,3], "PUSH qq", initial_pc_state);
+        // Currently 'dummy memory' is just the opcode (so there's not enough memory to run this push).
+        //        // Need to set SP to at least '2' for this.
+        //        let mut initial_pc_state = pc_state::PcState::new();
+        //        initial_pc_state.sp_reg.set(2);
+        //        non_default_pc_op_code_check(vec![0xC5], vec![5,3,3], "PUSH qq", initial_pc_state);
 
-        let mut initial_pc_state = pc_state::PcState::new(); 
+        let mut initial_pc_state = pc_state::PcState::new();
         initial_pc_state.sp_reg.set(2);
-        non_default_pc_op_code_check(vec![0xDD,0xE5], vec![4,5,3,3], "PUSH IX", initial_pc_state);
-        initial_pc_state = pc_state::PcState::new(); 
+        non_default_pc_op_code_check(
+            vec![0xDD, 0xE5],
+            vec![4, 5, 3, 3],
+            "PUSH IX",
+            initial_pc_state,
+        );
+        initial_pc_state = pc_state::PcState::new();
         initial_pc_state.sp_reg.set(2);
-        non_default_pc_op_code_check(vec![0xFD,0xE5], vec![4,5,3,3], "PUSH IY", initial_pc_state);
-// No enough memory        default_pc_op_code_check(vec![0xC1], vec![4,3,3], "POP qq");
-        default_pc_op_code_check(vec![0xDD,0xE1], vec![4,4,3,3], "POP IX");
-        default_pc_op_code_check(vec![0xFD,0xE1], vec![4,4,3,3], "POP IY");
+        non_default_pc_op_code_check(
+            vec![0xFD, 0xE5],
+            vec![4, 5, 3, 3],
+            "PUSH IY",
+            initial_pc_state,
+        );
+        // No enough memory        default_pc_op_code_check(vec![0xC1], vec![4,3,3], "POP qq");
+        default_pc_op_code_check(vec![0xDD, 0xE1], vec![4, 4, 3, 3], "POP IX");
+        default_pc_op_code_check(vec![0xFD, 0xE1], vec![4, 4, 3, 3], "POP IY");
 
         // Exchange, Block Transfer, and Search Group
         // Page 123
         default_pc_op_code_check(vec![0xEB], vec![4], "EX DE, HL");
         default_pc_op_code_check(vec![0x08], vec![4], "EX AF,AF'");
         default_pc_op_code_check(vec![0xD9], vec![4], "EXX");
-// Not enough memory        default_pc_op_code_check(vec![0xE3], vec![4,3,4,3,5], "EX (SP),HL");
-        default_pc_op_code_check(vec![0xDD,0xE3], vec![4,4,3,4,3,5], "EX (SP),IX");
-        default_pc_op_code_check(vec![0xFD,0xE3], vec![4,4,3,4,3,5], "EX (SP),IY");
-        default_pc_op_code_check(vec![0xED,0xA0], vec![4,4,3,5], "LDI");
-// T states, [4,4,3,5,5], [4,4,3,5]
-// Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB0], vec![4,4,3,5], "LDIR"); 
-        default_pc_op_code_check(vec![0xED,0xA8], vec![4,4,3,5], "LDD");
- // T states, [4,4,3,5,5], [4,4,3,5]
-// Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB8], vec![4,4,3,5], "LDDR");
-        default_pc_op_code_check(vec![0xED,0xA1], vec![4,4,3,5], "CPI");
-// Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB1], vec![4,4,3,5], "CPIR");
-        default_pc_op_code_check(vec![0xED,0xA9], vec![4,4,3,5], "CPD");
-// Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB9], vec![4,4,3,5,5], "CPDR");
+        // Not enough memory        default_pc_op_code_check(vec![0xE3], vec![4,3,4,3,5], "EX (SP),HL");
+        default_pc_op_code_check(vec![0xDD, 0xE3], vec![4, 4, 3, 4, 3, 5], "EX (SP),IX");
+        default_pc_op_code_check(vec![0xFD, 0xE3], vec![4, 4, 3, 4, 3, 5], "EX (SP),IY");
+        default_pc_op_code_check(vec![0xED, 0xA0], vec![4, 4, 3, 5], "LDI");
+        // T states, [4,4,3,5,5], [4,4,3,5]
+        // Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB0], vec![4,4,3,5], "LDIR");
+        default_pc_op_code_check(vec![0xED, 0xA8], vec![4, 4, 3, 5], "LDD");
+        // T states, [4,4,3,5,5], [4,4,3,5]
+        // Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB8], vec![4,4,3,5], "LDDR");
+        default_pc_op_code_check(vec![0xED, 0xA1], vec![4, 4, 3, 5], "CPI");
+        // Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB1], vec![4,4,3,5], "CPIR");
+        default_pc_op_code_check(vec![0xED, 0xA9], vec![4, 4, 3, 5], "CPD");
+        // Needs specific PC check        default_pc_op_code_check(vec![0xED,0xB9], vec![4,4,3,5,5], "CPDR");
 
         // 8-bit Arithmetic
         // Page 145
 
         default_pc_op_code_check(vec![0x80], vec![4], "ADD A,r");
-        default_pc_op_code_check(vec![0xC6,0x00], vec![4,3], "ADD A,n");
-        default_pc_op_code_check(vec![0xC6,0x00], vec![4,3], "ADD A,n");
+        default_pc_op_code_check(vec![0xC6, 0x00], vec![4, 3], "ADD A,n");
+        default_pc_op_code_check(vec![0xC6, 0x00], vec![4, 3], "ADD A,n");
 
-        default_pc_op_code_check(vec![0x86], vec![4,3], "ADD A,(HL)");
-        default_pc_op_code_check(vec![0xDD,0x86,0x00], vec![4,4,3,5,3], "ADD A,(IX+d)");
-        default_pc_op_code_check(vec![0xFD,0x86,0x00], vec![4,4,3,5,3], "ADD A,(IY+d)");
+        default_pc_op_code_check(vec![0x86], vec![4, 3], "ADD A,(HL)");
+        default_pc_op_code_check(vec![0xDD, 0x86, 0x00], vec![4, 4, 3, 5, 3], "ADD A,(IX+d)");
+        default_pc_op_code_check(vec![0xFD, 0x86, 0x00], vec![4, 4, 3, 5, 3], "ADD A,(IY+d)");
 
         default_pc_op_code_check(vec![0x88], vec![4], "ADC A,r"); // ADC A,s
-        default_pc_op_code_check(vec![0xCE, 0x00], vec![4,3], "ADC A,n"); // ADC A,s
-        default_pc_op_code_check(vec![0x8E], vec![4,3], "ADC A,(HL)"); // ADC A,s
-        default_pc_op_code_check(vec![0xDD,0x8E,0x00], vec![4,4,3,5,3], "ADC A,(IX+d)"); // ADC A,s
-        default_pc_op_code_check(vec![0xFD,0x8E,0x00], vec![4,4,3,5,3], "ADC A,(IY+d)"); // ADC A,s
+        default_pc_op_code_check(vec![0xCE, 0x00], vec![4, 3], "ADC A,n"); // ADC A,s
+        default_pc_op_code_check(vec![0x8E], vec![4, 3], "ADC A,(HL)"); // ADC A,s
+        default_pc_op_code_check(vec![0xDD, 0x8E, 0x00], vec![4, 4, 3, 5, 3], "ADC A,(IX+d)"); // ADC A,s
+        default_pc_op_code_check(vec![0xFD, 0x8E, 0x00], vec![4, 4, 3, 5, 3], "ADC A,(IY+d)"); // ADC A,s
 
         default_pc_op_code_check(vec![0x90], vec![4], "SUB r"); // SUB s
-        default_pc_op_code_check(vec![0xD6,0x00], vec![4,3], "SUB n"); // SUB s
-        default_pc_op_code_check(vec![0x96], vec![4,3], "SUB (HL)"); // SUB s
-        default_pc_op_code_check(vec![0xDD,0x96,0x00], vec![4,4,3,5,3], "SUB (IX+d)"); // SUB s
-        default_pc_op_code_check(vec![0xFD,0x96,0x00], vec![4,4,3,5,3], "SUB (IY+d)"); // SUB s
+        default_pc_op_code_check(vec![0xD6, 0x00], vec![4, 3], "SUB n"); // SUB s
+        default_pc_op_code_check(vec![0x96], vec![4, 3], "SUB (HL)"); // SUB s
+        default_pc_op_code_check(vec![0xDD, 0x96, 0x00], vec![4, 4, 3, 5, 3], "SUB (IX+d)"); // SUB s
+        default_pc_op_code_check(vec![0xFD, 0x96, 0x00], vec![4, 4, 3, 5, 3], "SUB (IY+d)"); // SUB s
 
         default_pc_op_code_check(vec![0x98], vec![4], "SBC A,r"); // SBC A,s
-        default_pc_op_code_check(vec![0xDE,0x00], vec![4,3], "SBC A,n"); // SBC A,s
-        default_pc_op_code_check(vec![0x9E], vec![4,3], "SBC A,(HL)"); // SBC A,s
-// Not ipmlemented        default_pc_op_code_check(vec![0xDD,0x9E,0x00], vec![4,4,3,5,3], "SBC A,(IY+d)"); // SBC A,s
-// Not ipmlemented        default_pc_op_code_check(vec![0xFD,0x9E,0x00], vec![4,4,3,5,3], "SBC A,(IY+d)"); // SBC A,s
+        default_pc_op_code_check(vec![0xDE, 0x00], vec![4, 3], "SBC A,n"); // SBC A,s
+        default_pc_op_code_check(vec![0x9E], vec![4, 3], "SBC A,(HL)"); // SBC A,s
+                                                                        // Not ipmlemented        default_pc_op_code_check(vec![0xDD,0x9E,0x00], vec![4,4,3,5,3], "SBC A,(IY+d)"); // SBC A,s
+                                                                        // Not ipmlemented        default_pc_op_code_check(vec![0xFD,0x9E,0x00], vec![4,4,3,5,3], "SBC A,(IY+d)"); // SBC A,s
 
         default_pc_op_code_check(vec![0xA0], vec![4], "AND r"); // AND s
-        default_pc_op_code_check(vec![0xE6,0x00], vec![4,3], "AND n"); // AND s
-        default_pc_op_code_check(vec![0xA6], vec![4,3], "AND (HL)"); // AND s
-        default_pc_op_code_check(vec![0xDD,0xA6,0x00], vec![4,4,3,5,3], "AND (IX+d)"); // AND s
-        default_pc_op_code_check(vec![0xFD,0xA6,0x00], vec![4,4,3,5,3], "AND (IY+d)"); // AND s
+        default_pc_op_code_check(vec![0xE6, 0x00], vec![4, 3], "AND n"); // AND s
+        default_pc_op_code_check(vec![0xA6], vec![4, 3], "AND (HL)"); // AND s
+        default_pc_op_code_check(vec![0xDD, 0xA6, 0x00], vec![4, 4, 3, 5, 3], "AND (IX+d)"); // AND s
+        default_pc_op_code_check(vec![0xFD, 0xA6, 0x00], vec![4, 4, 3, 5, 3], "AND (IY+d)"); // AND s
 
         default_pc_op_code_check(vec![0xB0], vec![4], "OR r"); // OR s
-        default_pc_op_code_check(vec![0xF6,0x00], vec![4,3], "OR n"); // OR s
-        default_pc_op_code_check(vec![0xB6], vec![4,3], "OR (HL)"); // OR s
-        default_pc_op_code_check(vec![0xDD,0xB6,0x00], vec![4,4,3,5,3], "OR (IX+d)"); // OR s
-        default_pc_op_code_check(vec![0xFD,0xB6,0x00], vec![4,4,3,5,3], "OR (IY+d)"); // OR s
+        default_pc_op_code_check(vec![0xF6, 0x00], vec![4, 3], "OR n"); // OR s
+        default_pc_op_code_check(vec![0xB6], vec![4, 3], "OR (HL)"); // OR s
+        default_pc_op_code_check(vec![0xDD, 0xB6, 0x00], vec![4, 4, 3, 5, 3], "OR (IX+d)"); // OR s
+        default_pc_op_code_check(vec![0xFD, 0xB6, 0x00], vec![4, 4, 3, 5, 3], "OR (IY+d)"); // OR s
 
         default_pc_op_code_check(vec![0xA8], vec![4], "XOR r"); // XOR s
-        default_pc_op_code_check(vec![0xEE,0x00], vec![4,3], "XOR n"); // XOR s
-        default_pc_op_code_check(vec![0xAE], vec![4,3], "XOR (HL)"); // XOR s
-        default_pc_op_code_check(vec![0xDD,0xAE,0x00], vec![4,4,3,5,3], "XOR (IX+d)"); // XOR s
-        default_pc_op_code_check(vec![0xFD,0xAE,0x00], vec![4,4,3,5,3], "XOR (IY+d)"); // XOR s
+        default_pc_op_code_check(vec![0xEE, 0x00], vec![4, 3], "XOR n"); // XOR s
+        default_pc_op_code_check(vec![0xAE], vec![4, 3], "XOR (HL)"); // XOR s
+        default_pc_op_code_check(vec![0xDD, 0xAE, 0x00], vec![4, 4, 3, 5, 3], "XOR (IX+d)"); // XOR s
+        default_pc_op_code_check(vec![0xFD, 0xAE, 0x00], vec![4, 4, 3, 5, 3], "XOR (IY+d)"); // XOR s
 
         default_pc_op_code_check(vec![0xB8], vec![4], "CP r"); // CP s
-        default_pc_op_code_check(vec![0xFE,0x00], vec![4,3], "CP n"); // CP s
-        default_pc_op_code_check(vec![0xBE], vec![4,3], "CP (HL)"); // CP s
-        default_pc_op_code_check(vec![0xDD,0xBE,0x00], vec![4,4,3,5,3], "CP (IX+d)"); // CP s
-        default_pc_op_code_check(vec![0xFD,0xBE,0x00], vec![4,4,3,5,3], "CP (IY+d)"); // CP s
+        default_pc_op_code_check(vec![0xFE, 0x00], vec![4, 3], "CP n"); // CP s
+        default_pc_op_code_check(vec![0xBE], vec![4, 3], "CP (HL)"); // CP s
+        default_pc_op_code_check(vec![0xDD, 0xBE, 0x00], vec![4, 4, 3, 5, 3], "CP (IX+d)"); // CP s
+        default_pc_op_code_check(vec![0xFD, 0xBE, 0x00], vec![4, 4, 3, 5, 3], "CP (IY+d)"); // CP s
 
         default_pc_op_code_check(vec![0x04], vec![4], "INC r");
-        default_pc_op_code_check(vec![0x34], vec![4,4,3], "INC (HL)");
-        default_pc_op_code_check(vec![0xDD,0x34,0x00], vec![4,4,3,5,4,3], "INC (IX+d)");
-        default_pc_op_code_check(vec![0xFD,0x34,0x00], vec![4,4,3,5,4,3], "INC (IY+d)");
+        default_pc_op_code_check(vec![0x34], vec![4, 4, 3], "INC (HL)");
+        default_pc_op_code_check(vec![0xDD, 0x34, 0x00], vec![4, 4, 3, 5, 4, 3], "INC (IX+d)");
+        default_pc_op_code_check(vec![0xFD, 0x34, 0x00], vec![4, 4, 3, 5, 4, 3], "INC (IY+d)");
         default_pc_op_code_check(vec![0x05], vec![4], "DEC r"); // DEC m
-        default_pc_op_code_check(vec![0x35], vec![4,4,3], "DEC (HL)"); // DEC m
-        default_pc_op_code_check(vec![0xDD,0x35,0x00], vec![4,4,3,5,4,3], "DEC (IX+d)"); // DEC m
-        default_pc_op_code_check(vec![0xFD,0x35,0x00], vec![4,4,3,5,4,3], "DEC (IY+d)"); // DEC m
-
+        default_pc_op_code_check(vec![0x35], vec![4, 4, 3], "DEC (HL)"); // DEC m
+        default_pc_op_code_check(vec![0xDD, 0x35, 0x00], vec![4, 4, 3, 5, 4, 3], "DEC (IX+d)"); // DEC m
+        default_pc_op_code_check(vec![0xFD, 0x35, 0x00], vec![4, 4, 3, 5, 4, 3], "DEC (IY+d)");
+        // DEC m
 
         // General purpose arithmetic and CPU control groups
         // Page 172
@@ -1703,20 +1805,27 @@ mod tests {
         // Currently not doing anything interesting with the masks
         // op_code=0x00rrr110 -> 0b00000110 mask= 0b11000111
         // NOTE: Only works for 'exhaustive' matches (doesn't include a filter)
-        let t_states = [(vec![(0b01000000, 0b11010010)], vec![4]), // LD r,r' // Overlapping, but excludes r=6
-                        (vec![(0b01000000, 0b11010100)], vec![4]), // LD r,r'
-                        (vec![(0b01000000, 0b11100010)], vec![4]), // LD r,r'
-                        (vec![(0b01000000, 0b11100100)], vec![4]), // LD r,r'
-                        (vec![(0b00000110, 0b11010111), (0x0, 0x0)], vec![4,3]), // LD r,n
-                        (vec![(0b00000110, 0b11100111), (0x0, 0x0)], vec![4,3]), // LD r,n
-                        (vec![(0b01000110, 0b11010111)], vec![4,3]), // LD r,(HL)
-                        (vec![(0b01000110, 0b11100111)], vec![4,3]), // LD r,(HL)
-                        (vec![(0xDD, 0xFF),(0b01000110, 0xFF),(0x0, 0x0)], vec![4,4,3,5,3]), // LD r,(IX+d)
-                        // 0xDD, 0b01rrr110, 0bdddddddd
-                        (vec![(0xFD, 0xFF),(0b01000110, 0xFF),(0x0, 0x0)], vec![4,4,3,5,3]), // LD r,(IY+d)
-                        (vec![(0b01110000, 0b11111010)], vec![4,3]), // LD (HL), r
-                        (vec![(0b01110000, 0b11111100)], vec![4,3]), // LD (HL), r
-                       ];
+        let t_states = [
+            (vec![(0b01000000, 0b11010010)], vec![4]), // LD r,r' // Overlapping, but excludes r=6
+            (vec![(0b01000000, 0b11010100)], vec![4]), // LD r,r'
+            (vec![(0b01000000, 0b11100010)], vec![4]), // LD r,r'
+            (vec![(0b01000000, 0b11100100)], vec![4]), // LD r,r'
+            (vec![(0b00000110, 0b11010111), (0x0, 0x0)], vec![4, 3]), // LD r,n
+            (vec![(0b00000110, 0b11100111), (0x0, 0x0)], vec![4, 3]), // LD r,n
+            (vec![(0b01000110, 0b11010111)], vec![4, 3]), // LD r,(HL)
+            (vec![(0b01000110, 0b11100111)], vec![4, 3]), // LD r,(HL)
+            (
+                vec![(0xDD, 0xFF), (0b01000110, 0xFF), (0x0, 0x0)],
+                vec![4, 4, 3, 5, 3],
+            ), // LD r,(IX+d)
+            // 0xDD, 0b01rrr110, 0bdddddddd
+            (
+                vec![(0xFD, 0xFF), (0b01000110, 0xFF), (0x0, 0x0)],
+                vec![4, 4, 3, 5, 3],
+            ), // LD r,(IY+d)
+            (vec![(0b01110000, 0b11111010)], vec![4, 3]), // LD (HL), r
+            (vec![(0b01110000, 0b11111100)], vec![4, 3]), // LD (HL), r
+        ];
 
         for check in t_states {
             let op_codes = check.0;
@@ -1728,8 +1837,8 @@ mod tests {
                 let mut test_input = Vec::new();
                 test_input.push(op_codes[0].0 | mask_permutation);
 
-                for code in op_codes[1..].into_iter() { 
-                    test_input.push(code.0 & code.1); // Apply the mask to the op-code. 
+                for code in op_codes[1..].into_iter() {
+                    test_input.push(code.0 & code.1); // Apply the mask to the op-code.
                 }
                 // This can be used for op codes that don't manipulate 'PC'
                 let expected_pc_increment = test_input.len() as u16;
@@ -1738,24 +1847,29 @@ mod tests {
                 test_core.pc_state.set_af(0);
                 test_core.pc_state.set_bc(0);
                 test_core.pc_state.set_de(0);
-                check_op_code_cycle_count(&mut test_core, test_input, expected_pc_increment, total_t_states);
+                check_op_code_cycle_count(
+                    &mut test_core,
+                    test_input,
+                    expected_pc_increment,
+                    total_t_states,
+                );
             }
         }
     }
 
     #[test]
     fn test_sequence_from_mask() {
-        assert_eq!(vec![0,2,8,10], sequence_from_mask(0xA));
+        assert_eq!(vec![0, 2, 8, 10], sequence_from_mask(0xA));
     }
 
     fn sequence_from_mask(mask: u8) -> Vec<u8> {
         let mut sequence = Vec::new();
-        let mut current_count:u16 = 1;
+        let mut current_count: u16 = 1;
 
         let mut intermediate_sums = Vec::new();
         for shift in 0..8 {
             if current_count & mask as u16 != 0 {
-                intermediate_sums.push(current_count as u8); 
+                intermediate_sums.push(current_count as u8);
             }
             current_count = current_count << 1;
         }
@@ -1764,7 +1878,7 @@ mod tests {
         for element in 0..(1 << intermediate_sums.len()) {
             let mut sum = 0;
             for bit_pos in 0..intermediate_sums.len() {
-                if (1<< bit_pos) & element != 0 {
+                if (1 << bit_pos) & element != 0 {
                     sum += intermediate_sums[bit_pos];
                 }
             }
