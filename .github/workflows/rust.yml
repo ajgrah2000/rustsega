@@ -1,0 +1,206 @@
+name: Rust
+
+on:
+  push:
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  AUTO_TAG_NAME: ${{ github.ref_name }}_${{ github.sha }}
+  EMSCRIPTEN_VERSION: 3.1.53
+  RUST_VERSION: nightly
+
+jobs:
+  linux_build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@main
+    - name: Install Linux Dependencies
+      run: sudo apt-get install libsdl2-dev 
+
+    - name: Build native
+      run: cargo build --release --verbose --config projects/native/.cargo/config.toml
+    - name: Test native
+      run: echo "cargo test --release --verbose --config projects/native/.cargo/config.toml"
+
+  emscripten_build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@main
+    - name: Install rust ${{ env.RUST_VERSION }}
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+        override: true
+        components: rustfmt, clippy
+    - uses: mymindstorm/setup-emsdk@v14
+      with:
+        version: ${{ env.EMSCRIPTEN_VERSION }}
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    - name: install_linux_dependencies
+      run: |
+            sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu `lsb_release -sc` main universe restricted multiverse"
+            sudo apt-get update -y -qq
+            sudo apt-get install libsdl2-dev 
+    - name: install_emscripten_dependencies
+      run: |
+            sudo apt-get install binaryen llvm lld
+            rustup target add wasm32-unknown-emscripten
+    - name: Build emscripten (javascript)
+      run: |
+           emsdk install ${{ env.EMSCRIPTEN_VERSION }}
+           emsdk activate ${{ env.EMSCRIPTEN_VERSION }}
+           source emsdk_env.sh
+           cargo build --release --verbose --config projects/native/.cargo/config.toml
+           cargo build --release --verbose --config projects/emscripten/.cargo/config.toml
+           ls -lR target
+    - name: Artifact generation - emscripten
+      if: startsWith(github.event.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: emscripten_artifact_${{ env.AUTO_TAG_NAME }}
+        path: |
+              index.html
+              file_drop.js
+              run_sample_server.sh
+              target/wasm32-unknown-emscripten/release/rustsega.js
+              target/wasm32-unknown-emscripten/release/rustsega.wasm
+
+    - name: Create Release Zip - emscripten 
+      if: startsWith(github.event.ref, 'refs/tags/')
+      run: |
+           cd ..
+           zip -r ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip rustsega/index.html rustsega/file_drop.js rustsega/run_sample_server.sh rustsega/target/wasm32-unknown-emscripten/release/rustsega.wasm rustsega/target/wasm32-unknown-emscripten/release/rustsega.js
+
+    - name: Cache emscripten release
+      uses: actions/cache@v3
+      with: 
+        path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        key: emscripten-zip
+
+  windows_build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@main
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '20.x'
+    - uses: actions/checkout@main
+    - name: Install rust ${{ env.RUST_VERSION }}
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ env.RUST_VERSION }}
+        override: true
+        components: rustfmt, clippy
+    - name: install_linux_dependencies
+      run: |
+            sudo add-apt-repository -y "deb http://archive.ubuntu.com/ubuntu `lsb_release -sc` main universe restricted multiverse"
+            sudo apt-get update -y -qq
+            sudo apt-get install libsdl2-dev 
+    - name: install_windows_cross_compiler
+      run: |
+            sudo apt-get install gcc-mingw-w64
+            rustup default ${{ env.RUST_VERSION }}
+            rustup target add x86_64-pc-windows-gnu
+            curl -s https://www.libsdl.org/release/SDL2-devel-2.0.22-mingw.tar.gz  | tar xvz -C ${{ runner.temp }}
+            cp -r ${{ runner.temp }}/SDL2-2.0.22/x86_64-w64-mingw32/lib/* ~/.rustup/toolchains/${{ env.RUST_VERSION }}-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
+
+            curl -s -L -O https://github.com/libsdl-org/SDL/releases/download/release-2.0.22/SDL2-2.0.22-win32-x64.zip --output-dir ${{ runner.temp }}
+            unzip ${{ runner.temp }}/SDL2-2.0.22-win32-x64.zip -d ${{ runner.temp }}/sdl_dll
+
+    - name: Build windows
+      run: cargo build --target x86_64-pc-windows-gnu --release
+
+    - name: Artifact generation - Windows
+      if: startsWith(github.event.ref, 'refs/tags/')
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows_artifact_${{ env.AUTO_TAG_NAME }}
+        path: |
+              target/x86_64-pc-windows-gnu/release/rustsega.exe
+
+    - name: Create Release Zip - windows 
+      if: startsWith(github.event.ref, 'refs/tags/')
+      run: |
+           cd ..
+           zip -r -j ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip rustsega/target/x86_64-pc-windows-gnu/release/rustsega.exe rustsega/palette_*.dat ${{ runner.temp }}/sdl_dll/*
+    - name: Cache windows release
+      uses: actions/cache@v3
+      with: 
+        path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        key: windows-zip
+
+  create_release:
+    name: Create release from cached results
+    runs-on: ubuntu-latest
+
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+
+    steps:
+    - name: Create Release
+      if: startsWith(github.event.ref, 'refs/tags/')
+      uses: actions/create-release@v1
+      id: create_release
+      with:
+        draft: true
+        prerelease: true
+        release_name: ${{ github.ref_name }}
+        tag_name: ${{ env.AUTO_TAG_NAME }}
+        body: |
+              Change Log
+              - Trying to create a release via an action.
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+  create_windows_release:
+    name: Create windows release from cached results
+    runs-on: ubuntu-latest
+    needs: [create_release, windows_build]
+
+    steps:
+    - name: Cache windows release
+      uses: actions/cache@v3
+      with: 
+        path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        key: windows-zip
+
+    - name: Release Artifacts - windows 
+      if: startsWith(github.event.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        asset_name: windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        asset_content_type: application/zip
+
+  create_emscripten_release:
+    name: Create emscripten release from cached results
+    runs-on: ubuntu-latest
+    needs: [create_release, emscripten_build]
+
+    steps:
+    - name: Cache emscripten release
+      uses: actions/cache@v3
+      with: 
+        path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        key: emscripten-zip
+
+    - name: Release Artifacts - emscripten 
+      if: startsWith(github.event.ref, 'refs/tags/')
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ needs.create_release.outputs.upload_url }}
+        asset_path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        asset_name: emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
+        asset_content_type: application/zip
