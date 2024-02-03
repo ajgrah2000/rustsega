@@ -43,7 +43,7 @@ impl Sega {
         // Joysticks are held directly, not as a 'device' (don't need to pass to ports).
         ports.add_device(Box::new(vdp));
 
-        memory.reset(&cartridge_name);
+        memory.reset(cartridge_name);
 
         cpu::core::Core::new(clock, memory, pc_state, ports, interruptor)
     }
@@ -167,9 +167,9 @@ impl Sega {
 
                 if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
                     // Top-up the audio queue
-                    let mut audio_queue =
+                    let audio_queue =
                         self.audio_queue.as_mut().expect("Optional audio not set");
-                    sound::SDLUtility::top_up_audio_queue(&mut audio_queue, |fill_size| {
+                    sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {
                         self.core.ports.audio.get_next_audio_chunk(fill_size)
                     });
                 }
@@ -213,9 +213,9 @@ impl Sega {
 
                 if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
                     // Top-up the audio queue
-                    let mut audio_queue =
+                    let audio_queue =
                         self.audio_queue.as_mut().expect("Optional audio not set");
-                    sound::SDLUtility::top_up_audio_queue(&mut audio_queue, |fill_size| {
+                    sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {
                         self.core.ports.audio.get_next_audio_chunk(fill_size)
                     });
                 }

@@ -90,9 +90,9 @@ impl<M: memory::MemoryRW> Core<M> {
                 .elapsed()
                 .expect("Error getting eplapsed")
                 .as_millis() as u64;
-            if 1000 * self.clock.cycles as u64 / Constants::CLOCK_HZ as u64 > in_ms as u64 {
+            if 1000 * self.clock.cycles / Constants::CLOCK_HZ as u64 > in_ms {
                 let required_sleep =
-                    (1000 * self.clock.cycles as u64 / Constants::CLOCK_HZ as u64) - in_ms;
+                    (1000 * self.clock.cycles / Constants::CLOCK_HZ as u64) - in_ms;
                 thread::sleep(time::Duration::from_millis(required_sleep));
             }
         }

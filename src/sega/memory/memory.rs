@@ -150,7 +150,7 @@ impl MemoryAbsolute {
     }
 
     pub fn reset(&mut self, cartridge_name: &String) {
-        let mut cartridge = cartridge::Cartridge::new(&cartridge_name);
+        let mut cartridge = cartridge::Cartridge::new(cartridge_name);
         match cartridge.load() {
             Ok(()) => {
                 println!("Ok");
