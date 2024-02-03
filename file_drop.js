@@ -53,6 +53,7 @@ function handleFiles(files) {
 function processDroppedFile(file) {
   let reader = new FileReader();
   reader.onload = function (event) { 
+      console.log(event.target.result.length);
     handleNewFileData(new Uint8Array(event.target.result));
   }
   reader.readAsArrayBuffer(file);

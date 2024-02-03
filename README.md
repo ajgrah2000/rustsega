@@ -67,6 +67,14 @@ Building/Running
                 cargo build --target wasm32-unknown-emscripten
 
 
+
+                # To try different 'emscripten' sdk versions
+                git clone https://github.com/emscripten-core/emsdk.git 
+                cd rustsega
+                cd ../emsdk
+                VER=3.1.23 && emsdk install $VER && emsdk activate $VER && . emsdk_env.sh && cd - && rm -r target && cargo build --release --config projects/emscripten/.cargo/config.toml; python -m http.server && cd -
+
+
     Build and run:
         cargo run --release <rom_file>
 
