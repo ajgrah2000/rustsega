@@ -3,22 +3,37 @@ use sdl2::render;
 use sdl2::video;
 use sdl2::event;
 
+// Splitting Console Size and windows size, as the console size if 'fixed',
+// only window size changes/is scalable.
+pub struct ConsoleSize {
+    pub console_width: u16,
+    pub console_height: u16,
+}
+
+impl ConsoleSize {
+    pub fn new(console_width: u16, console_height: u16) -> Self {
+        Self {
+            console_width,
+            console_height,
+        }
+    }
+}
+
+
 pub struct WindowSize {
     pub frame_width: u16,
     pub frame_height: u16,
-    pub console_width: u16,
-    pub console_height: u16,
     pub fullscreen: bool,
+    pub console_size: ConsoleSize,
 }
 
 impl WindowSize {
-    pub fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16, fullscreen: bool) -> Self {
+    pub fn new(frame_width: u16, frame_height: u16, console_size:ConsoleSize, fullscreen: bool) -> Self {
         Self {
             frame_width,
             frame_height,
-            console_width,
-            console_height,
             fullscreen,
+            console_size,
         }
     }
 }
@@ -71,7 +86,7 @@ impl SDLUtility {
         frame_width: u16,
         frame_height: u16,
         fullscreen: bool,
-    ) -> render::Canvas<video::Window> {
+    ) -> Option<render::Canvas<video::Window>> {
         let video_subsystem = sdl_context.video().unwrap();
         let mut renderer = video_subsystem
             .window(name, frame_width as u32, frame_height as u32);
@@ -79,12 +94,20 @@ impl SDLUtility {
         // Just playing with if statement (to toggle full screen)
         let window = if fullscreen { renderer.fullscreen()} else { renderer.position_centered().resizable() };
 
-        window.build()
-              .map_err(|e| e.to_string()).unwrap()
-              .into_canvas().accelerated()
-              .build()
-              .map_err(|e| e.to_string())
-              .unwrap()
+        match window.build().map_err(|e| e.to_string()) {
+                Ok(built_window) => { 
+                    match built_window.into_canvas().accelerated().build().map_err(|e| e.to_string())  {
+                        Ok(canvas) => { Some(canvas)},
+                        Err(e) => { 
+                            println!("Error while building accelerated canvas, will leave canvas empty. {}", e);
+                            None
+                        },
+                    }},
+                    Err(e) => {
+                        println!("Error while building window, will leave canvas empty. {}", e);
+                        None
+                        },
+        }
     }
 
     pub fn texture_creator(
@@ -105,15 +128,12 @@ impl SDLUtility {
             .unwrap()
     }
 
-    pub fn handle_events(event: &event::Event, window_size:&mut WindowSize) {
+    pub fn handle_events(event: &event::Event) {
         // Handle window events.
-        if let event::Event::Window {win_event, .. } = event {
-
-            // Allow resizing (
-            if let event::WindowEvent::Resized(w, h) = win_event {
-                window_size.frame_width = *w as u16;
-                window_size.frame_height = *h as u16;
-            }
+        if let event::Event::Window {
+            win_event: event::WindowEvent::Resized(w, h), ..
+        } = event
+        {
         }
     }
 }

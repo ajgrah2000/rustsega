@@ -10,7 +10,7 @@ use std::thread;
 
 pub struct Core<M> {
     pub clock: clocks::Clock,
-    memory: M,
+    pub memory: M,
     pc_state: pc_state::PcState,
     pub ports: ports::Ports,
     interruptor: interruptor::Interruptor,
@@ -76,6 +76,10 @@ impl<M: memory::MemoryRW> Core<M> {
 
     pub fn export(&mut self) -> bool {
         self.ports.export(&mut self.raw_display)
+    }
+
+    pub fn reset(&mut self) {
+        self.pc_state = pc_state::PcState::new();
     }
 
     pub fn step(&mut self, debug: bool, realtime:bool) {

@@ -33,20 +33,29 @@ Building/Running
 
         Webassembly
                 From: https://puddleofcode.com/story/definitive-guide-to-rust-sdl2-and-emscriptem
-                sudo apt-get install emscripten
-                rustup target add asmjs-unknown-emscripten
-                EM_CONFIG=$HOME/.emscripten emcc --generate-config
-                (cd projects/emscripten/ && cargo build --release)
+                Then: https://users.rust-lang.org/t/sdl2-emscripten-asmjs-and-invalid-renderer-panic/66567
+                Taken from: https://github.com/therocode/rust_emscripten_main_loop
 
-                # Start a web server and load in browser
+                sudo apt-get install emscripten
+                rustup target add wasm32-unknown-emscripten
+
+                # Your experience may vary, adding explicit handling of 'EM_CONFIG'
+
+                EM_CONFIG=$HOME/.emscripten emcc --generate-config
+                  Note: May have to manuall update/adjust available system versions in the '.emscripten' config file
+
+                EM_CONFIG=~/.emscripten cargo build-emscripten
+                  Note: It's just an alias for 'cargo build --release --config projects/emscripten/'
+
+                # Start a web server and load in browser (point it to the location reported by the python server)
                 python3 -m http.server
 
-                Note, rom file is statically included in the build (not as a command line argument).
-                Place a file in "/tmp/test_file.rom" before building.
+                # Drag a rom into the 'rom drop' location in the browser.
 
                 # Note, the configuration file in 'projects/emscripten' are the same as running:
                 export EMCC_CFLAGS="-s USE_SDL=2"
-                cargo build --target asmjs-unknown-emscripten
+                cargo build --target wasm32-unknown-emscripten
+
 
     Build and run:
         cargo run --release <rom_file>

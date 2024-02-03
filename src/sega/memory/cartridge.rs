@@ -34,21 +34,20 @@ impl Cartridge {
     }
 
     pub fn load(&mut self) -> std::io::Result<()> {
-        let mut buffer;
+        let mut buffer = Vec::new();
 
         #[cfg(not(target_os = "emscripten"))]
         { 
             use std::fs::File;
             use std::io::Read;
 
-            buffer = Vec::new();
             let mut file = File::open(&self.filename)?;
             file.read_to_end(&mut buffer)?;
         }
 
         #[cfg(target_os = "emscripten")]
         {
-            buffer = include_bytes!("/tmp/test_file.rom").to_vec();
+            JAVASCRIPT_DATA_STORE.with(|ref_cell_data| { buffer = ref_cell_data.borrow().raw_cart_data.clone();});
         }
 
         self.load_banks(&mut buffer);
@@ -95,6 +94,38 @@ fn load_bank(source: &mut Vec::<u8>) -> (Bank, BankSizeType) {
         }
         (bank, source.len() as BankSizeType)
     }
+}
+
+struct JavaScriptData {
+    pub raw_cart_data: Vec<u8>,
+}
+impl JavaScriptData {
+    pub fn new() -> Self {
+        Self {
+            raw_cart_data: Vec::new(),
+        }
+    }
+}
+
+use std::cell::RefCell;
+
+thread_local! {
+    static JAVASCRIPT_DATA_STORE: RefCell<JavaScriptData> = RefCell::new(JavaScriptData::new());
+}
+
+pub fn is_cart_ready() -> bool {
+    let mut is_ready = false;
+    JAVASCRIPT_DATA_STORE.with(|ref_cell_data| { is_ready = !ref_cell_data.borrow().raw_cart_data.is_empty();});
+    is_ready
+}
+
+#[no_mangle]
+pub extern fn display_data(raw_data_ptr: *const u8, raw_data_length: usize) {
+    // TODO: Although it's possible there's another way (alternate arguments), I'll just use the unsafe option for now.
+    let v = unsafe {std::slice::from_raw_parts(raw_data_ptr, raw_data_length)};
+    println!("Called from javascript {:x} {}", v[0], v.len());
+
+    JAVASCRIPT_DATA_STORE.with(|ref_cell_data| { ref_cell_data.borrow_mut().raw_cart_data = v.to_vec()});
 }
 
 #[cfg(test)]

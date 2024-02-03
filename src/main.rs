@@ -57,9 +57,37 @@ fn main() {
     if args.list_drivers {
         println!("{}", full_description_string());
     }
-    let mut sega_machine = sega::sega::Sega::new(args.debug, !args.no_delay, args.stop_clock.unwrap_or(0), args.cartridge_name, args.fullscreen);
+    let mut sega_machine = sega::sega::Sega::new(args.debug, !args.no_delay, args.stop_clock.unwrap_or(0), &args.cartridge_name, args.fullscreen);
 
-    sega_machine.power_sega();
+    #[cfg(target_os = "emscripten")]
+    {
+        let mut main_loop = move || {
+            if sega::memory::cartridge::is_cart_ready() {
+                if !sega_machine.powered {
+                    sega_machine.reset(&args.cartridge_name);
+                    sega_machine.power_sega();
+                    false
+                } else {
+                    sega::sega::Sega::run_sega(&mut sega_machine)
+                }
+            } else {
+                false
+            }
+        };
+
+        use emscripten::{emscripten};
+
+        // After some 'static' wrangling, having the 'set_main_loop_callback' exist
+        // in main appears to appease the lifetime checks.
+        #[cfg(target_os = "emscripten")]
+        emscripten::set_main_loop_callback(move ||{main_loop();});
+    }
+
+    #[cfg(not(target_os = "emscripten"))]
+    {
+        sega_machine.power_sega();
+        loop {if !sega::sega::Sega::run_sega(&mut sega_machine) { break;}} 
+    }
 
     println!("Finished.");
 }
