@@ -17,7 +17,7 @@ getrandom = { version = "0.2", features = ["js"] }
 [dependencies]
 argh = "0.1.12"
 bitfield = "0.14.0"
-sdl2 = "0.36.0"
+sdl2 = "0.35.0"
 
 [profile.release]
 lto = true
