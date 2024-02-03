@@ -5,8 +5,8 @@ use super::super::memory::memory;
 use super::super::ports;
 use super::instructions;
 use super::pc_state;
-use std::time;
 use std::thread;
+use std::time;
 
 pub struct Core<M> {
     pub clock: clocks::Clock,
@@ -18,8 +18,7 @@ pub struct Core<M> {
     start_time: time::SystemTime,
 }
 
-struct Constants {
-}
+struct Constants {}
 
 impl Constants {
     pub const CLOCK_HZ: u32 = 3590000; // set to Z80 clock speed for SMS
@@ -82,13 +81,18 @@ impl<M: memory::MemoryRW> Core<M> {
         self.pc_state = pc_state::PcState::new();
     }
 
-    pub fn step(&mut self, debug: bool, realtime:bool) {
+    pub fn step(&mut self, debug: bool, realtime: bool) {
         // Start with 'expanded' version of step
-        
+
         if realtime {
-            let in_ms:u64 = self.start_time.elapsed().expect("Error getting eplapsed").as_millis() as u64;
-            if 1000 * self.clock.cycles as u64/ Constants::CLOCK_HZ as u64 > in_ms as u64{
-                let required_sleep = (1000 * self.clock.cycles as u64/ Constants::CLOCK_HZ as u64) - in_ms;
+            let in_ms: u64 = self
+                .start_time
+                .elapsed()
+                .expect("Error getting eplapsed")
+                .as_millis() as u64;
+            if 1000 * self.clock.cycles as u64 / Constants::CLOCK_HZ as u64 > in_ms as u64 {
+                let required_sleep =
+                    (1000 * self.clock.cycles as u64 / Constants::CLOCK_HZ as u64) - in_ms;
                 thread::sleep(time::Duration::from_millis(required_sleep));
             }
         }

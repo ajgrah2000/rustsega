@@ -59,7 +59,10 @@ pub struct IndexRegisters {
 
 impl IndexRegisters {
     fn new() -> Self {
-        Self { ix_reg: Reg16::new(), iy_reg: Reg16::new() }
+        Self {
+            ix_reg: Reg16::new(),
+            iy_reg: Reg16::new(),
+        }
     }
 }
 
@@ -126,8 +129,8 @@ pub trait FlagReg {
 pub trait AfRegister {
     fn get_a(&self) -> u8;
     fn get_f(&self) -> u8;
-    fn set_a(&mut self, value:u8);
-    fn set_f(&mut self, value:u8);
+    fn set_a(&mut self, value: u8);
+    fn set_f(&mut self, value: u8);
 }
 
 impl Reg16RW for Reg16 {
@@ -180,11 +183,11 @@ impl AfRegister for FlagReg16 {
         self.reg16.low
     }
 
-    fn set_a(&mut self, value:u8) {
+    fn set_a(&mut self, value: u8) {
         self.reg16.high = value;
     }
 
-    fn set_f(&mut self, value:u8) {
+    fn set_f(&mut self, value: u8) {
         self.reg16.low = value;
     }
 }

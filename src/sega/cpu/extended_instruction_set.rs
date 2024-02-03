@@ -131,17 +131,14 @@ pub fn ld_dd_mem_nn<M, F: FnMut(&mut pc_state::PcState, u16)>(
 ) where
     M: memory::MemoryRW,
 {
-    reg16(
-        pc_state,
-        memory.read16(memory.read16(pc_state.get_pc())),
-    );
+    reg16(pc_state, memory.read16(memory.read16(pc_state.get_pc())));
 
     pc_state.increment_pc(2);
     clock.increment(20);
 }
 //
 //  LD SP, IX
-//  LD SP, IY 
+//  LD SP, IY
 //  Load index register into SP
 pub fn ld_sp_i<R16>(clock: &mut clocks::Clock, pc_reg: &mut R16, sp_reg: &mut R16, i16_reg: &R16)
 where
@@ -648,7 +645,6 @@ where
     clock.increment(16);
 }
 
-
 // CPIR
 // Compare and repeat,  A with the contents of memory in HL, increment HL, decrement BC.
 pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
@@ -739,7 +735,11 @@ pub fn add16<R16, F16>(
     F16: pc_state::FlagReg,
 {
     let mut f_status = af_reg.get_flags();
-    dst_reg.set(status_flags::u16_no_carry(dst_reg.get(), src_value, &mut f_status));
+    dst_reg.set(status_flags::u16_no_carry(
+        dst_reg.get(),
+        src_value,
+        &mut f_status,
+    ));
     f_status.set_n(0);
     af_reg.set_flags(&f_status);
 
@@ -840,8 +840,13 @@ pub fn dec_i_d<M, R16, F16>(
 
 // ADC (IX+d),
 // ADC (IY+d),
-pub fn adc_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-where
+pub fn adc_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
@@ -862,15 +867,19 @@ where
 
 // SUB (IX+d),
 // SUB (IY+d),
-pub fn sub_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-where
+pub fn sub_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
     let address = get_i_d_address(memory, pc_reg, i16_reg);
-    let new_value =
-        instruction_set::sub8(af_reg.get_a(), memory.read(address), af_reg);
+    let new_value = instruction_set::sub8(af_reg.get_a(), memory.read(address), af_reg);
     af_reg.set_a(new_value);
 
     pc_state::PcState::increment_reg(pc_reg, 1);
@@ -879,8 +888,13 @@ where
 
 // AND (IX+d),
 // AND (IY+d),
-pub fn and_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-where
+pub fn and_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
@@ -898,8 +912,13 @@ where
 
 // XOR (IX+d)
 // XOR (IY+d)
-pub fn xor_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-where
+pub fn xor_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
@@ -917,8 +936,13 @@ where
 
 // OR (IX+d),
 // OR (IY+d),
-pub fn or_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-where
+pub fn or_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
@@ -936,23 +960,25 @@ where
 
 // ADD A (IX+d)
 // ADD A (IY+d)
-pub fn add_i_d<M,R16,F16>(clock: &mut clocks::Clock, memory: &mut M, pc_reg: &mut R16, i16_reg: &R16, af_reg: &mut F16)
-    
-where
+pub fn add_i_d<M, R16, F16>(
+    clock: &mut clocks::Clock,
+    memory: &mut M,
+    pc_reg: &mut R16,
+    i16_reg: &R16,
+    af_reg: &mut F16,
+) where
     M: memory::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
     let address = get_i_d_address(memory, pc_reg, i16_reg);
 
-    let new_value =
-        instruction_set::add8(af_reg.get_a(), memory.read(address), af_reg);
+    let new_value = instruction_set::add8(af_reg.get_a(), memory.read(address), af_reg);
     af_reg.set_a(new_value);
 
     pc_state::PcState::increment_reg(pc_reg, 1);
     clock.increment(19);
 }
-
 
 ////////////////////////////////////////////////////
 // Rotate and shift group
@@ -1429,11 +1455,9 @@ pub fn adc_hl_r16<R16, F16>(
     clock.increment(15);
 }
 
-pub fn sbc_i()
-{
+pub fn sbc_i() {
     panic!("SBC A, (IX+d), SBC A, (IY+d) not implemented");
 }
-
 
 #[cfg(test)]
 mod tests {

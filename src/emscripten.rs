@@ -60,7 +60,6 @@ pub mod emscripten {
                     (*closure)();
                 }
             });
-
         }
 
         // Schedule the above wrapper function to be called regularly with Emscripten
