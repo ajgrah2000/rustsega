@@ -14,14 +14,13 @@ opt-level = 2
 [target.'cfg(target_os="emscripten")'.dependencies]
 getrandom = { version = "0.2", features = ["js"] }
 
+[dependencies]
+argh = "0.1.12"
+bitfield = "0.14.0"
+sdl2 = "0.36.0"
+
 [profile.release]
 lto = true
 codegen-units = 1
 panic="abort"
 
-[dependencies]
-bitfield = "0.14.0"
-sdl2 = "0.35.0"
-rand = "0.8.4"
-argh = "0.1.9"
-rustfmt = "0.10.0"
