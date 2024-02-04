@@ -136,6 +136,37 @@ jobs:
         path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
         key: windows-zip
 
+  deploy_emscripten_page:
+    runs-on: ubuntu-latest
+    needs: [emscripten_build]
+
+    steps:
+    - uses: actions/download-artifact@master
+      if: startsWith(github.event.ref, 'refs/tags/')
+      with:
+        name: emscripten_artifact_${{ env.AUTO_TAG_NAME }}
+        path: .
+    - uses: actions/configure-pages@v1
+    - name: Upload Pages artifact - emscripten
+      uses: actions/upload-pages-artifact@v2
+      with:
+        path: .
+
+  deploy_emscripten_page_part2:
+    permissions:
+      pages: write
+      id-token: write
+
+    needs: [deploy_emscripten_page]
+    environment:
+      name: github-pages
+      url: ${{steps.deployment.outputs.page_url}}
+
+    runs-on: ubuntu-latest
+    steps:
+    - id: deployment
+      uses: actions/deploy-pages@v3
+
   create_release:
     name: Create release from cached results
     runs-on: ubuntu-latest
