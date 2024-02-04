@@ -127,10 +127,10 @@ pub fn is_cart_ready() -> bool {
 pub extern "C" fn display_data(raw_data_ptr: *const u8, raw_data_length: usize) {
     // TODO: Although it's possible there's another way (alternate arguments), I'll just use the unsafe option for now.
     let v = unsafe { std::slice::from_raw_parts(raw_data_ptr, raw_data_length) };
-    println!("Called from javascript {:x} {}", v[0], v.len());
-
-    JAVASCRIPT_DATA_STORE
-        .with(|ref_cell_data| ref_cell_data.borrow_mut().raw_cart_data = v.to_vec());
+    if !v.is_empty() {
+        JAVASCRIPT_DATA_STORE
+                .with(|ref_cell_data| ref_cell_data.borrow_mut().raw_cart_data = v.to_vec());
+    }
 }
 
 #[cfg(test)]
