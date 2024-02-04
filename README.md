@@ -13,23 +13,67 @@ Original implementation was based on sega master system technical information fr
 
 Building/Running
     Install Rust:
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh	
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  
     Install SDL:
-	linux (debian based): 
-		apt-get install libsdl2-dev
-	rasbian (64-bit): 
-		apt-get install libsdl2-dev
-	rasberry pi (ubuntu mate 64-bit): 
-		# Release 22.04 LTS (Jammy Jellyfish) 64-bit
-		# Need to upgrade so 'sdl2' will install.
-		apt-get update
-		apt-get upgrade
-		apt-get install git curl libsdl2-dev
+        linux (debian based): 
+                apt-get install libsdl2-dev
+        rasbian (64-bit): 
+                apt-get install libsdl2-dev
+        rasberry pi (ubuntu mate 64-bit): 
+                # Release 22.04 LTS (Jammy Jellyfish) 64-bit
+                # Need to upgrade so 'sdl2' will install.
+                apt-get update
+                apt-get upgrade
+                apt-get install git curl libsdl2-dev
 
-		# 'pipewire' appears to be a good sound driver on the raspberry pi
-		# SDL_AUDIODRIVER=pipewire 
-	OSX: 
-		brew install sdl2
+                # 'pipewire' appears to be a good sound driver on the raspberry pi
+                # SDL_AUDIODRIVER=pipewire 
+        OSX: 
+                brew install sdl2
+
+	Windows Build (from linux):
+                sudo apt-get install gcc-mingw-w64
+                rustup target add x86_64-pc-windows-gnu
+                cargo build --target x86_64-pc-windows-gnu --release
+
+                # For 'sdl'
+                sudo apt-get install libsdl2-dev -y
+                curl -s https://www.libsdl.org/release/SDL2-devel-2.0.22-mingw.tar.gz | tar xvz -C /tmp
+                cp -r /tmp/SDL2-2.0.22/x86_64-w64-mingw32/lib/* ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
+
+        Webassembly
+                From: https://puddleofcode.com/story/definitive-guide-to-rust-sdl2-and-emscriptem
+                Then: https://users.rust-lang.org/t/sdl2-emscripten-asmjs-and-invalid-renderer-panic/66567
+                Taken from: https://github.com/therocode/rust_emscripten_main_loop
+
+                sudo apt-get install emscripten
+                rustup target add wasm32-unknown-emscripten
+
+                # Your experience may vary, adding explicit handling of 'EM_CONFIG'
+
+                EM_CONFIG=$HOME/.emscripten emcc --generate-config
+                  Note: May have to manuall update/adjust available system versions in the '.emscripten' config file
+
+                EM_CONFIG=~/.emscripten cargo build-emscripten
+                  Note: It's just an alias for 'cargo build --release --config projects/emscripten/'
+
+                # Start a web server and load in browser (point it to the location reported by the python server)
+                python3 -m http.server
+
+                # Drag a rom into the 'rom drop' location in the browser.
+
+                # Note, the configuration file in 'projects/emscripten' are the same as running:
+                export EMCC_CFLAGS="-s USE_SDL=2"
+                cargo build --target wasm32-unknown-emscripten
+
+
+
+                # To try different 'emscripten' sdk versions
+                git clone https://github.com/emscripten-core/emsdk.git 
+                cd rustsega
+                cd ../emsdk
+                VER=3.1.23 && emsdk install $VER && emsdk activate $VER && . emsdk_env.sh && cd - && rm -r target && cargo build --release --config projects/emscripten/.cargo/config.toml; python -m http.server && cd -
+
 
     Build and run:
         cargo run --release <rom_file>
@@ -98,13 +142,13 @@ Constants
 Rust General
   - cargo clippy
   - profiling
-	cargo install flamegraph
+        cargo install flamegraph
 
         cargo flamegraph
-	#
-	# Raspberry pi (ubuntu mate):
-	# sudo apt-get install linux-tools-raspi
-	#
+        #
+        # Raspberry pi (ubuntu mate):
+        # sudo apt-get install linux-tools-raspi
+        #
 
   - remove all warnigns
 
@@ -152,4 +196,5 @@ perf setup (for flamegraph, see https://docs.kernel.org/admin-guide/perf-securit
    setcap -v "cap_perfmon,cap_sys_ptrace,cap_syslog=ep" perf 
    getcap perf 
    usermod -a -G perf_users <username>
+
 

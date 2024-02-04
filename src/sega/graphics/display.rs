@@ -1,28 +1,46 @@
+use sdl2::event;
 use sdl2::pixels;
 use sdl2::render;
 use sdl2::video;
-use sdl2::event;
 
-pub struct WindowSize {
-    pub frame_width: u16,
-    pub frame_height: u16,
+// Splitting Console Size and windows size, as the console size if 'fixed',
+// only window size changes/is scalable.
+pub struct ConsoleSize {
     pub console_width: u16,
     pub console_height: u16,
-    pub fullscreen: bool,
 }
 
-impl WindowSize {
-    pub fn new(frame_width: u16, frame_height: u16, console_width: u16, console_height: u16, fullscreen: bool) -> Self {
+impl ConsoleSize {
+    pub fn new(console_width: u16, console_height: u16) -> Self {
         Self {
-            frame_width,
-            frame_height,
             console_width,
             console_height,
-            fullscreen,
         }
     }
 }
 
+pub struct WindowSize {
+    pub frame_width: u16,
+    pub frame_height: u16,
+    pub fullscreen: bool,
+    pub console_size: ConsoleSize,
+}
+
+impl WindowSize {
+    pub fn new(
+        frame_width: u16,
+        frame_height: u16,
+        console_size: ConsoleSize,
+        fullscreen: bool,
+    ) -> Self {
+        Self {
+            frame_width,
+            frame_height,
+            fullscreen,
+            console_size,
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Colour {
@@ -59,7 +77,7 @@ impl Colour {
 pub struct SDLUtility {}
 
 impl SDLUtility {
-    pub const PIXEL_FORMAT:pixels::PixelFormatEnum = pixels::PixelFormatEnum::RGB888;
+    pub const PIXEL_FORMAT: pixels::PixelFormatEnum = pixels::PixelFormatEnum::RGB888;
 
     pub fn bytes_per_pixel() -> u16 {
         SDLUtility::PIXEL_FORMAT.byte_size_per_pixel() as u16
@@ -71,20 +89,43 @@ impl SDLUtility {
         frame_width: u16,
         frame_height: u16,
         fullscreen: bool,
-    ) -> render::Canvas<video::Window> {
+    ) -> Option<render::Canvas<video::Window>> {
         let video_subsystem = sdl_context.video().unwrap();
-        let mut renderer = video_subsystem
-            .window(name, frame_width as u32, frame_height as u32);
+        let mut renderer = video_subsystem.window(name, frame_width as u32, frame_height as u32);
 
         // Just playing with if statement (to toggle full screen)
-        let window = if fullscreen { renderer.fullscreen()} else { renderer.position_centered().resizable() };
+        let window = if fullscreen {
+            renderer.fullscreen()
+        } else {
+            renderer.position_centered().resizable()
+        };
 
-        window.build()
-              .map_err(|e| e.to_string()).unwrap()
-              .into_canvas().accelerated()
-              .build()
-              .map_err(|e| e.to_string())
-              .unwrap()
+        match window.build().map_err(|e| e.to_string()) {
+            Ok(built_window) => {
+                match built_window
+                    .into_canvas()
+                    .accelerated()
+                    .build()
+                    .map_err(|e| e.to_string())
+                {
+                    Ok(canvas) => Some(canvas),
+                    Err(e) => {
+                        println!(
+                            "Error while building accelerated canvas, will leave canvas empty. {}",
+                            e
+                        );
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                println!(
+                    "Error while building window, will leave canvas empty. {}",
+                    e
+                );
+                None
+            }
+        }
     }
 
     pub fn texture_creator(
@@ -105,16 +146,13 @@ impl SDLUtility {
             .unwrap()
     }
 
-    pub fn handle_events(event: &event::Event, window_size:&mut WindowSize) {
+    pub fn handle_events(event: &event::Event) {
         // Handle window events.
-        if let event::Event::Window {win_event, .. } = event {
-
-            // Allow resizing (
-            if let event::WindowEvent::Resized(w, h) = win_event {
-                window_size.frame_width = *w as u16;
-                window_size.frame_height = *h as u16;
-            }
-        }
+        if let event::Event::Window {
+            win_event: event::WindowEvent::Resized(w, h),
+            ..
+        } = event
+        {}
     }
 }
 
@@ -258,48 +296,119 @@ mod tests {
                 "rust-sdl2 demo: Video",
                 frame_width,
                 frame_height,
-                fullscreen
+                fullscreen,
             );
 
-            canvas.info().texture_formats.iter().for_each(|x|
-                match x {
-                    pixels::PixelFormatEnum::Unknown        => {println!("Unknown");},
-                    pixels::PixelFormatEnum::Index1LSB      => {println!("Index1LSB");},
-                    pixels::PixelFormatEnum::Index1MSB      => {println!("Index1MSB");},
-                    pixels::PixelFormatEnum::Index4LSB      => {println!("Index4LSB");},
-                    pixels::PixelFormatEnum::Index4MSB      => {println!("Index4MSB");},
-                    pixels::PixelFormatEnum::Index8         => {println!("Index8");},
-                    pixels::PixelFormatEnum::RGB332         => {println!("RGB332");},
-                    pixels::PixelFormatEnum::RGB444         => {println!("RGB444");},
-                    pixels::PixelFormatEnum::RGB555         => {println!("RGB555");},
-                    pixels::PixelFormatEnum::BGR555         => {println!("BGR555");},
-                    pixels::PixelFormatEnum::ARGB4444       => {println!("ARGB4444");},
-                    pixels::PixelFormatEnum::RGBA4444       => {println!("RGBA4444");},
-                    pixels::PixelFormatEnum::ABGR4444       => {println!("ABGR4444");},
-                    pixels::PixelFormatEnum::BGRA4444       => {println!("BGRA4444");},
-                    pixels::PixelFormatEnum::ARGB1555       => {println!("ARGB1555");},
-                    pixels::PixelFormatEnum::RGBA5551       => {println!("RGBA5551");},
-                    pixels::PixelFormatEnum::ABGR1555       => {println!("ABGR1555");},
-                    pixels::PixelFormatEnum::BGRA5551       => {println!("BGRA5551");},
-                    pixels::PixelFormatEnum::RGB565         => {println!("RGB565");},
-                    pixels::PixelFormatEnum::BGR565         => {println!("BGR565");},
-                    pixels::PixelFormatEnum::RGB24          => {println!("RGB24");},
-                    pixels::PixelFormatEnum::BGR24          => {println!("BGR24");},
-                    pixels::PixelFormatEnum::RGB888         => {println!("RGB888");},
-                    pixels::PixelFormatEnum::RGBX8888       => {println!("RGBX8888");},
-                    pixels::PixelFormatEnum::BGR888         => {println!("BGR888");},
-                    pixels::PixelFormatEnum::BGRX8888       => {println!("BGRX8888");},
-                    pixels::PixelFormatEnum::ARGB8888       => {println!("ARGB8888");},
-                    pixels::PixelFormatEnum::RGBA8888       => {println!("RGBA8888");},
-                    pixels::PixelFormatEnum::ABGR8888       => {println!("ABGR8888");},
-                    pixels::PixelFormatEnum::BGRA8888       => {println!("BGRA8888");},
-                    pixels::PixelFormatEnum::ARGB2101010    => {println!("ARGB2101010");},
-                    pixels::PixelFormatEnum::YV12           => {println!("YV12");},
-                    pixels::PixelFormatEnum::IYUV           => {println!("IYUV");},
-                    pixels::PixelFormatEnum::YUY2           => {println!("YUY2");},
-                    pixels::PixelFormatEnum::UYVY           => {println!("UYVY");},
-                    pixels::PixelFormatEnum::YVYU           => {println!("YVYU");},
-                });
+            canvas.info().texture_formats.iter().for_each(|x| match x {
+                pixels::PixelFormatEnum::Unknown => {
+                    println!("Unknown");
+                }
+                pixels::PixelFormatEnum::Index1LSB => {
+                    println!("Index1LSB");
+                }
+                pixels::PixelFormatEnum::Index1MSB => {
+                    println!("Index1MSB");
+                }
+                pixels::PixelFormatEnum::Index4LSB => {
+                    println!("Index4LSB");
+                }
+                pixels::PixelFormatEnum::Index4MSB => {
+                    println!("Index4MSB");
+                }
+                pixels::PixelFormatEnum::Index8 => {
+                    println!("Index8");
+                }
+                pixels::PixelFormatEnum::RGB332 => {
+                    println!("RGB332");
+                }
+                pixels::PixelFormatEnum::RGB444 => {
+                    println!("RGB444");
+                }
+                pixels::PixelFormatEnum::RGB555 => {
+                    println!("RGB555");
+                }
+                pixels::PixelFormatEnum::BGR555 => {
+                    println!("BGR555");
+                }
+                pixels::PixelFormatEnum::ARGB4444 => {
+                    println!("ARGB4444");
+                }
+                pixels::PixelFormatEnum::RGBA4444 => {
+                    println!("RGBA4444");
+                }
+                pixels::PixelFormatEnum::ABGR4444 => {
+                    println!("ABGR4444");
+                }
+                pixels::PixelFormatEnum::BGRA4444 => {
+                    println!("BGRA4444");
+                }
+                pixels::PixelFormatEnum::ARGB1555 => {
+                    println!("ARGB1555");
+                }
+                pixels::PixelFormatEnum::RGBA5551 => {
+                    println!("RGBA5551");
+                }
+                pixels::PixelFormatEnum::ABGR1555 => {
+                    println!("ABGR1555");
+                }
+                pixels::PixelFormatEnum::BGRA5551 => {
+                    println!("BGRA5551");
+                }
+                pixels::PixelFormatEnum::RGB565 => {
+                    println!("RGB565");
+                }
+                pixels::PixelFormatEnum::BGR565 => {
+                    println!("BGR565");
+                }
+                pixels::PixelFormatEnum::RGB24 => {
+                    println!("RGB24");
+                }
+                pixels::PixelFormatEnum::BGR24 => {
+                    println!("BGR24");
+                }
+                pixels::PixelFormatEnum::RGB888 => {
+                    println!("RGB888");
+                }
+                pixels::PixelFormatEnum::RGBX8888 => {
+                    println!("RGBX8888");
+                }
+                pixels::PixelFormatEnum::BGR888 => {
+                    println!("BGR888");
+                }
+                pixels::PixelFormatEnum::BGRX8888 => {
+                    println!("BGRX8888");
+                }
+                pixels::PixelFormatEnum::ARGB8888 => {
+                    println!("ARGB8888");
+                }
+                pixels::PixelFormatEnum::RGBA8888 => {
+                    println!("RGBA8888");
+                }
+                pixels::PixelFormatEnum::ABGR8888 => {
+                    println!("ABGR8888");
+                }
+                pixels::PixelFormatEnum::BGRA8888 => {
+                    println!("BGRA8888");
+                }
+                pixels::PixelFormatEnum::ARGB2101010 => {
+                    println!("ARGB2101010");
+                }
+                pixels::PixelFormatEnum::YV12 => {
+                    println!("YV12");
+                }
+                pixels::PixelFormatEnum::IYUV => {
+                    println!("IYUV");
+                }
+                pixels::PixelFormatEnum::YUY2 => {
+                    println!("YUY2");
+                }
+                pixels::PixelFormatEnum::UYVY => {
+                    println!("UYVY");
+                }
+                pixels::PixelFormatEnum::YVYU => {
+                    println!("YVYU");
+                }
+            });
 
             let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -340,4 +449,3 @@ mod tests {
         sdl_display.main_loop(WINDOW_WIDTH, WINDOW_HEIGHT, false, &mut display_generator);
     }
 }
-

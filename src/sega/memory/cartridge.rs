@@ -1,6 +1,3 @@
-use std::fs::File;
-use std::io::Read;
-
 type BankSizeType = u16;
 type NumBanksType = u8;
 
@@ -37,16 +34,32 @@ impl Cartridge {
     }
 
     pub fn load(&mut self) -> std::io::Result<()> {
-        let mut file = File::open(&self.filename)?;
+        let mut buffer = Vec::new();
 
-        self.load_banks(&mut file);
+        #[cfg(not(target_os = "emscripten"))]
+        {
+            use std::fs::File;
+            use std::io::Read;
+
+            let mut file = File::open(&self.filename)?;
+            file.read_to_end(&mut buffer)?;
+        }
+
+        #[cfg(target_os = "emscripten")]
+        {
+            JAVASCRIPT_DATA_STORE.with(|ref_cell_data| {
+                buffer = ref_cell_data.borrow().raw_cart_data.clone();
+            });
+        }
+
+        self.load_banks(&mut buffer);
 
         print(self);
 
         Ok(())
     }
 
-    fn load_banks(&mut self, source: &mut dyn Read) {
+    fn load_banks(&mut self, source: &mut Vec<u8>) {
         self.rom = Box::new(
             [Bank {
                 data: [0; BANK_SIZE as usize],
@@ -54,10 +67,11 @@ impl Cartridge {
         );
 
         for i in 0..MAX_BANKS {
-            if let (Some(bank), _n) = load_bank(source) {
-                self.rom[i as usize] = bank;
-                self.num_banks += 1
-            }
+            let (bank, n) = load_bank(source);
+
+            self.rom[i as usize] = bank;
+            source.drain(0..n as usize);
+            self.num_banks += 1
         }
     }
 
@@ -66,23 +80,56 @@ impl Cartridge {
     }
 }
 
-fn load_bank(source: &mut dyn Read) -> (Option<Bank>, NumBanksType) {
+fn load_bank(source: &mut Vec<u8>) -> (Bank, BankSizeType) {
     let mut bank = Bank {
         data: [0; BANK_SIZE as usize],
     };
 
     // Try to read an entire bank.
-    match source.read(&mut bank.data) {
-        Ok(0) => (None, 0),
-        Ok(n) if n < BANK_SIZE as usize => {
-            println!(
-                "Bank incomplete ({} bytes found in last bank), will be padded with zeros",
-                n
-            );
-            (Some(bank), n as NumBanksType)
+    if source.len() >= BANK_SIZE as usize {
+        bank.data = source[0..BANK_SIZE as usize].try_into().unwrap();
+        (bank, BANK_SIZE as BankSizeType)
+    } else {
+        let length = source.len();
+        if length > 0 {
+            bank.data = source[0..length].try_into().unwrap();
         }
-        Ok(n) => (Some(bank), n as NumBanksType),
-        _ => (None, 0),
+        (bank, source.len() as BankSizeType)
+    }
+}
+
+struct JavaScriptData {
+    pub raw_cart_data: Vec<u8>,
+}
+impl JavaScriptData {
+    pub fn new() -> Self {
+        Self {
+            raw_cart_data: Vec::new(),
+        }
+    }
+}
+
+use std::cell::RefCell;
+
+thread_local! {
+    static JAVASCRIPT_DATA_STORE: RefCell<JavaScriptData> = RefCell::new(JavaScriptData::new());
+}
+
+pub fn is_cart_ready() -> bool {
+    let mut is_ready = false;
+    JAVASCRIPT_DATA_STORE.with(|ref_cell_data| {
+        is_ready = !ref_cell_data.borrow().raw_cart_data.is_empty();
+    });
+    is_ready
+}
+
+#[no_mangle]
+pub extern "C" fn display_data(raw_data_ptr: *const u8, raw_data_length: usize) {
+    // TODO: Although it's possible there's another way (alternate arguments), I'll just use the unsafe option for now.
+    let v = unsafe { std::slice::from_raw_parts(raw_data_ptr, raw_data_length) };
+    if !v.is_empty() {
+        JAVASCRIPT_DATA_STORE
+                .with(|ref_cell_data| ref_cell_data.borrow_mut().raw_cart_data = v.to_vec());
     }
 }
 

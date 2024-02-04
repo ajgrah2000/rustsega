@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en-us">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Emscripten-Generated Code</title>
+    <style>
+      body {
+        font-family: arial;
+        margin: 0;
+        padding: none;
+        background-color: black;
+        color: white;
+      }
+      .emscripten {
+        padding-right: 0;
+        margin-left: auto;
+        margin-right: auto;
+        display: block;
+      }
+      div.emscripten {
+        text-align: center;
+      }
+      div.emscripten_border {
+        border: 1px solid black;
+      }
+      /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
+      canvas.emscripten {
+        border: 0px none;
+        background-color: black;
+      }
+      #controls {
+        display: inline-block;
+        float: right;
+        vertical-align: top;
+        margin-top: 30px;
+        margin-right: 20px;
+      }
+      #output {
+        width: 100%;
+        height: 300px;
+        margin: 0 auto;
+        margin-top: 10px;
+        border-left: 0px;
+        border-right: 0px;
+        padding-left: 0px;
+        padding-right: 0px;
+        display: block;
+        background-color: black;
+        color: white;
+        font-family: 'Lucida Console', Monaco, monospace;
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <span id="controls">
+      <span>
+      <input
+          type="button"
+          value="Fullscreen"
+          /* pointerLock, resize */
+          onclick="Module.requestFullscreen(false, false)"
+        />
+      </span>
+    </span>
+    <article>
+    </div>
+    </article>
+    <div class="emscripten_border" id="rom_drop">
+      <canvas
+        class="emscripten"
+        id="canvas"
+        oncontextmenu="event.preventDefault()"
+      >
+      <style>
+          #rom_drop { border: 5px dashed #ccc; margin: 10px auto;} 
+          #rom_drop.hide_border { border: none;} 
+          #rom_drop.highlight { border-color: purple; }
+      </style>
+      </canvas>
+      <p>Drop Sega Master System Rom here to start emulation.</p>
+      <p>Refresh page to start again.</p>
+    </div>
+    <textarea id="output" rows="8"></textarea>
+    <script type="text/javascript">
+      var display_data;
+      var Module = {
+        arguments: ["-n",'""'], // Provide an 'empty' cartridge name (as it's a required argument).
+        onRuntimeInitialized: (function() {
+            display_data = Module.cwrap('display_data', 'void', ['array', 'number']);
+        }
+        ),
+        print: (function() {
+          var element = document.getElementById('output')
+          if (element) element.value = '' // clear browser cache
+          return function(text) {
+            if (arguments.length > 1)
+              text = Array.prototype.slice.call(arguments).join(' ')
+            console.log(text)
+            if (element) {
+              element.value += text + '\n'
+              element.scrollTop = element.scrollHeight // focus on bottom
+            }
+          }
+        })(),
+        canvas: (function() {
+          return document.getElementById('canvas')
+        })(),
+      }
+    </script>
+    <script
+      type="text/javascript"
+      src="target/wasm32-unknown-emscripten/release/rustsega.js"
+      onerror="alert('Script not found: target/wasm32-unknown-emscripten/release/rustsega.js\nbuild with:\n(cd projects/emscripten && cargo build --release)')"
+    ></script>
+    <script>
+        function handleNewFileData(data) {
+          display_data(data, data.length);
+        }
+    </script>
+    <script type="module" src="file_drop.js"></script>
+  </body>
+</html>

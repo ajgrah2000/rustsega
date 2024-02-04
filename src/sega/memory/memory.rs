@@ -149,13 +149,23 @@ impl MemoryAbsolute {
             | (address & 0x1FFF) as AbsoluteAddressType) as usize]
     }
 
+    pub fn reset(&mut self, cartridge_name: &String) {
+        let mut cartridge = cartridge::Cartridge::new(cartridge_name);
+        match cartridge.load() {
+            Ok(()) => {
+                println!("Ok");
+            }
+            _ => {
+                println!("Error loading cartridge.");
+            }
+        }
+
+        self.initialise_read(cartridge);
+    }
+
     pub fn write(&mut self, address: AddressType, data: u8) {
         // TODO: Should check inputs, see which instructions/condition can overflow
         self.private_write(address, data)
-    }
-
-    pub fn set_cartridge(&mut self, cartridge: cartridge::Cartridge) {
-        self.initialise_read(cartridge);
     }
 
     fn initialise_read(&mut self, cartridge: cartridge::Cartridge) {
