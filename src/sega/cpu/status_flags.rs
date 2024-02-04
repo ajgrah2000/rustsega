@@ -15,19 +15,11 @@ pub fn calculate_parity(a: u8) -> bool {
 }
 
 macro_rules! zero_flag {
-    ($a:expr) => {
-        if ($a == 0) {
-            1
-        } else {
-            0
-        }
-    };
+    ($a:expr) => {if ($a == 0) {1} else {0}}
 }
 
 macro_rules! sign_flag {
-    ($a:expr, $type:ty) => {
-        (($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) as u8
-    };
+    ($a:expr, $type:ty) => {(($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) as u8}
 }
 
 // An Overflow can't occur if a and b have different sign bits
@@ -36,20 +28,14 @@ macro_rules! sign_flag {
 // if (((a & 0x8000) ^ (b & 0x8000)) == 0x0000) && // arguments same sign
 //    (((a & 0x8000) ^ (r & 0x8000)) == 0x8000)
 macro_rules! add_overflow_flag {
-    ($a:expr, $b:expr, $r:expr, $type:ty) => {
-        (((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1)
-            ^ (($b >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1))
-            == 0
-            && ((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1)
-                ^ (($r >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1)
-                == 0x1)) as u8
-    };
+    ($a:expr, $b:expr, $r:expr, $type:ty) => {(((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) ^ 
+                                                (($b >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1)) == 0 && 
+                                               ((($a >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) ^ 
+                                                (($r >> (8 * std::mem::size_of::<$type>() - 1)) & 0x1) == 0x1)) as u8}
 }
 
 macro_rules! sub_overflow_flag {
-    ($a:expr, $b:expr, $r:expr, $type:ty) => {
-        add_overflow_flag!($a, !$b, $r, $type)
-    };
+    ($a:expr, $b:expr, $r:expr, $type:ty) => {add_overflow_flag!($a, !$b, $r, $type)}
 }
 
 // Calculate 'carry' flags, given two unsigned integers and the 'mask' to check for overflow.
@@ -57,13 +43,13 @@ macro_rules! sub_overflow_flag {
 //    u16: 'max=0xFFFF' is full carry, 'max=0xFFF' is 'half carry
 macro_rules! calculate_ucarry {
     ($a:expr, $b:expr, $max:expr) => {
-        ($max & $a) > ($max & !$b)
+        ($max & $a) > ($max & !$b)  
     };
     ($a:expr, $b:expr, $c:expr, $max:expr) => {
         if $c {
-            ($max & $a) >= ($max & !$b)
+            ($max & $a) >= ($max & !$b) 
         } else {
-            ($max & $a) > ($max & !$b)
+            ($max & $a)  > ($max & !$b)  
         }
     };
 }
@@ -71,14 +57,14 @@ macro_rules! calculate_ucarry {
 macro_rules! calculate_borrow_carry {
     ($a:expr, $b:expr, $c:expr, $mask:expr) => {
         calculate_ucarry!(!$a, $b, $c, $mask)
-    };
+    }
 }
 
 // self.pc_state.Add two 8 bit ints plus the carry bit, and set flags accordingly
 pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
     let r = a.wrapping_add(b).wrapping_add(u8::from(c));
 
-    f_status.set_pv(add_overflow_flag!(a, b, r, u8));
+    f_status.set_pv(add_overflow_flag!(a,b,r,u8)); 
     f_status.set_h(calculate_ucarry!(a, b, c, 0xF) as u8);
     f_status.set_c(calculate_ucarry!(a, b, c, u8::MAX) as u8);
 
@@ -87,6 +73,7 @@ pub fn u8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFiel
     r
 }
 pub fn i8_carry(a: u8, b: u8, c: bool, f_status: &mut pc_state::PcStatusFlagFields) -> u8 {
+
     let r = a.wrapping_sub(b).wrapping_sub(c as u8);
 
     f_status.set_h(calculate_borrow_carry!(a, b, c, 0xF) as u8);
@@ -114,7 +101,7 @@ pub fn u16_carry(a: u16, b: u16, c: bool, f_status: &mut pc_state::PcStatusFlagF
 
     f_status.set_s(sign_flag!(r, u16));
     f_status.set_z(zero_flag!(r));
-    f_status.set_pv(add_overflow_flag!(a, b, r, u16));
+    f_status.set_pv(add_overflow_flag!(a,b,r,u16)); 
     f_status.set_h(calculate_ucarry!(a, b, c, 0xFFF) as u8);
     f_status.set_c(calculate_ucarry!(a, b, c, 0xFFFF) as u8);
 
@@ -126,7 +113,7 @@ pub fn u16_no_carry(a: u16, b: u16, f_status: &mut pc_state::PcStatusFlagFields)
     // left to add/sub)
     let r = a.wrapping_add(b);
 
-    f_status.set_h(calculate_ucarry!(a, b, false, 0xFFF) as u8);
+    f_status.set_h(calculate_ucarry!(a, b, false,  0xFFF) as u8);
     f_status.set_c(calculate_ucarry!(a, b, false, 0xFFFF) as u8);
 
     r
@@ -264,121 +251,100 @@ mod tests {
     #[test]
     fn test_carry_flag() {
         // For 'add'
-        let test_values = [
-            ((0xFF, 0x01, false), (0x00, true)),
-            ((0xFF, 0x01, true), (0x01, true)),
-            ((0xFF, 0x00, false), (0xFF, false)),
-            ((0xFF, 0x00, true), (0x00, true)),
-            ((0x7F, 0x7F, true), (0xFF, false)),
-            ((0x0F, 0x00, true), (0x10, false)),
-            ((0x0F, 0x00, false), (0x0F, false)),
-        ];
+        let test_values = [((0xFF, 0x01, false), (0x00,  true)),
+                           ((0xFF, 0x01,  true), (0x01,  true)),
+                           ((0xFF, 0x00, false), (0xFF, false)),
+                           ((0xFF, 0x00,  true), (0x00,  true)),
+                           ((0x7F, 0x7F,  true), (0xFF, false)),
+                           ((0x0F, 0x00,  true), (0x10, false)),
+                           ((0x0F, 0x00, false), (0x0F, false))];
 
         for ((a, b, initial_carry), (expected_value, expected_carry)) in test_values {
             let mut f_status = pc_state::PcStatusFlagFields(0);
             f_status.set_c(0);
-            assert_eq!(
-                status_flags::u8_carry(a, b, initial_carry, &mut f_status),
-                expected_value
-            );
+            assert_eq!(status_flags::u8_carry(a, b, initial_carry, &mut f_status), expected_value);
             assert_eq!(f_status.get_c(), expected_carry as u8);
 
             // Order shouldn't matter.
             f_status.set_c(0);
-            assert_eq!(
-                status_flags::u8_carry(b, a, initial_carry, &mut f_status),
-                expected_value
-            );
+            assert_eq!(status_flags::u8_carry(b, a, initial_carry, &mut f_status), expected_value);
             assert_eq!(f_status.get_c(), expected_carry as u8);
 
             assert_eq!(calculate_ucarry!(a, b, initial_carry, 0xFF), expected_carry);
             assert_eq!(calculate_ucarry!(b, a, initial_carry, 0xFF), expected_carry);
+
         }
+
     }
 
     #[test]
     fn test_icarry_flag() {
+
         //                  (a,b,c),            (pv, c, h, n);
-        let test_values = [
-            ((0x00, 0x00, false), (0, 0, 0, 1)),
-            ((0x00, 0x00, true), (0, 1, 1, 1)),
-            ((0x01, 0x00, true), (0, 0, 0, 1)),
-            ((0x0F, 0x10, false), (0, 1, 0, 1)),
-            ((0x10, 0x0F, false), (0, 0, 1, 1)),
-            ((0x70, 0xAF, false), (1, 1, 1, 1)),
-            ((0xAF, 0x70, false), (1, 0, 0, 1)),
-            ((0xFF, 0xFF, false), (0, 0, 0, 1)),
-            ((0xFF, 0xFF, true), (0, 1, 1, 1)),
-        ];
+        let test_values = [((0x00, 0x00, false), (0, 0, 0, 1)),
+                           ((0x00, 0x00,  true), (0, 1, 1, 1)),
+                           ((0x01, 0x00,  true), (0, 0, 0, 1)),
+                           ((0x0F, 0x10, false), (0, 1, 0, 1)),
+                           ((0x10, 0x0F, false), (0, 0, 1, 1)),
+                           ((0x70, 0xAF, false), (1, 1, 1, 1)),
+                           ((0xAF, 0x70, false), (1, 0, 0, 1)),
+                           ((0xFF, 0xFF, false), (0, 0, 0, 1)),
+                           ((0xFF, 0xFF, true),  (0, 1, 1, 1))];
 
         let mut f_status = pc_state::PcStatusFlagFields(0);
 
-        for ((a, b, carry), (pv, c, h, n)) in test_values {
-            status_flags::i8_carry(a, b, carry, &mut f_status);
+        for ((a,b,carry),(pv,c,h,n)) in test_values {
+            status_flags::i8_carry(a,b,carry, &mut f_status);
             assert_eq!(f_status.get_pv(), pv, "a:{} b:{} c:{}", a, b, c);
-            assert_eq!(f_status.get_c(), c, "a:{} b:{} c:{}", a, b, c);
-            assert_eq!(f_status.get_h(), h, "a:{} b:{} c:{}", a, b, c);
-            assert_eq!(f_status.get_n(), n, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_c(),   c, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_h(),   h, "a:{} b:{} c:{}", a, b, c);
+            assert_eq!(f_status.get_n(),   n, "a:{} b:{} c:{}", a, b, c);
         }
     }
 
     #[test]
     fn test_half_carry_flag() {
         // For 'add'
-        let test_values = [
-            ((0xFF, 0x01, false), (0x00, true)),
-            ((0xFF, 0x01, true), (0x01, true)),
-            ((0xFF, 0x00, false), (0xFF, false)),
-            ((0xFF, 0x00, true), (0x00, true)),
-            ((0x7F, 0x7F, true), (0xFF, true)),
-            ((0x0F, 0x00, true), (0x10, true)),
-            ((0x0F, 0x00, false), (0x0F, false)),
-        ];
+        let test_values = [((0xFF, 0x01, false), (0x00,  true)),
+                           ((0xFF, 0x01,  true), (0x01,  true)),
+                           ((0xFF, 0x00, false), (0xFF, false)),
+                           ((0xFF, 0x00,  true), (0x00,  true)),
+                           ((0x7F, 0x7F,  true), (0xFF,  true)),
+                           ((0x0F, 0x00,  true), (0x10,  true)),
+                           ((0x0F, 0x00, false), (0x0F, false))];
 
         for ((a, b, initial_carry), (expected_value, expected_carry)) in test_values {
             let mut f_status = pc_state::PcStatusFlagFields(0);
             f_status.set_h(0);
-            assert_eq!(
-                status_flags::u8_carry(a, b, initial_carry, &mut f_status),
-                expected_value
-            );
+            assert_eq!(status_flags::u8_carry(a, b, initial_carry, &mut f_status), expected_value);
             assert_eq!(f_status.get_h(), expected_carry as u8);
 
             // Order shouldn't matter.
             f_status.set_h(0);
-            assert_eq!(
-                status_flags::u8_carry(b, a, initial_carry, &mut f_status),
-                expected_value
-            );
+            assert_eq!(status_flags::u8_carry(b, a, initial_carry, &mut f_status), expected_value);
             assert_eq!(f_status.get_h(), expected_carry as u8);
         }
+
     }
 
     #[test]
     fn test_half_carry_u16_flag() {
         // For 'add'
-        let test_values = [
-            ((0xFFFF, 0x01FF, false), true),
-            ((0xFFFF, 0x01FF, true), true),
-            ((0xFFFF, 0x0000, false), false),
-            ((0xFFFF, 0x0000, true), true),
-            ((0x7FFF, 0x7FFF, true), true),
-            ((0x0FFF, 0x00FF, true), true),
-            ((0x0FFF, 0x00FF, false), true),
-            ((0xFF00, 0xF0FF, false), false),
-            ((0xFF00, 0xF0FF, true), true),
-        ];
+        let test_values = [((0xFFFF, 0x01FF, false),  true),
+                           ((0xFFFF, 0x01FF,  true),  true),
+                           ((0xFFFF, 0x0000, false), false),
+                           ((0xFFFF, 0x0000,  true),  true),
+                           ((0x7FFF, 0x7FFF,  true),  true),
+                           ((0x0FFF, 0x00FF,  true),  true),
+                           ((0x0FFF, 0x00FF, false),  true),
+                           ((0xFF00, 0xF0FF, false),  false),
+                           ((0xFF00, 0xF0FF,  true),  true)];
 
         for ((a, b, initial_carry), expected_carry) in test_values {
-            assert_eq!(
-                calculate_ucarry!(a, b, initial_carry, 0xFFF),
-                expected_carry
-            );
-            assert_eq!(
-                calculate_ucarry!(b, a, initial_carry, 0xFFF),
-                expected_carry
-            );
+            assert_eq!(calculate_ucarry!(a, b, initial_carry, 0xFFF), expected_carry);
+            assert_eq!(calculate_ucarry!(b, a, initial_carry, 0xFFF), expected_carry);
         }
+
     }
 
     #[test]

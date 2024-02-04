@@ -34,7 +34,11 @@ pub fn out_n_a<M>(
 ) where
     M: memory::MemoryRW,
 {
-    ports.port_write(clock, memory.read(pc_state.pc_reg.get()), pc_state.get_a());
+    ports.port_write(
+        clock,
+        memory.read(pc_state.pc_reg.get()),
+        pc_state.get_a(),
+    );
     pc_state.increment_pc(1);
     clock.increment(11);
 }

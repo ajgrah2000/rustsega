@@ -1,3 +1,4 @@
+
 pub trait SoundGenerator {
     // Data may be from latched or data
     fn set_volume(&mut self, data: u8);
@@ -7,14 +8,15 @@ pub trait SoundGenerator {
     fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType>;
 }
 
-pub struct SoundChannel {}
+pub struct SoundChannel {
+}
 
-pub type PlaybackType = u8; // Only 8-bit playback is currently supported.
+pub type PlaybackType = u8;  // Only 8-bit playback is currently supported.
 impl SoundChannel {
     const FREQMULTIPLIER: u32 = 125000;
 
     pub const MAX_VOLUME_MASK: u8 = 0xF;
-    pub const MAX_VOLUME: PlaybackType = 0xFF;
+    pub const MAX_VOLUME:PlaybackType = 0xFF;
 
     const NUM_CHANNELS: u8 = 4;
 
@@ -25,14 +27,14 @@ impl SoundChannel {
     pub fn get_volume(volume_reg: u8) -> PlaybackType {
         // Min volume when volume_reg = 0xF
         // Max volume when volume_reg = 0x0
-        ((SoundChannel::MAX_VOLUME_MASK ^ volume_reg) << 4) / SoundChannel::NUM_CHANNELS
+        ((SoundChannel::MAX_VOLUME_MASK ^ volume_reg) << 4)/SoundChannel::NUM_CHANNELS
     }
 }
 
 pub struct ToneSoundChannel {
     freq_reg: u16, // DDDDDDddd/(---trr)-trr)
     volume_reg: u8,
-    current_level: bool,    // Square wave is 0 or 1
+    current_level: bool, // Square wave is 0 or 1
     frequency_counter: u32, // counter remaining before toggle (counts up, as audio isn't at 125000Hz, it can have a remainder).
 }
 
@@ -45,8 +47,8 @@ pub struct NoiseSoundChannel {
 }
 
 impl ToneSoundChannel {
-    const LATCHED_UPPER_FREQ_MASK: u8 = 0x3F;
-    const LATCHED_LOWER_FREQ_MASK: u8 = 0x0F;
+    const LATCHED_UPPER_FREQ_MASK:u8 = 0x3F;
+    const LATCHED_LOWER_FREQ_MASK:u8 = 0x0F;
 
     pub fn new() -> Self {
         Self {
@@ -73,11 +75,7 @@ impl ToneSoundChannel {
             } else {
                 self.frequency_counter += SoundChannel::get_hertz(self.freq_reg) * 2;
             }
-            let volume = if self.current_level {
-                SoundChannel::get_volume(self.volume_reg)
-            } else {
-                0x0
-            };
+            let volume = if self.current_level { SoundChannel::get_volume(self.volume_reg) } else { 0x0 };
             wave.push(volume);
         }
 
@@ -100,13 +98,12 @@ impl NoiseSoundChannel {
 
     fn set_data(&mut self, data: u8) {
         if (data & 0x3) < 3 {
-            self.freq_reg = match data & 0x3 {
-                0 => 0x10,
-                1 => 0x20,
-                2 => 0x40,
-                _ => {
-                    panic!("Match for noise frequency not possible");
-                }
+            self.freq_reg = match data & 0x3
+            {
+                0 => {0x10},
+                1 => {0x20},
+                2 => {0x40},
+                _ => {panic!("Match for noise frequency not possible");}
             };
 
             // TODO: Not sure how the 'periodic' should sound.
@@ -137,8 +134,7 @@ impl NoiseSoundChannel {
 
             if noise {
                 let feed_back = (self.noise_shift_register >> 3) & 0x1;
-                self.noise_shift_register =
-                    (self.noise_shift_register >> 1) | ((output ^ feed_back) << 15);
+                self.noise_shift_register = (self.noise_shift_register >> 1) | ((output ^ feed_back) << 15);
             } else {
                 self.noise_shift_register = (self.noise_shift_register >> 1) | (output << 15);
             }
@@ -163,8 +159,8 @@ impl SoundGenerator for ToneSoundChannel {
     fn set_tone(&mut self, latched_data: u8, data: u8) {
         if (data & 0x80) == 0x00 {
             // Only update the frequencey if the 'data' is non-latch data.
-            self.freq_reg = (((data & ToneSoundChannel::LATCHED_UPPER_FREQ_MASK) as u16) << 4)
-                | (latched_data & ToneSoundChannel::LATCHED_LOWER_FREQ_MASK) as u16;
+            self.freq_reg = (((data & ToneSoundChannel::LATCHED_UPPER_FREQ_MASK) as u16) << 4) | 
+                (latched_data & ToneSoundChannel::LATCHED_LOWER_FREQ_MASK) as u16;
         }
     }
 
@@ -185,12 +181,12 @@ impl SoundGenerator for NoiseSoundChannel {
     }
 
     fn get_wave(&mut self, length: u32, sample_rate: u32) -> Vec<PlaybackType> {
-        let mut channel_wave = Vec::<PlaybackType>::new();
+        let mut channel_wave =  Vec::<PlaybackType>::new();
         for i in 0..length {
-            channel_wave
-                .push(self.get_shiff_register_output(self.noise_period_select, sample_rate));
+            channel_wave.push(self.get_shiff_register_output( self.noise_period_select, sample_rate));
         }
 
         channel_wave
     }
 }
+
