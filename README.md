@@ -123,7 +123,7 @@ vim setup
         
         au FileType rust set makeprg=cargo
 
-        nnoremap <C-s> :cgetexpr system('git grep --recurse-submodules -n '. expand('<cword>'))<CR> \|:cw<CR>
+        nnoremap <C-s> :cgetexpr system('git grep --recurse-submodules -n '. expand('<cword>'))<CR>
 
    Note to self, try these:
       git clone --depth 1 https://github.com/preservim/nerdtree.git  ~/.vim/pack/vendor/start/nerdtree

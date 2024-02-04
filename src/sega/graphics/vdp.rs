@@ -84,7 +84,11 @@ impl Mode1Settings {
             *x_scroll = Constants::SMS_WIDTH;
         }
 
-        *h_sync_interrupt_enabled = 0 != (mode_1_input & Constants::VDP0LINEINTENABLE);
+        if 0 != (mode_1_input & Constants::VDP0LINEINTENABLE) {
+            *h_sync_interrupt_enabled = true;
+        } else {
+            *h_sync_interrupt_enabled = false;
+        }
 
         if 0 != (mode_1_input & Constants::VDP0COL0OVERSCAN) {
             *start_x = Constants::PATTERNWIDTH;
@@ -145,9 +149,17 @@ impl Mode2Settings {
         sprite_height: &mut u8,
         display_mode_2: &mut u8,
     ) {
-        *v_sync_interrupt_enabled = 0 != (mode_2_input & Constants::VDP1VSYNC);
+        if 0 != (mode_2_input & Constants::VDP1VSYNC) {
+            *v_sync_interrupt_enabled = true;
+        } else {
+            *v_sync_interrupt_enabled = false;
+        }
 
-        *enable_display = 0 != (mode_2_input & Constants::VDP1ENABLEDISPLAY);
+        if 0 != (mode_2_input & Constants::VDP1ENABLEDISPLAY) {
+            *enable_display = true;
+        } else {
+            *enable_display = false;
+        }
 
         if 0 != (mode_2_input & Constants::VDP1BIGSPRITES) {
             *sprite_height = 16;
@@ -772,8 +784,9 @@ impl Vdp {
                     self.patterns4[(index + x) as usize] ^= mask;
                 }
 
-                x = x.saturating_sub(1);
-
+                if x > 0 {
+                    x -= 1;
+                }
                 change >>= 1;
             }
         }
@@ -971,7 +984,7 @@ impl Vdp {
         // Copying the brackground appears to be the slowest sections of this function.
         let x_wrap_around = Constants::SMS_WIDTH - x_offset;
         for i in (x as u16)..x_wrap_around {
-            scan_y_lines[i as usize] = background_scan_y_line[(x_offset + i) as usize];
+            scan_y_lines[i as usize] = background_scan_y_line[(x_offset + i as u16) as usize];
         }
 
         let offset = (Constants::SMS_WIDTH as i16) - (x_offset as i16);
@@ -1192,7 +1205,7 @@ impl Vdp {
                                 for i in 0..(Constants::PATTERNWIDTH as u16) {
                                     background_y_line.scan_line[(x + i) as usize] =
                                         patterns16_palette
-                                            [(patterns16_offset as u16 + i) as usize];
+                                            [(patterns16_offset as u16 + i as u16) as usize];
                                 }
                                 patterns16_offset += Constants::PATTERNWIDTH as i16;
                             } else {

@@ -29,7 +29,7 @@ impl SDLUtility {
     where
         F: FnMut(u32) -> Vec<soundchannel::PlaybackType>,
     {
-        assert!(audio_queue.size() <= SDLUtility::TARGET_QUEUE_LENGTH);
+        assert!(audio_queue.size() <= SDLUtility::TARGET_QUEUE_LENGTH as u32);
         let fill_size = ((SDLUtility::TARGET_QUEUE_LENGTH - audio_queue.size()) as f32
             * SDLUtility::FRACTION_FILL) as u32;
         // If 'stereo' the buffer is twice as large, so just as for half as much.
