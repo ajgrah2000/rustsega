@@ -79,6 +79,7 @@ impl<M: memory::MemoryRW> Core<M> {
 
     pub fn reset(&mut self) {
         self.pc_state = pc_state::PcState::new();
+        self.start_time = time::SystemTime::now();
     }
 
     pub fn step(&mut self, debug: bool, realtime: bool) {
