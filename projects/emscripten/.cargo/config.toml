@@ -1,6 +1,5 @@
 [build]
 target="wasm32-unknown-emscripten"
-release=true
 
 [env]
 EMCC_CFLAGS="-s USE_SDL=2 -sSIDE_MODULE=0 -sEXPORTED_FUNCTIONS=_main,_display_data -sEXPORTED_RUNTIME_METHODS=ccall,cwrap"

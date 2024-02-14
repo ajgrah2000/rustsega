@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en-us">
   <head>
+    <style>@keyframes blinker { 50%{opacity:0;}} .blink-text {animation: blinker 1s step-start infinite; } </style>
     <meta charset="utf-8" />
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     <title>Emscripten-Generated Code</title>
@@ -51,6 +52,18 @@
         font-family: 'Lucida Console', Monaco, monospace;
         outline: none;
       }
+      .marquee {
+         line-height: 30px;
+        text-align:center
+      }
+      .marquee p {
+          display: inline-block;
+          animation: marquee 15s linear infinite;
+      }
+      @keyframes marquee {
+          0% { transform: translate(0, 0);}
+        100% { transform: translate(-100%, 0);}
+      }
     </style>
   </head>
   <body>
@@ -67,7 +80,12 @@
     <article>
     </div>
     </article>
-    <div class="emscripten_border" id="rom_drop">
+    <div class="emscripten_border" id="rom_drop" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sega-Master-System-Set.png/640px-Sega-Master-System-Set.png');">
+      <style>div {} input:checked + div {mix-blend-mode: difference;animation: blinker 1s step-start infinite;}</style>
+      <h1 style="mix-blend-mode: difference;text-align:center;color:yellow">Sega <span class="blink-text">Master System</span>!</h1>
+      <input type="checkbox" id="90s" name="90s" checked />90s Style
+      <div>
+      <span>
       <canvas
         class="emscripten"
         id="canvas"
@@ -79,7 +97,11 @@
           #rom_drop.highlight { border-color: purple; }
       </style>
       </canvas>
+      </span>
+      </div>
+      <div class="marquee">
       <p>Drop Sega Master System Rom here to start emulation.</p>
+      </div>
       <p>Refresh page to start again.</p>
     </div>
     <textarea id="output" rows="8"></textarea>

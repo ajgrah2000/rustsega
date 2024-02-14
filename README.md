@@ -14,6 +14,10 @@ Original implementation was based on sega master system technical information fr
 Building/Running
     Install Rust:
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh  
+        
+        linux (rust toolchain dependencies):
+          apt-get install build-essential
+
     Install SDL:
         linux (debian based): 
                 apt-get install libsdl2-dev
@@ -36,10 +40,13 @@ Building/Running
                 rustup target add x86_64-pc-windows-gnu
                 cargo build --target x86_64-pc-windows-gnu --release
 
-                # For 'sdl'
+                # For 'sdl' (eg: if getting 'cannot find -lSDL2: No such file or directory')
                 sudo apt-get install libsdl2-dev -y
                 curl -s https://www.libsdl.org/release/SDL2-devel-2.0.22-mingw.tar.gz | tar xvz -C /tmp
                 cp -r /tmp/SDL2-2.0.22/x86_64-w64-mingw32/lib/* ~/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
+
+                # For raspberry pi.  Or generally, set destination directory to: $(rustup show active-toolchain | sed 's/ .*//')
+                cp -r /tmp/SDL2-2.0.22/x86_64-w64-mingw32/lib/* ~/.rustup/toolchains/stable-aarch64-unknown-linux-gnu/lib/rustlib/x86_64-pc-windows-gnu/lib/
 
         Webassembly
                 From: https://puddleofcode.com/story/definitive-guide-to-rust-sdl2-and-emscriptem
