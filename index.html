@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="en-us">
-  <head>
-    <style>@keyframes blinker { 50%{opacity:0;}} .blink-text {animation: blinker 1s step-start infinite; } </style>
-    <meta charset="utf-8" />
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>Emscripten-Generated Code</title>
-    <style>
+<head>
+  <style>
+  @keyframes blinker { 50%{opacity:0;}} .blink-text {animation: blinker 1s step-start infinite; } 
+  </style>
+  <meta charset="utf-8">
+  <title>Emscripten-Generated Code</title>
+  <style>
       body {
         font-family: arial;
         margin: 0;
@@ -72,51 +73,40 @@
         margin: 0 -0.3em 0; /* The icon has a 'large' area, so setting a negative margine. */
         filter: invert(96%) sepia(54%) saturate(6594%) hue-rotate(356deg) brightness(105%) contrast(104%);*/ /* Somehow this is yellow */
       }
-    </style>
-  </head>
-  <body>
-    <span id="controls">
-      <span>
-      <input
-          type="button"
-          value="Fullscreen"
-          /* pointerLock, resize */
-          onclick="Module.requestFullscreen(false, false)"
-        />
-      </span>
-    </span>
-    <article>
-    </div>
-    </article>
-    <div class="emscripten_border" id="rom_drop" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sega-Master-System-Set.png/640px-Sega-Master-System-Set.png');">
-      <style>div {} input:checked + div {mix-blend-mode: difference;animation: blinker 1s step-start infinite;}</style>
-      <h1 style="mix-blend-mode: difference;text-align:center;color:yellow">Sega <span class="blink-text">Maste<img id="rust_logo" src="https://www.rust-lang.org/static/images/rust-logo-blk.svg"></img> System</span>!</h1>
-      <input type="checkbox" id="90s" name="90s" checked />90s Style
-      <div>
-      <span>
-      <canvas
-        class="emscripten"
-        id="canvas"
-        oncontextmenu="event.preventDefault()"
-      >
-      <style>
+  </style>
+  <style>
+  div {} input:checked + div {mix-blend-mode: difference;animation: blinker 1s step-start infinite;}
+  </style>
+  <style>
           #rom_drop { border: 5px dashed #ccc; margin: 10px auto;} 
           #rom_drop.hide_border { border: none;} 
           #rom_drop.highlight { border-color: purple; }
-      </style>
-      </canvas>
-      </span>
-      </div>
-      <div class="marquee">
+  </style>
+</head>
+<body>
+  <span id="controls">
+    <span><!-- pointerLock, resize  -->
+      <input type="button" value="Fullscreen" onclick="Module.requestFullscreen(false, false)"/>
+    </span>
+  </span>
+  <div class="emscripten_border" id="rom_drop" style=
+  "background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sega-Master-System-Set.png/640px-Sega-Master-System-Set.png');">
+    <h1 style="mix-blend-mode: difference;text-align:center;color:yellow">Sega <span class="blink-text">Maste<img alt="r" id="rust_logo" src="https://www.rust-lang.org/static/images/rust-logo-blk.svg"> System</span>!</h1>
+    <input type="checkbox" id="90s" name="90s" checked/>90s Style
+    <div>
+      <canvas width="0" height="0" class="emscripten" id="canvas"
+      oncontextmenu="event.preventDefault()"></canvas>
+    </div>
+    <div class="marquee">
       <p>Drop Sega Master System Rom here to start emulation.</p>
-      </div>
-      <p>Refresh page to start again.</p>
     </div>
-    <textarea id="output" rows="8"></textarea>
-    <div style="text-align:center;">
-      <img alt="An amazing animation depicting the evolution of mankind." src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Under-Construction-Bulldozer.gif">
-    </div>
-    <script type="text/javascript">
+    <p style="mix-blend-mode: difference;">Refresh page to start again.</p>
+  </div>
+  <textarea id="output" rows="8"></textarea>
+  <div style="text-align:center;">
+    <img alt="An amazing animation depicting the evolution of mankind." src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Under-Construction-Bulldozer.gif">
+  </div>
+  <script type="text/javascript">
       var display_data;
       var Module = {
         arguments: ['""'], // Provide an 'empty' cartridge name (as it's a required argument).
@@ -141,17 +131,15 @@
           return document.getElementById('canvas')
         })(),
       }
-    </script>
-    <script
-      type="text/javascript"
-      src="target/wasm32-unknown-emscripten/release/rustsega.js"
-      onerror="alert('Script not found: target/wasm32-unknown-emscripten/release/rustsega.js\nbuild with:\n(cd projects/emscripten && cargo build --release)')"
-    ></script>
-    <script>
-        function handleNewFileData(data) {
-          display_data(data, data.length);
-        }
-    </script>
-    <script type="module" src="file_drop.js"></script>
-  </body>
+  </script> 
+  <script type="text/javascript" src="target/wasm32-unknown-emscripten/release/rustsega.js" 
+          onerror="alert('Script not found: target/wasm32-unknown-emscripten/release/rustsega.js\nbuild with:\n(cd projects/emscripten &amp;&amp; cargo build --release)')">
+  </script>
+  <script>
+    function handleNewFileData(data) {
+      display_data(data, data.length);
+    }
+  </script> 
+  <script type="module" src="file_drop.js"></script>
+</body>
 </html>
