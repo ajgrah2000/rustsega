@@ -64,6 +64,14 @@
           0% { transform: translate(0, 0);}
         100% { transform: translate(-100%, 0);}
       }
+      #rust_logo {
+        height: 2em;
+        width: 2em;
+        vertical-align: middle;
+        object-fit: contain;
+        margin: 0 -0.3em 0; /* The icon has a 'large' area, so setting a negative margine. */
+        filter: invert(96%) sepia(54%) saturate(6594%) hue-rotate(356deg) brightness(105%) contrast(104%);*/ /* Somehow this is yellow */
+      }
     </style>
   </head>
   <body>
@@ -82,7 +90,7 @@
     </article>
     <div class="emscripten_border" id="rom_drop" style="background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Sega-Master-System-Set.png/640px-Sega-Master-System-Set.png');">
       <style>div {} input:checked + div {mix-blend-mode: difference;animation: blinker 1s step-start infinite;}</style>
-      <h1 style="mix-blend-mode: difference;text-align:center;color:yellow">Sega <span class="blink-text">Master System</span>!</h1>
+      <h1 style="mix-blend-mode: difference;text-align:center;color:yellow">Sega <span class="blink-text">Maste<img id="rust_logo" src="https://www.rust-lang.org/static/images/rust-logo-blk.svg"></img> System</span>!</h1>
       <input type="checkbox" id="90s" name="90s" checked />90s Style
       <div>
       <span>
@@ -105,6 +113,9 @@
       <p>Refresh page to start again.</p>
     </div>
     <textarea id="output" rows="8"></textarea>
+    <div style="text-align:center;">
+      <img alt="An amazing animation depicting the evolution of mankind." src="https://upload.wikimedia.org/wikipedia/commons/1/1c/Under-Construction-Bulldozer.gif">
+    </div>
     <script type="text/javascript">
       var display_data;
       var Module = {
