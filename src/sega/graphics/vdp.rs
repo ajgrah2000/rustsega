@@ -1190,8 +1190,7 @@ impl Vdp {
                             if pattern_x_delta == 1 {
                                 for i in 0..(Constants::PATTERNWIDTH as u16) {
                                     background_y_line.scan_line[(x + i) as usize] =
-                                        patterns16_palette
-                                            [(patterns16_offset as u16 + i) as usize];
+                                        patterns16_palette[(patterns16_offset as u16 + i) as usize];
                                 }
                                 patterns16_offset += Constants::PATTERNWIDTH as i16;
                             } else {

@@ -299,7 +299,7 @@ mod tests {
                 fullscreen,
             );
 
-            canvas.info().texture_formats.iter().for_each(|x| match x {
+            canvas.expect("canvas is unexpectedly None").info().texture_formats.iter().for_each(|x| match x {
                 pixels::PixelFormatEnum::Unknown => {
                     println!("Unknown");
                 }
@@ -426,7 +426,7 @@ mod tests {
 
                 // First loop, draw 30 frames at a time.
                 self.draw_loop(
-                    &mut canvas,
+                    &mut canvas.unwrap(),
                     generator.pixel_format,
                     frame_width,
                     frame_height,

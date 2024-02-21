@@ -80,7 +80,7 @@ impl Cartridge {
     }
 }
 
-fn load_bank(source: &mut Vec<u8>) -> (Bank, BankSizeType) {
+fn load_bank(source: &mut [u8]) -> (Bank, BankSizeType) {
     let mut bank = Bank {
         data: [0; BANK_SIZE as usize],
     };
@@ -129,7 +129,7 @@ pub extern "C" fn display_data(raw_data_ptr: *const u8, raw_data_length: usize) 
     let v = unsafe { std::slice::from_raw_parts(raw_data_ptr, raw_data_length) };
     if !v.is_empty() {
         JAVASCRIPT_DATA_STORE
-                .with(|ref_cell_data| ref_cell_data.borrow_mut().raw_cart_data = v.to_vec());
+            .with(|ref_cell_data| ref_cell_data.borrow_mut().raw_cart_data = v.to_vec());
     }
 }
 

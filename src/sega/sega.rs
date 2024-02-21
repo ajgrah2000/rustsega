@@ -31,7 +31,7 @@ impl Sega {
     const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 1; // Number of display updates per key press event. (reduces texture creation overhead).
     const CPU_STEPS_PER_AUDIO_UPDATE: u32 = 50; // Number of times to step the CPU before updating the audio.
 
-    pub fn build_sega(cartridge_name: &String) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
+    pub fn build_sega(cartridge_name: &str) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
         let clock = clocks::Clock::new();
         let mut memory = memory::memory::MemoryAbsolute::new();
         let pc_state = cpu::pc_state::PcState::new();
@@ -55,7 +55,7 @@ impl Sega {
         )
     }
 
-    pub fn reset(&mut self, cartridge_name: &String) {
+    pub fn reset(&mut self, cartridge_name: &str) {
         self.core.memory.reset(cartridge_name);
         self.core.reset();
     }
@@ -118,7 +118,7 @@ impl Sega {
         debug: bool,
         realtime: bool,
         stop_clock: clocks::ClockType,
-        cartridge_name: &String,
+        cartridge_name: &str,
         fullscreen: bool,
     ) -> Self {
         let core = Self::build_sega(cartridge_name);
@@ -167,8 +167,7 @@ impl Sega {
 
                 if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
                     // Top-up the audio queue
-                    let audio_queue =
-                        self.audio_queue.as_mut().expect("Optional audio not set");
+                    let audio_queue = self.audio_queue.as_mut().expect("Optional audio not set");
                     sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {
                         self.core.ports.audio.get_next_audio_chunk(fill_size)
                     });
@@ -213,8 +212,7 @@ impl Sega {
 
                 if 0 == audio_steps % Sega::CPU_STEPS_PER_AUDIO_UPDATE {
                     // Top-up the audio queue
-                    let audio_queue =
-                        self.audio_queue.as_mut().expect("Optional audio not set");
+                    let audio_queue = self.audio_queue.as_mut().expect("Optional audio not set");
                     sound::SDLUtility::top_up_audio_queue(audio_queue, |fill_size| {
                         self.core.ports.audio.get_next_audio_chunk(fill_size)
                     });
@@ -242,15 +240,12 @@ impl Sega {
             window_size.fullscreen,
         );
 
-        match self.canvas {
-            Some(ref mut v) => {
-                v.set_logical_size(
-                    window_size.console_size.console_width as u32,
-                    window_size.console_size.console_height as u32,
-                )
-                .unwrap();
-            }
-            None => {}
+        if let Some(ref mut v) = self.canvas {
+             v.set_logical_size(
+                 window_size.console_size.console_width as u32,
+                 window_size.console_size.console_height as u32,
+             )
+             .unwrap();
         }
 
         self.audio_queue = sound::SDLUtility::get_audio_queue(&mut sdl_context);

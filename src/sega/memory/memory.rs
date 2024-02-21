@@ -149,7 +149,7 @@ impl MemoryAbsolute {
             | (address & 0x1FFF) as AbsoluteAddressType) as usize]
     }
 
-    pub fn reset(&mut self, cartridge_name: &String) {
+    pub fn reset(&mut self, cartridge_name: &str) {
         let mut cartridge = cartridge::Cartridge::new(cartridge_name);
         match cartridge.load() {
             Ok(()) => {
