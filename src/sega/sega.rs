@@ -241,11 +241,11 @@ impl Sega {
         );
 
         if let Some(ref mut v) = self.canvas {
-             v.set_logical_size(
-                 window_size.console_size.console_width as u32,
-                 window_size.console_size.console_height as u32,
-             )
-             .unwrap();
+            v.set_logical_size(
+                window_size.console_size.console_width as u32,
+                window_size.console_size.console_height as u32,
+            )
+            .unwrap();
         }
 
         self.audio_queue = sound::SDLUtility::get_audio_queue(&mut sdl_context);
