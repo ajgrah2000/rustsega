@@ -32,15 +32,14 @@ jobs:
     steps:
     - uses: actions/checkout@main
     - name: Install rust ${{ env.RUST_VERSION }}
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ env.RUST_VERSION }}
-        override: true
         components: rustfmt, clippy
     - uses: mymindstorm/setup-emsdk@v14
       with:
         version: ${{ env.EMSCRIPTEN_VERSION }}
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: '20.x'
     - name: install_linux_dependencies
@@ -79,7 +78,7 @@ jobs:
            zip -r ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip ${{ env.PROJ_NAME }}/index.html ${{ env.PROJ_NAME }}/file_drop.js ${{ env.PROJ_NAME }}/run_sample_server.sh ${{ env.PROJ_NAME }}/target/wasm32-unknown-emscripten/release/${{ env.PROJ_NAME }}.wasm ${{ env.PROJ_NAME }}/target/wasm32-unknown-emscripten/release/${{ env.PROJ_NAME }}.js
 
     - name: Cache emscripten release
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
         key: emscripten-zip_${{ github.sha }}
@@ -89,15 +88,14 @@ jobs:
 
     steps:
     - uses: actions/checkout@main
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v4
       with:
         node-version: '20.x'
     - uses: actions/checkout@main
     - name: Install rust ${{ env.RUST_VERSION }}
-      uses: actions-rs/toolchain@v1
+      uses: dtolnay/rust-toolchain@stable
       with:
         toolchain: ${{ env.RUST_VERSION }}
-        override: true
         components: rustfmt, clippy
     - name: install_linux_dependencies
       run: |
@@ -132,7 +130,7 @@ jobs:
            cd ..
            zip -r -j ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip ${{ env.PROJ_NAME }}/target/x86_64-pc-windows-gnu/release/${{ env.PROJ_NAME }}.exe ${{ env.PROJ_NAME }}/palette_*.dat ${{ runner.temp }}/sdl_dll/*
     - name: Cache windows release
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
         key: windows-zip_${{ github.sha }}
@@ -152,9 +150,9 @@ jobs:
            chmod -c -R +rX . | while read line; do
              echo "::warning title=Invalid file permissions automatically fixed::$line"
            done
-    - uses: actions/configure-pages@v1
+    - uses: actions/configure-pages@v5
     - name: Upload Pages artifact - emscripten
-      uses: actions/upload-pages-artifact@v2
+      uses: actions/upload-pages-artifact@v3
       with:
         path: .
 
@@ -172,30 +170,23 @@ jobs:
     steps:
     - id: deployment
       if: startsWith(github.event.ref, 'refs/tags/')
-      uses: actions/deploy-pages@v3
+      uses: actions/deploy-pages@v4
 
   create_release:
-    name: Create release from cached results
+    name: Create release
     runs-on: ubuntu-latest
-
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
 
     steps:
+    - uses: actions/checkout@main
     - name: Create Release
       if: startsWith(github.event.ref, 'refs/tags/')
-      uses: actions/create-release@v1
       id: create_release
-      with:
-        draft: true
-        prerelease: true
-        release_name: ${{ github.ref_name }}
-        tag_name: ${{ env.AUTO_TAG_NAME }}
-        body: |
-              Change Log
-              - Trying to create a release via an action.
       env:
         GITHUB_TOKEN: ${{ github.token }}
+      run: |
+            gh release create "${{ env.AUTO_TAG_NAME }}"
 
   create_windows_release:
     name: Create windows release from cached results
@@ -203,22 +194,19 @@ jobs:
     needs: [create_release, windows_build]
 
     steps:
+    - uses: actions/checkout@main
     - name: Cache windows release
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
         key: windows-zip_${{ github.sha }}
 
     - name: Release Artifacts - windows 
       if: startsWith(github.event.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
-        asset_name: windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
-        asset_content_type: application/zip
+      run: |
+            gh release upload "${{ env.AUTO_TAG_NAME }}" ${{ runner.temp }}/windows_artifact_${{ env.AUTO_TAG_NAME }}.zip
 
   create_emscripten_release:
     name: Create emscripten release from cached results
@@ -226,19 +214,16 @@ jobs:
     needs: [create_release, emscripten_build]
 
     steps:
+    - uses: actions/checkout@main
     - name: Cache emscripten release
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with: 
         path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
         key: emscripten-zip_${{ github.sha }}
 
     - name: Release Artifacts - emscripten 
       if: startsWith(github.event.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ needs.create_release.outputs.upload_url }}
-        asset_path: ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
-        asset_name: emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
-        asset_content_type: application/zip
+      run: |
+            gh release upload "${{ env.AUTO_TAG_NAME }}" ${{ runner.temp }}/emscripten_artifact_${{ env.AUTO_TAG_NAME }}.zip
