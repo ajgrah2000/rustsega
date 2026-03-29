@@ -4,6 +4,8 @@
 
 mod sega;
 
+use rand as _; // Used transitively by graphics module
+
 use argh::FromArgs;
 
 #[cfg(target_os = "emscripten")]

@@ -139,7 +139,7 @@ impl SDLUtility {
         pixel_format: pixels::PixelFormatEnum,
         frame_width: u16,
         frame_height: u16,
-    ) -> render::Texture {
+    ) -> render::Texture<'_> {
         texture_creator
             .create_texture_streaming(pixel_format, frame_width as u32, frame_height as u32)
             .map_err(|e| e.to_string())

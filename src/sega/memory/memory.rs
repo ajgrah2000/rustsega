@@ -292,8 +292,6 @@ macro_rules! impl_common_memoryrw {
     };
 }
 
-pub(crate) use impl_common_memoryrw;
-
 impl_common_memoryrw!(MemoryAbsolute);
 
 pub trait MemoryRW {
