@@ -1404,11 +1404,11 @@ mod tests {
             }
         }
 
-        fn read(&self,         address: address_space::AddressType) -> u8 {
+        fn read(&self, address: address_space::AddressType) -> u8 {
             self.dummy_memory[address as usize]
         }
 
-        fn write(&mut self,         address: address_space::AddressType, data: u8) {
+        fn write(&mut self, address: address_space::AddressType, data: u8) {
             self.dummy_memory[address as usize] = data;
         }
     }
