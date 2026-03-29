@@ -67,6 +67,10 @@ impl Cartridge {
         );
 
         for i in 0..MAX_BANKS {
+            if source.is_empty() {
+                break;
+            }
+
             let (bank, n) = load_bank(source);
 
             self.rom[i as usize] = bank;
@@ -85,17 +89,13 @@ fn load_bank(source: &mut [u8]) -> (Bank, BankSizeType) {
         data: [0; BANK_SIZE as usize],
     };
 
-    // Try to read an entire bank.
-    if source.len() >= BANK_SIZE as usize {
-        bank.data = source[0..BANK_SIZE as usize].try_into().unwrap();
-        (bank, BANK_SIZE as BankSizeType)
-    } else {
-        let length = source.len();
-        if length > 0 {
-            bank.data = source[0..length].try_into().unwrap();
-        }
-        (bank, source.len() as BankSizeType)
+    let length = source.len().min(BANK_SIZE as usize);
+
+    if length > 0 {
+        bank.data[..length].copy_from_slice(&source[..length]);
     }
+
+    (bank, length as BankSizeType)
 }
 
 struct JavaScriptData {
