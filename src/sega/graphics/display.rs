@@ -300,6 +300,7 @@ mod tests {
             );
 
             canvas
+                .as_ref()
                 .expect("canvas is unexpectedly None")
                 .info()
                 .texture_formats
@@ -413,6 +414,7 @@ mod tests {
                     pixels::PixelFormatEnum::YVYU => {
                         println!("YVYU");
                     }
+                    _ => {}
                 });
 
             let mut event_pump = sdl_context.event_pump().unwrap();
@@ -431,7 +433,7 @@ mod tests {
 
                 // First loop, draw 30 frames at a time.
                 self.draw_loop(
-                    &mut canvas.unwrap(),
+                    canvas.as_mut().unwrap(),
                     generator.pixel_format,
                     frame_width,
                     frame_height,
@@ -442,10 +444,21 @@ mod tests {
         }
     }
 
+    fn is_display_available() -> bool {
+        std::env::var("DISPLAY").is_ok()
+            || std::env::var("WAYLAND_DISPLAY").is_ok()
+            || std::env::var("SDL_VIDEODRIVER").is_ok()
+    }
+
     #[test]
     fn test_open_display() {
+        if !is_display_available() {
+            println!("Skipping test: no display server available");
+            return;
+        }
+
         const WINDOW_WIDTH: u16 = 800;
-        const WINDOW_HEIGHT: u16 = 600; // MAX HEIGHT
+        const WINDOW_HEIGHT: u16 = 600;
 
         let mut display_generator =
             DisplayGenerator::new(WINDOW_WIDTH, WINDOW_HEIGHT, SDLUtility::PIXEL_FORMAT);
