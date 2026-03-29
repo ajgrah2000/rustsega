@@ -1,6 +1,6 @@
 use super::clocks;
 use super::cpu::pc_state;
-use super::memory::memory;
+use super::memory::address_space;
 
 pub struct Interruptor {
     pub next_interrupt: u32,
@@ -9,7 +9,7 @@ pub struct Interruptor {
 pub trait Interrupt {
     fn interrupt<M>(pc_state: &mut pc_state::PcState, memory: &mut M)
     where
-        M: memory::MemoryRW;
+        M: address_space::MemoryRW;
 }
 
 pub trait PollForInterrupt {

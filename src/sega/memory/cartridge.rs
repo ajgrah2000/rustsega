@@ -60,11 +60,9 @@ impl Cartridge {
     }
 
     fn load_banks(&mut self, source: &mut Vec<u8>) {
-        self.rom = Box::new(
-            [Bank {
+        *self.rom = [Bank {
                 data: [0; BANK_SIZE as usize],
-            }; MAX_BANKS as usize],
-        );
+            }; MAX_BANKS as usize];
 
         for i in 0..MAX_BANKS {
             if source.is_empty() {

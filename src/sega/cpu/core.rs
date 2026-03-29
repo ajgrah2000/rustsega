@@ -1,7 +1,7 @@
 use super::super::clocks;
 use super::super::graphics;
 use super::super::interruptor;
-use super::super::memory::memory;
+use super::super::memory::address_space;
 use super::super::ports;
 use super::instructions;
 use super::pc_state;
@@ -24,7 +24,7 @@ impl Constants {
     pub const CLOCK_HZ: u32 = 3590000; // set to Z80 clock speed for SMS
 }
 
-impl<M: memory::MemoryRW> Core<M> {
+impl<M: address_space::MemoryRW> Core<M> {
     pub const IRQIM1ADDR: u16 = 0x38;
 
     pub fn new(
@@ -35,7 +35,7 @@ impl<M: memory::MemoryRW> Core<M> {
         interruptor: interruptor::Interruptor,
     ) -> Self
     where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         Self {
             clock,
@@ -141,7 +141,7 @@ fn test_core_creation() {
     use super::super::graphics::vdp;
 
     let clock = clocks::Clock::new();
-    let memory = memory::MemoryAbsolute::new();
+    let memory = address_space::MemoryAbsolute::new();
     let pc_state = pc_state::PcState::new();
     let vdp = vdp::Vdp::new();
     let mut ports = ports::Ports::new();

@@ -67,7 +67,7 @@ fn main() {
     if args.list_drivers {
         println!("{}", full_description_string());
     }
-    let mut sega_machine = sega::sega::Sega::new(
+    let mut sega_machine = sega::console::Sega::new(
         args.debug,
         !args.no_delay,
         args.stop_clock.unwrap_or(0),
@@ -84,7 +84,7 @@ fn main() {
                     sega_machine.power_sega();
                     false
                 } else {
-                    sega::sega::Sega::run_sega(&mut sega_machine)
+                    sega::console::Sega::run_sega(&mut sega_machine)
                 }
             } else {
                 false
@@ -105,7 +105,7 @@ fn main() {
     {
         sega_machine.power_sega();
         loop {
-            if !sega::sega::Sega::run_sega(&mut sega_machine) {
+            if !sega::console::Sega::run_sega(&mut sega_machine) {
                 break;
             }
         }
