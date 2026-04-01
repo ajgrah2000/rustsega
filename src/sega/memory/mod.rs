@@ -1,2 +1,2 @@
+pub mod address_space;
 pub mod cartridge;
-pub mod memory;

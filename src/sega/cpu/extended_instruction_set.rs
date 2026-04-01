@@ -10,7 +10,7 @@
 // Initially, setting each one to do it's own offset/increments.
 
 use super::super::clocks;
-use super::super::memory::memory;
+use super::super::memory::address_space;
 use super::super::ports;
 use super::instruction_set;
 use super::pc_state;
@@ -22,7 +22,7 @@ use super::status_flags;
 
 fn get_i8_displacement_as_u8<M, R16>(memory: &mut M, pc_reg: &R16) -> u16
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     // Note the '+2' assumes the 'dddddddd' is at a specific offset from the current pc.
@@ -32,7 +32,7 @@ where
 // 'pc_reg' and 'i16_reg' need the same trait, but can be different types.
 fn get_i_d_address<M, R16>(memory: &mut M, pc_reg: &R16, i16_reg: &R16) -> u16
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     i16_reg
@@ -56,7 +56,7 @@ pub fn ld_i_d_r<M, R16>(
     pc_reg: &mut R16,
     i16_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     let address = get_i_d_address(memory, pc_reg, i16_reg);
@@ -73,7 +73,7 @@ pub fn ld_i_nn<M, R16>(
     pc_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     i16_reg.set(memory.read16(pc_reg.get()));
@@ -90,7 +90,7 @@ pub fn ld_i_mem_nn<M, R16>(
     pc_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     i16_reg.set(memory.read16(memory.read16(pc_reg.get())));
@@ -109,7 +109,7 @@ pub fn ld_mem_nn_reg16<M, R16>(
     pc_reg: &mut R16,
     reg16: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     memory.write(memory.read16(pc_reg.get()), reg16.get_low());
@@ -129,7 +129,7 @@ pub fn ld_dd_mem_nn<M, F: FnMut(&mut pc_state::PcState, u16)>(
     mut reg16: F,
     pc_state: &mut pc_state::PcState,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     reg16(pc_state, memory.read16(memory.read16(pc_state.get_pc())));
 
@@ -156,7 +156,7 @@ pub fn ld_i_d_n<M, R16>(
     pc_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     let tmp16 = get_i_d_address(memory, pc_reg, i16_reg);
@@ -175,7 +175,7 @@ pub fn ld_r_i_d<M, F: FnMut(&mut pc_state::PcState, u8)>(
     i16_value: u16,
     mut dst_fn: F,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     let address = i16_value.wrapping_add(get_i8_displacement_as_u8(memory, &pc_state.pc_reg));
     dst_fn(pc_state, memory.read(address));
@@ -225,7 +225,7 @@ pub fn pop_i<M, R16>(
     sp_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     i16_reg.set_low(memory.read(sp_reg.get()));
@@ -243,7 +243,7 @@ pub fn push_i<M, R16>(
     sp_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     pc_state::PcState::increment_reg(sp_reg, -1);
@@ -258,7 +258,7 @@ pub fn push_i<M, R16>(
 // LDDR
 pub fn lddr<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
     pc_state::PcState::increment_reg(&mut pc_state.de_reg, -1);
@@ -282,7 +282,7 @@ where
 // LDIR
 pub fn ldir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state::PcState::increment_reg(&mut pc_state.bc_reg, -1);
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
@@ -312,7 +312,7 @@ pub fn otir<M>(
     pc_state: &mut pc_state::PcState,
     ports: &mut ports::Ports,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
@@ -344,7 +344,7 @@ pub fn ex_sp_i<M, R16>(
     sp_reg: &mut R16,
     i16_reg: &mut R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     let mut tmp8 = memory.read(sp_reg.get());
@@ -388,7 +388,7 @@ pub fn bit_b_mem<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -417,7 +417,7 @@ pub fn set_b_mem<M, R16>(
     pc_reg: &mut R16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     memory.write(
@@ -448,7 +448,7 @@ pub fn res_b_mem<M, R16>(
     pc_reg: &mut R16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
 {
     memory.write(
@@ -470,7 +470,7 @@ pub fn bit_res_set_b_i_d<M, R16, F16>(
     af_reg: &mut F16,
     i16_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -529,7 +529,7 @@ pub fn cp_i_d<M, R16, AF>(
     i16_reg: &mut R16,
     af_reg: &mut AF,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     AF: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -545,7 +545,7 @@ pub fn cp_i_d<M, R16, AF>(
 // Compare accumulator with contents of memory address HL, increment HL
 pub fn cpi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     // This function sets the 'pc_state.f'
     instruction_set::cp_flags(
@@ -572,7 +572,7 @@ where
 // Compare accumulator with contents of memory address HL, decrement HL
 pub fn cpd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     // This function sets the 'pc_state.f'
     instruction_set::cp_flags(
@@ -599,7 +599,7 @@ where
 // Load, increment HL, DE, decrement BC.
 pub fn ldi<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
 
@@ -624,7 +624,7 @@ where
 // Load, decrement HL, DE, decrement BC.
 pub fn ldd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     memory.write(pc_state.de_reg.get(), memory.read(pc_state.hl_reg.get()));
 
@@ -649,7 +649,7 @@ where
 // Compare and repeat,  A with the contents of memory in HL, increment HL, decrement BC.
 pub fn cpir<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     // This function sets the 'pc_state.f'
     let original_carry = pc_state.get_f().get_c();
@@ -678,7 +678,7 @@ where
 // Compare and repeat,  A with the contents of memory in HL, decrement HL, decrement BC.
 pub fn cpdr<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     // This function sets the 'pc_state.f'
     let original_carry = pc_state.get_f().get_c();
@@ -709,7 +709,7 @@ where
 // RETI
 pub fn reti<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state.set_pc_low(memory.read(pc_state.sp_reg.get()));
     pc_state.increment_sp(1);
@@ -796,7 +796,7 @@ pub fn inc_i_d<M, R16, F16>(
     af_reg: &mut F16,
     i16_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -821,7 +821,7 @@ pub fn dec_i_d<M, R16, F16>(
     af_reg: &mut F16,
     i16_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -847,7 +847,7 @@ pub fn adc_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -874,7 +874,7 @@ pub fn sub_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -895,7 +895,7 @@ pub fn and_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -919,7 +919,7 @@ pub fn xor_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -943,7 +943,7 @@ pub fn or_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -967,7 +967,7 @@ pub fn add_i_d<M, R16, F16>(
     i16_reg: &R16,
     af_reg: &mut F16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg + pc_state::AfRegister,
 {
@@ -1141,7 +1141,7 @@ pub fn rlc_hl<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -1164,7 +1164,7 @@ pub fn rrc_hl<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -1187,7 +1187,7 @@ pub fn sla_hl<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -1210,7 +1210,7 @@ pub fn sra_hl<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -1233,7 +1233,7 @@ pub fn srl_hl<M, R16, F16>(
     af_reg: &mut F16,
     addr_reg: &R16,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
     R16: pc_state::Reg16RW,
     F16: pc_state::FlagReg,
 {
@@ -1252,7 +1252,7 @@ pub fn srl_hl<M, R16, F16>(
 // Rotate right decimal (basically nibble shift right).
 pub fn rrd<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     let original_a = pc_state.get_a();
     let original_hl_mem = memory.read(pc_state.hl_reg.get());
@@ -1278,7 +1278,7 @@ where
 // Rotate left decimal (basically nibble shift right).
 pub fn rld<M>(clock: &mut clocks::Clock, memory: &mut M, pc_state: &mut pc_state::PcState)
 where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     let original_a = pc_state.get_a();
     let original_hl_mem = memory.read(pc_state.hl_reg.get());
@@ -1330,7 +1330,7 @@ pub fn outi<M>(
     pc_state: &mut pc_state::PcState,
     ports: &mut ports::Ports,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));
@@ -1355,7 +1355,7 @@ pub fn ini<M>(
     pc_state: &mut pc_state::PcState,
     ports: &mut ports::Ports,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     memory.write(
@@ -1383,7 +1383,7 @@ pub fn outd<M>(
     pc_state: &mut pc_state::PcState,
     ports: &mut ports::Ports,
 ) where
-    M: memory::MemoryRW,
+    M: address_space::MemoryRW,
 {
     pc_state.set_b(pc_state.get_b().wrapping_sub(1));
     ports.port_write(clock, pc_state.get_c(), memory.read(pc_state.hl_reg.get()));

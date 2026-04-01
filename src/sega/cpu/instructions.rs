@@ -1,6 +1,6 @@
 use super::super::clocks;
 use super::super::interruptor;
-use super::super::memory::memory;
+use super::super::memory::address_space;
 use super::super::ports;
 use super::extended_instruction_set;
 use super::instruction_set;
@@ -109,7 +109,7 @@ impl Instruction {
         ports: &mut ports::Ports,
         _interruptor: &mut interruptor::Interruptor,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         match op_code {
             // Extended op codes, not executed directly
@@ -722,7 +722,7 @@ impl Instruction {
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
@@ -929,7 +929,7 @@ impl Instruction {
         index_reg_fn: F,
         mut index_reg_fn_mut: FM,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
@@ -1166,7 +1166,7 @@ impl Instruction {
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         Self::execute_index(clock, memory, pc_state, |x| &x.ix_reg, |x| &mut x.ix_reg);
     }
@@ -1177,7 +1177,7 @@ impl Instruction {
         memory: &mut M,
         pc_state: &mut pc_state::PcState,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         Self::execute_index(clock, memory, pc_state, |x| &x.iy_reg, |x| &mut x.iy_reg);
     }
@@ -1189,7 +1189,7 @@ impl Instruction {
         pc_state: &mut pc_state::PcState,
         ports: &mut ports::Ports,
     ) where
-        M: memory::MemoryRW,
+        M: address_space::MemoryRW,
     {
         let op_code = memory.read(pc_state.get_pc());
         pc_state.increment_pc(1);
@@ -1370,7 +1370,7 @@ mod tests {
     use crate::sega::cpu::instructions;
     use crate::sega::cpu::pc_state;
     use crate::sega::interruptor;
-    use crate::sega::memory::memory;
+    use crate::sega::memory::address_space;
     use crate::sega::ports;
 
     // Create a 'test memory' class, to allow simple/arbitrary population of memory.
@@ -1404,11 +1404,11 @@ mod tests {
             }
         }
 
-        fn read(&self, address: memory::AddressType) -> u8 {
+        fn read(&self, address: address_space::AddressType) -> u8 {
             self.dummy_memory[address as usize]
         }
 
-        fn write(&mut self, address: memory::AddressType, data: u8) {
+        fn write(&mut self, address: address_space::AddressType, data: u8) {
             self.dummy_memory[address as usize] = data;
         }
     }

@@ -13,7 +13,7 @@ use super::memory;
 use super::ports;
 
 pub struct Sega {
-    core: cpu::core::Core<memory::memory::MemoryAbsolute>,
+    core: cpu::core::Core<memory::address_space::MemoryAbsolute>,
     debug: bool,
     realtime: bool,
     stop_clock: clocks::ClockType,
@@ -31,9 +31,11 @@ impl Sega {
     const DISPLAY_UPDATES_PER_KEY_EVENT: u32 = 1; // Number of display updates per key press event. (reduces texture creation overhead).
     const CPU_STEPS_PER_AUDIO_UPDATE: u32 = 50; // Number of times to step the CPU before updating the audio.
 
-    pub fn build_sega(cartridge_name: &str) -> cpu::core::Core<memory::memory::MemoryAbsolute> {
+    pub fn build_sega(
+        cartridge_name: &str,
+    ) -> cpu::core::Core<memory::address_space::MemoryAbsolute> {
         let clock = clocks::Clock::new();
-        let mut memory = memory::memory::MemoryAbsolute::new();
+        let mut memory = memory::address_space::MemoryAbsolute::new();
         let pc_state = cpu::pc_state::PcState::new();
         let vdp = graphics::vdp::Vdp::new();
         let mut ports = ports::Ports::new();
@@ -144,9 +146,7 @@ impl Sega {
         // Number of iterations to do before getting a new texture.
         // These loops will update the display, but currently events aren't checked in this time.
 
-        if self.canvas.is_some() {
-            let canvas = self.canvas.as_mut().expect("Optional canvas not set");
-
+        if let Some(canvas) = &mut self.canvas {
             // Creating the texture creator and texture is slow, so perform multiple display updates per creation.
             let texture_creator = graphics::display::SDLUtility::texture_creator(canvas);
             let mut texture;

@@ -54,6 +54,7 @@ Building/Running
                 Taken from: https://github.com/therocode/rust_emscripten_main_loop
 
                 sudo apt-get install emscripten
+                   Note: May need to install directly (https://emscripten.org/docs/getting_started/downloads.html), if apt-get hits dependency pain (eg with nodejs).
                 rustup target add wasm32-unknown-emscripten
 
                 # Your experience may vary, adding explicit handling of 'EM_CONFIG'

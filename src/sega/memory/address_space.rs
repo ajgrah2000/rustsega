@@ -20,33 +20,28 @@ use super::cartridge;
 /// -> Total = 3F 0x42
 ///
 /// mapped memory:
-///     0x0000 - 0x03FF                     -> ROM (bank 0) (0x0000 - 0x03FF)
-///     0x0400 - 0x3FFF + (0xFFFD(0-0x3F))          -> ROM (bank x) (0x0400 - 0x4000)
-///     0x4000 - 0x7FFF + (0xFFFE(0-0x3F))          -> ROM (bank x) (0x0000 - 0x4000)
-///     0x8000 - 0xBFFF + (0xFFFF(0-0x3F) + 0xFFFC(0x0C)) -> ROM (bank x) (0x0000 - 0x4000) or RAM (bank x)
+///   0x0000 - 0x03FF                     -> ROM (bank 0) (0x0000 - 0x03FF)
+///   0x0400 - 0x3FFF + (0xFFFD(0-0x3F))          -> ROM (bank x) (0x0400 - 0x4000)
+///   0x4000 - 0x7FFF + (0xFFFE(0-0x3F))          -> ROM (bank x) (0x0000 - 0x4000)
+///   0x8000 - 0xBFFF + (0xFFFF(0-0x3F) + 0xFFFC(0x0C)) -> ROM (bank x) (0x0000 - 0x4000) or RAM (bank x)
 /// - 11x0
-///     0xC000 - 0xDFFF                     -> System RAM   (0x0000 - 0x2000)
-///     0xE000 - 0xFFFF                     -> System RAM   (0x0000 - 0x2000) (mirror)
+///   0xC000 - 0xDFFF                     -> System RAM   (0x0000 - 0x2000)
+///   0xE000 - 0xFFFF                     -> System RAM   (0x0000 - 0x2000) (mirror)
 ///
+///   0x0000 - 0x03FF                     -> ROM (bank 0) (0x0000 - 0x03FF)
+///   0x0400 - 0x3FFF + (0xFFFD)          -> ROM (bank x) (0x0400 - 0x4000)
 ///
-///     0x0000 - 0x03FF                     -> ROM (bank 0) (0x0000 - 0x03FF)
-///     0x0400 - 0x3FFF + (0xFFFD)          -> ROM (bank x) (0x0400 - 0x4000)
+///   0x4000 - 0x7FFF + (0xFFFE)          -> ROM (bank x) (0x0000 - 0x4000)
+///   0x8000 - 0xBFFF + (0xFFFF + 0xFFFC) -> ROM (bank x) (0x0000 - 0x4000) or RAM (bank x)
 ///
-///     0x4000 - 0x7FFF + (0xFFFE)          -> ROM (bank x) (0x0000 - 0x4000)
-///     0x8000 - 0xBFFF + (0xFFFF + 0xFFFC) -> ROM (bank x) (0x0000 - 0x4000) or RAM (bank x)
+///   0xC000 - 0xDFFF                     -> System RAM   (0x0000 - 0x2000)
+///   0xE000 - 0xFFFF                     -> System RAM   (0x0000 - 0x2000) (mirror)
 ///
-///     0xC000 - 0xDFFF                     -> System RAM   (0x0000 - 0x2000)
-///     0xE000 - 0xFFFF                     -> System RAM   (0x0000 - 0x2000) (mirror)
+///   absolute = page[(address >> 13)] | address & 0x1FFF
 ///
+///   | 6-bit - page 0| 6-bit - page 1| 6-bit - page 2 | 1-bit - ram/rom select | 1-bit - ram select | 3 - sub-page address | 13 - address
 ///
-///     absolute = page[(address >> 13)] | address & 0x1FFF
-///
-///
-///     | 6-bit - page 0| 6-bit - page 1| 6-bit - page 2 | 1-bit - ram/rom select | 1-bit - ram select | 3 - sub-page address | 13 - address
-///
-///     all bits -> 6 + 6 + 6 + 18
-///
-
+///   all bits -> 6 + 6 + 6 + 18
 pub struct MemoryAbsoluteConstants {}
 
 pub struct MemoryBase {}
@@ -208,7 +203,7 @@ impl MemoryAbsolute {
     fn private_write(&mut self, address: AddressType, data: u8) {
         let address = address & MemoryBase::ADDRESS_MASK; // ADDRESS_MASK;
 
-        if address >= MemoryBase::RAM_OFFSET && address >= MemoryBase::MEMREGISTERS {
+        if address >= MemoryBase::MEMREGISTERS {
             // Should make these conditiona,
             if address == MemoryBase::PAGE0_BANK_SELECT_REGISTER {
                 self.upper_mappings[0] = MemoryAbsoluteConstants::ABSOLUTE_PAGE_0_ROM_OFFSET
@@ -271,19 +266,19 @@ impl MemoryAbsolute {
 #[macro_export]
 macro_rules! impl_common_memoryrw {
     ($T:ident) => {
-        impl $crate::sega::memory::memory::MemoryRW for $T {
-            fn read(&self, address: $crate::sega::memory::memory::AddressType) -> u8 {
+        impl $crate::sega::memory::address_space::MemoryRW for $T {
+            fn read(&self, address: $crate::sega::memory::address_space::AddressType) -> u8 {
                 self.read(address)
             }
 
             // Also create a 'little endian' 16-bit read.
-            fn read16(&self, address: $crate::sega::memory::memory::AddressType) -> u16 {
+            fn read16(&self, address: $crate::sega::memory::address_space::AddressType) -> u16 {
                 self.read(address) as u16 + ((self.read(address + 1) as u16) << 8)
             }
 
             fn write(
                 &mut self,
-                address: $crate::sega::memory::memory::AddressType,
+                address: $crate::sega::memory::address_space::AddressType,
                 data: u8,
             ) -> () {
                 self.write(address, data);
@@ -291,8 +286,6 @@ macro_rules! impl_common_memoryrw {
         }
     };
 }
-
-pub(crate) use impl_common_memoryrw;
 
 impl_common_memoryrw!(MemoryAbsolute);
 
@@ -304,7 +297,7 @@ pub trait MemoryRW {
 
 #[cfg(test)]
 mod tests {
-    use crate::sega::memory::memory::MemoryAbsolute;
+    use crate::sega::memory::address_space::MemoryAbsolute;
     use std::mem;
     #[test]
     fn test_simple_memory_check() {
